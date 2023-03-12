@@ -1,0 +1,1421 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Email" xml:space="preserve">
+    <value>&lt;!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"&gt;
+&lt;html xmlns="http://www.w3.org/1999/xhtml"&gt;
+
+&lt;head&gt;
+  &lt;meta http-equiv="Content-Type" content="text/html; charset=utf-8" /&gt;
+  &lt;meta name="viewport" content="width=device-width, initial-scale=1.0" /&gt;
+  &lt;title&gt;Reservation Request Details&lt;/title&gt;
+
+  &lt;style type="text/css"&gt;
+    /* Client-specific Styles */
+
+    div,
+    p,
+    a,
+    li,
+    td {
+      -webkit-text-size-adjust: none;
+    }
+
+    #outlook a {
+      padding: 0;
+    }
+    /* Force Outlook to provide a "view in browser" menu link. */
+
+    html {
+      width: 100%;
+    }
+
+    body {
+      width: 100% !important;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    /* Prevent Webkit and Windows Mobile platforms from changing default font sizes, while not breaking desktop design. */
+
+    .ExternalClass {
+      width: 100%;
+    }
+    /* Force Hotmail to display emails at full width */
+
+    .ExternalClass,
+    .ExternalClass p,
+    .ExternalClass span,
+    .ExternalClass font,
+    .ExternalClass td,
+    .ExternalClass div {
+      line-height: 100%;
+    }
+    /* Force Hotmail to display normal line spacing. */
+
+    #backgroundTable {
+      margin: 0;
+      padding: 0;
+      width: 100% !important;
+      line-height: 100% !important;
+    }
+
+    img {
+      outline: none;
+      text-decoration: none;
+      border: none;
+      -ms-interpolation-mode: bicubic;
+    }
+
+    a img {
+      border: none;
+    }
+
+    .image_fix {
+      display: block;
+    }
+
+    p {
+      margin: 0px 0px !important;
+    }
+
+    table td {
+      border-collapse: collapse;
+    }
+
+    table {
+      border-collapse: collapse;
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+    }
+
+    a {
+      color: #33b9ff;
+      text-decoration: none;
+      text-decoration: none!important;
+    }
+    /*STYLES*/
+
+    table[class=full] {
+      width: 100%;
+      clear: both;
+    }
+    /*IPAD STYLES*/
+
+    @@media only screen and (max-width: 640px) {
+      a[href^="tel"],
+      a[href^="sms"] {
+        text-decoration: none;
+        color: #33b9ff;
+        /* or whatever your want */
+        pointer-events: none;
+        cursor: default;
+      }
+      .mobile_link a[href^="tel"],
+      .mobile_link a[href^="sms"] {
+        text-decoration: default;
+        color: #33b9ff !important;
+        pointer-events: auto;
+        cursor: default;
+      }
+      table[class=devicewidth] {
+        width: 440px!important;
+        text-align: center!important;
+      }
+      table[class=devicewidthinner] {
+        width: 420px!important;
+        text-align: center!important;
+      }
+      img[class=banner] {
+        width: 440px!important;
+        height: 220px!important;
+      }
+      img[class=col2img] {
+        width: 440px!important;
+        height: 220px!important;
+      }
+    }
+    /*IPHONE STYLES*/
+
+    @@media only screen and (max-width: 480px) {
+      a[href^="tel"],
+      a[href^="sms"] {
+        text-decoration: none;
+        color: #33b9ff;
+        /* or whatever your want */
+        pointer-events: none;
+        cursor: default;
+      }
+      .mobile_link a[href^="tel"],
+      .mobile_link a[href^="sms"] {
+        text-decoration: default;
+        color: #33b9ff !important;
+        pointer-events: auto;
+        cursor: default;
+      }
+      table[class=devicewidth] {
+        width: 95%!important;
+        text-align: center!important;
+      }
+      table[class=devicewidthbanner] {
+        width: 100%!important;
+        text-align: center!important;
+      }
+      table[class=devicewidthinner] {
+        width: 100%!important;
+        text-align: center!important;
+      }
+      img[class=banner] {
+        width: 280px!important;
+        height: 140px!important;
+      }
+      img[class=col2img] {
+        width: 280px!important;
+        height: 140px!important;
+      }
+    }
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+  &lt;!-- Start of preheader --&gt;
+  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="preheader"&gt;
+    &lt;tbody&gt;
+      &lt;tr&gt;
+        &lt;td&gt;
+          &lt;table width="600" cellpadding="0" cellspacing="0" border="0" align="center" class="devicewidth"&gt;
+            &lt;tbody&gt;
+              &lt;tr&gt;
+                &lt;td width="100%"&gt;
+                  &lt;table width="600" cellpadding="0" cellspacing="0" border="0" align="center" class="devicewidth"&gt;
+                    &lt;tbody&gt;
+                      &lt;!-- Spacing --&gt;
+                      &lt;tr&gt;
+                        &lt;td width="100%" height="20"&gt;&lt;/td&gt;
+                      &lt;/tr&gt;
+                      &lt;!-- Spacing --&gt;
+                      &lt;!-- Spacing --&gt;
+                      &lt;tr&gt;
+                        &lt;td width="100%" height="20"&gt;&lt;/td&gt;
+                      &lt;/tr&gt;
+                      &lt;!-- Spacing --&gt;
+                    &lt;/tbody&gt;
+                  &lt;/table&gt;
+                &lt;/td&gt;
+              &lt;/tr&gt;
+            &lt;/tbody&gt;
+          &lt;/table&gt;
+        &lt;/td&gt;
+      &lt;/tr&gt;
+    &lt;/tbody&gt;
+  &lt;/table&gt;
+  &lt;!-- End of preheader --&gt;
+  &lt;!-- Start of header --&gt;
+  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="header"&gt;
+    &lt;tbody&gt;
+      &lt;tr&gt;
+        &lt;td&gt;
+          &lt;table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" &gt;
+            &lt;tbody&gt;
+              &lt;tr&gt;
+                &lt;td width="100%"&gt;
+                  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" align="center"&gt;
+                    &lt;tbody&gt;
+                      &lt;tr&gt;
+                        &lt;td&gt;
+                          &lt;!-- start of menu --&gt;
+                          &lt;table background="http://www.motionmedia.ie/web/bookingbackground.jpg" width="100%" height="150px" border="0" align="center" valign="middle" cellpadding="0" cellspacing="0" border="0" class="devicewidthbanner"&gt;
+                            &lt;tbody&gt;
+                              &lt;tr&gt;
+                                &lt;td height="100" align="center" valign="middle" style="font-family: Helvetica, arial, sans-serif; line-height:35px; font-size: 32px;color: #282828" st-content="menu"&gt;
+                                  &lt;a style="color: #ffffff;text-decoration: none;"&gt;&lt;b&gt;Reservation Request Details&lt;/b&gt;&lt;/a&gt; &amp;nbsp;&amp;nbsp;&amp;nbsp;
+                                &lt;/td&gt;
+                              &lt;/tr&gt;
+                            &lt;/tbody&gt;
+                          &lt;/table&gt;
+                          &lt;!-- end of menu --&gt;
+                        &lt;/td&gt;
+                      &lt;/tr&gt;
+                    &lt;/tbody&gt;
+                  &lt;/table&gt;
+                &lt;/td&gt;
+              &lt;/tr&gt;
+            &lt;/tbody&gt;
+          &lt;/table&gt;
+        &lt;/td&gt;
+      &lt;/tr&gt;
+    &lt;/tbody&gt;
+  &lt;/table&gt;
+  &lt;!-- End of Header --&gt;
+  &lt;!-- Start of Left Image --&gt;
+  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="left-image"&gt;
+    &lt;tbody&gt;
+      &lt;tr&gt;
+        &lt;td&gt;
+          &lt;table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" class="devicewidth"&gt;
+            &lt;tbody&gt;
+              &lt;tr&gt;
+                &lt;td width="100%"&gt;
+                  &lt;table width="800" cellpadding="0" cellspacing="0" border="0" align="center" class="devicewidth"&gt;
+                    &lt;tbody&gt;
+                      &lt;tr&gt;
+                        &lt;td&gt;
+                          &lt;!-- spacing for mobile devices--&gt;
+                          &lt;table align="left" border="0" cellpadding="0" cellspacing="0" class="mobilespacing"&gt;
+                            &lt;tbody&gt;
+                              &lt;tr&gt;
+                                &lt;td width="100%" height="5" style="font-size:1px; line-height:1px; mso-line-height-rule: exactly;"&gt;&amp;nbsp;&lt;/td&gt;
+                              &lt;/tr&gt;
+                            &lt;/tbody&gt;
+                          &lt;/table&gt;
+                          &lt;!-- end of for mobile devices--&gt;
+                          &lt;!-- start of right column --&gt;
+                          &lt;table width="280" align="center" border="0" cellpadding="0" cellspacing="0" class="devicewidth"&gt;
+                            &lt;tbody&gt;&lt;br&gt;
+                              &lt;tr&gt;
+                                &lt;td&gt;
+                                  &lt;table width="280" align="center" border="0" cellpadding="0" cellspacing="0" class="devicewidth"&gt;
+                                    &lt;tbody&gt;
+                                      &lt;!-- title --&gt;
+                                      &lt;tr&gt;
+                                        &lt;td style="font-family: Helvetica, arial, sans-serif; font-size: 23px; color: #889098; text-align:center; line-height: 24px;"&gt;
+                                          Booking submitted to @Model.ShopName.&lt;br&gt;
+                                        &lt;/td&gt;
+                                      &lt;/tr&gt;
+                                      &lt;br&gt;
+                                      &lt;!-- end of title --&gt;
+                                      &lt;!-- Spacing --&gt;
+                                      &lt;tr&gt;
+                                      &lt;tr&gt;
+                                        &lt;td style="font-family: Helvetica, arial, sans-serif; font-size: 16px; color: #889098; text-align:center; line-height: 24px;"&gt;&lt;br&gt;
+                                          Name: &lt;b&gt;@Model.ContactName&lt;/b&gt;&lt;br&gt;
+                                          Email: &lt;b&gt;@Model.UserEmail&lt;/b&gt;&lt;br&gt;
+                                          Phone: &lt;b&gt;@Model.CustomerPhone&lt;/b&gt;&lt;br&gt;
+                                          &lt;br&gt;
+                                          Made a Reservation Request To:&lt;br&gt;
+                                          &lt;br&gt;
+                                          &lt;b&gt;@Model.ShopName:&lt;/b&gt;&lt;br&gt;
+                                          : &lt;b&gt;@Model.Address&lt;/b&gt;&lt;br&gt;
+                                          : &lt;b&gt;@Model.PhoneNumber&lt;/b&gt;&lt;br&gt;
+                                          : &lt;b&gt;@Model.ShopEmail&lt;/b&gt;&lt;br&gt;
+                                          &lt;br&gt;
+                                          For:&lt;br&gt;
+                                          &lt;b&gt;@Model.NumberOfAdults Adults&lt;/b&gt;&lt;br&gt;
+                                          &lt;b&gt;@Model.NumberOfChilds Children&lt;/b&gt;&lt;br&gt;
+                                          &lt;br&gt;
+                                          On:&lt;br&gt;
+                                          &lt;b&gt;@Model.BookingDate&lt;/b&gt;&lt;br&gt;
+                                          &lt;b&gt;@Model.BookingTime&lt;/b&gt;&lt;br&gt;
+                                        &lt;/td&gt;
+                                      &lt;/tr&gt;
+                                      &lt;!-- end of content --&gt;
+                                      &lt;!-- end of read more --&gt;
+                                    &lt;/tbody&gt;
+                                  &lt;/table&gt;
+                                &lt;/td&gt;
+                              &lt;/tr&gt;
+                            &lt;/tbody&gt;
+                          &lt;/table&gt;
+                          &lt;!-- end of right column --&gt;
+                        &lt;/td&gt;
+                      &lt;/tr&gt;
+                    &lt;/tbody&gt;
+                  &lt;/table&gt;
+                &lt;/td&gt;
+              &lt;/tr&gt;
+            &lt;/tbody&gt;
+          &lt;/table&gt;
+        &lt;/td&gt;
+      &lt;/tr&gt;
+    &lt;/tbody&gt;
+  &lt;/table&gt;
+  &lt;!-- End of Left Image --&gt;
+  &lt;!-- Start of seperator --&gt;
+  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="seperator"&gt;
+    &lt;tbody&gt;
+      &lt;tr&gt;
+        &lt;td&gt;
+          &lt;table width="600" align="center" cellspacing="0" cellpadding="0" border="0" class="devicewidth"&gt;
+            &lt;tbody&gt;
+              &lt;tr&gt;
+                &lt;td align="center" height="15" style="font-size:1px; line-height:1px;"&gt;&amp;nbsp;&lt;/td&gt;
+              &lt;/tr&gt;
+            &lt;/tbody&gt;
+          &lt;/table&gt;
+        &lt;/td&gt;
+      &lt;/tr&gt;
+    &lt;/tbody&gt;
+  &lt;/table&gt;
+  &lt;!-- End of seperator --&gt;
+                  &lt;!-- Start of seperator --&gt;
+                  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="seperator"&gt;
+                    &lt;tbody&gt;
+                      &lt;tr&gt;
+                        &lt;td&gt;
+                          &lt;table width="600" align="center" cellspacing="0" cellpadding="0" border="0" class="devicewidth"&gt;
+                            &lt;tbody&gt;
+                              &lt;tr&gt;
+                                &lt;td align="center" height="30" style="font-size:1px; line-height:1px;"&gt;&amp;nbsp;&lt;/td&gt;
+                              &lt;/tr&gt;
+                            &lt;/tbody&gt;
+                          &lt;/table&gt;
+                        &lt;/td&gt;
+                      &lt;/tr&gt;
+                    &lt;/tbody&gt;
+                  &lt;/table&gt;
+                  &lt;!-- End of seperator --&gt;
+                  &lt;!-- Start of seperator --&gt;
+                  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="seperator"&gt;
+                    &lt;tbody&gt;
+                      &lt;tr&gt;
+                        &lt;td&gt;
+                          &lt;table width="600" align="center" cellspacing="0" cellpadding="0" border="0" class="devicewidth"&gt;
+                            &lt;tbody&gt;
+                              &lt;tr&gt;
+                                &lt;td align="center" height="0" style="font-size:1px; line-height:1px;"&gt;&amp;nbsp;&lt;/td&gt;
+                              &lt;/tr&gt;
+                            &lt;/tbody&gt;
+                          &lt;/table&gt;
+                        &lt;/td&gt;
+                      &lt;/tr&gt;
+                    &lt;/tbody&gt;
+                  &lt;/table&gt;
+                  &lt;!-- End of seperator --&gt;
+                  &lt;!-- Start of footer --&gt;
+                  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="footer"&gt;
+                    &lt;tbody&gt;
+                      &lt;tr&gt;
+                        &lt;td&gt;
+                          &lt;table width="600" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" align="center" class="devicewidth"&gt;
+                            &lt;tbody&gt;
+                              &lt;tr&gt;
+                                &lt;td width="100%"&gt;
+                                  &lt;table bgcolor="#ffffff" width="600" cellpadding="0" cellspacing="0" border="0" align="center" class="devicewidth"&gt;
+                                    &lt;tbody&gt;
+                                      &lt;tr&gt;
+                                        &lt;td&gt;
+                                          &lt;!-- Social icons --&gt;
+                                          &lt;table width="150" align="center" border="0" cellpadding="0" cellspacing="0" class="devicewidth"&gt;
+                                            &lt;tbody&gt;
+                                              &lt;tr&gt;
+                                                &lt;td align="center" valign="middle" style="font-family: Helvetica, arial, sans-serif; font-size: 13px;color: #282828" st-content="preheader"&gt;
+                                                  These emails are powered by
+                                                &lt;/td&gt;
+                                              &lt;/tr&gt;
+                                              &lt;tr&gt;
+                                                &lt;td width="142" height="121" align="center"&gt;
+                                                  &lt;div class="imgpop"&gt;
+                                                    &lt;a target="_blank" href="http://www.motionmedia.ie/web/"&gt;
+                                                    &lt;img src="http://www.motionmedia.ie/web/motion_media_logo.jpg" alt="" border="0" width=142 height="121"&gt;
+                                                   &lt;/a&gt;
+                                                  &lt;/div&gt;
+                                                &lt;/td&gt;
+                                              &lt;/tr&gt;
+                                            &lt;/tbody&gt;
+                                          &lt;/table&gt;
+                                          &lt;!-- end of Social icons --&gt;
+                                        &lt;/td&gt;
+                                      &lt;/tr&gt;
+                                      &lt;!-- Spacing --&gt;
+                                      &lt;tr&gt;
+                                        &lt;td height="10" style="font-size:1px; line-height:1px; mso-line-height-rule: exactly;"&gt;&amp;nbsp;&lt;/td&gt;
+                                      &lt;/tr&gt;
+                                      &lt;!-- Spacing --&gt;
+                                    &lt;/tbody&gt;
+                                  &lt;/table&gt;
+                                &lt;/td&gt;
+                              &lt;/tr&gt;
+                            &lt;/tbody&gt;
+                          &lt;/table&gt;
+                        &lt;/td&gt;
+                      &lt;/tr&gt;
+                    &lt;/tbody&gt;
+                  &lt;/table&gt;
+                  &lt;!-- End of footer --&gt;
+&lt;/body&gt;
+
+&lt;/html&gt;</value>
+  </data>
+  <data name="emailtemplatebooking" xml:space="preserve">
+    <value>&lt;!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"&gt;
+&lt;html xmlns="http://www.w3.org/1999/xhtml"&gt;
+
+&lt;head&gt;
+  &lt;meta http-equiv="Content-Type" content="text/html; charset=utf-8" /&gt;
+  &lt;meta name="viewport" content="width=device-width, initial-scale=1.0" /&gt;
+  &lt;title&gt;Reservation Request Details&lt;/title&gt;
+
+  &lt;style type="text/css"&gt;
+    /* Client-specific Styles */
+
+    div,
+    p,
+    a,
+    li,
+    td {
+      -webkit-text-size-adjust: none;
+    }
+
+    #outlook a {
+      padding: 0;
+    }
+    /* Force Outlook to provide a "view in browser" menu link. */
+
+    html {
+      width: 100%;
+    }
+
+    body {
+      width: 100% !important;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    /* Prevent Webkit and Windows Mobile platforms from changing default font sizes, while not breaking desktop design. */
+
+    .ExternalClass {
+      width: 100%;
+    }
+    /* Force Hotmail to display emails at full width */
+
+    .ExternalClass,
+    .ExternalClass p,
+    .ExternalClass span,
+    .ExternalClass font,
+    .ExternalClass td,
+    .ExternalClass div {
+      line-height: 100%;
+    }
+    /* Force Hotmail to display normal line spacing. */
+
+    #backgroundTable {
+      margin: 0;
+      padding: 0;
+      width: 100% !important;
+      line-height: 100% !important;
+    }
+
+    img {
+      outline: none;
+      text-decoration: none;
+      border: none;
+      -ms-interpolation-mode: bicubic;
+    }
+
+    a img {
+      border: none;
+    }
+
+    .image_fix {
+      display: block;
+    }
+
+    p {
+      margin: 0px 0px !important;
+    }
+
+    table td {
+      border-collapse: collapse;
+    }
+
+    table {
+      border-collapse: collapse;
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+    }
+
+    a {
+      color: #33b9ff;
+      text-decoration: none;
+      text-decoration: none!important;
+    }
+    /*STYLES*/
+
+    table[class=full] {
+      width: 100%;
+      clear: both;
+    }
+    /*IPAD STYLES*/
+
+    @@media only screen and (max-width: 640px) {
+      a[href^="tel"],
+      a[href^="sms"] {
+        text-decoration: none;
+        color: #33b9ff;
+        /* or whatever your want */
+        pointer-events: none;
+        cursor: default;
+      }
+      .mobile_link a[href^="tel"],
+      .mobile_link a[href^="sms"] {
+        text-decoration: default;
+        color: #33b9ff !important;
+        pointer-events: auto;
+        cursor: default;
+      }
+      table[class=devicewidth] {
+        width: 440px!important;
+        text-align: center!important;
+      }
+      table[class=devicewidthinner] {
+        width: 420px!important;
+        text-align: center!important;
+      }
+      img[class=banner] {
+        width: 440px!important;
+        height: 220px!important;
+      }
+      img[class=col2img] {
+        width: 440px!important;
+        height: 220px!important;
+      }
+    }
+    /*IPHONE STYLES*/
+
+    @@media only screen and (max-width: 480px) {
+      a[href^="tel"],
+      a[href^="sms"] {
+        text-decoration: none;
+        color: #33b9ff;
+        /* or whatever your want */
+        pointer-events: none;
+        cursor: default;
+      }
+      .mobile_link a[href^="tel"],
+      .mobile_link a[href^="sms"] {
+        text-decoration: default;
+        color: #33b9ff !important;
+        pointer-events: auto;
+        cursor: default;
+      }
+      table[class=devicewidth] {
+        width: 95%!important;
+        text-align: center!important;
+      }
+      table[class=devicewidthbanner] {
+        width: 100%!important;
+        text-align: center!important;
+      }
+      table[class=devicewidthinner] {
+        width: 100%!important;
+        text-align: center!important;
+      }
+      img[class=banner] {
+        width: 280px!important;
+        height: 140px!important;
+      }
+      img[class=col2img] {
+        width: 280px!important;
+        height: 140px!important;
+      }
+    }
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+  &lt;!-- Start of preheader --&gt;
+  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="preheader"&gt;
+    &lt;tbody&gt;
+      &lt;tr&gt;
+        &lt;td&gt;
+          &lt;table width="600" cellpadding="0" cellspacing="0" border="0" align="center" class="devicewidth"&gt;
+            &lt;tbody&gt;
+              &lt;tr&gt;
+                &lt;td width="100%"&gt;
+                  &lt;table width="600" cellpadding="0" cellspacing="0" border="0" align="center" class="devicewidth"&gt;
+                    &lt;tbody&gt;
+                      &lt;!-- Spacing --&gt;
+                      &lt;tr&gt;
+                        &lt;td width="100%" height="20"&gt;&lt;/td&gt;
+                      &lt;/tr&gt;
+                      &lt;!-- Spacing --&gt;
+                      &lt;!-- Spacing --&gt;
+                      &lt;tr&gt;
+                        &lt;td width="100%" height="20"&gt;&lt;/td&gt;
+                      &lt;/tr&gt;
+                      &lt;!-- Spacing --&gt;
+                    &lt;/tbody&gt;
+                  &lt;/table&gt;
+                &lt;/td&gt;
+              &lt;/tr&gt;
+            &lt;/tbody&gt;
+          &lt;/table&gt;
+        &lt;/td&gt;
+      &lt;/tr&gt;
+    &lt;/tbody&gt;
+  &lt;/table&gt;
+  &lt;!-- End of preheader --&gt;
+  &lt;!-- Start of header --&gt;
+  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="header"&gt;
+    &lt;tbody&gt;
+      &lt;tr&gt;
+        &lt;td&gt;
+          &lt;table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" &gt;
+            &lt;tbody&gt;
+              &lt;tr&gt;
+                &lt;td width="100%"&gt;
+                  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" align="center"&gt;
+                    &lt;tbody&gt;
+                      &lt;tr&gt;
+                        &lt;td&gt;
+                          &lt;!-- start of menu --&gt;
+                          &lt;table background="https://images.motionmedia.ie/web/bookingbackground.jpg" width="100%" height="150px" border="0" align="center" valign="middle" cellpadding="0" cellspacing="0" border="0" class="devicewidthbanner"&gt;
+                            &lt;tbody&gt;
+                              &lt;tr&gt;
+                                &lt;td height="100" align="center" valign="middle" style="font-family: Helvetica, arial, sans-serif; line-height:35px; font-size: 32px;color: #282828" st-content="menu"&gt;
+                                  &lt;a style="color: #ffffff;text-decoration: none;"&gt;&lt;b&gt;Reservation Request Details&lt;/b&gt;&lt;/a&gt; &amp;nbsp;&amp;nbsp;&amp;nbsp;
+                                &lt;/td&gt;
+                              &lt;/tr&gt;
+                            &lt;/tbody&gt;
+                          &lt;/table&gt;
+                          &lt;!-- end of menu --&gt;
+                        &lt;/td&gt;
+                      &lt;/tr&gt;
+                    &lt;/tbody&gt;
+                  &lt;/table&gt;
+                &lt;/td&gt;
+              &lt;/tr&gt;
+            &lt;/tbody&gt;
+          &lt;/table&gt;
+        &lt;/td&gt;
+      &lt;/tr&gt;
+    &lt;/tbody&gt;
+  &lt;/table&gt;
+  &lt;!-- End of Header --&gt;
+  &lt;!-- Start of Left Image --&gt;
+  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="left-image"&gt;
+    &lt;tbody&gt;
+      &lt;tr&gt;
+        &lt;td&gt;
+          &lt;table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" class="devicewidth"&gt;
+            &lt;tbody&gt;
+              &lt;tr&gt;
+                &lt;td width="100%"&gt;
+                  &lt;table width="800" cellpadding="0" cellspacing="0" border="0" align="center" class="devicewidth"&gt;
+                    &lt;tbody&gt;
+                      &lt;tr&gt;
+                        &lt;td&gt;
+                          &lt;!-- spacing for mobile devices--&gt;
+                          &lt;table align="left" border="0" cellpadding="0" cellspacing="0" class="mobilespacing"&gt;
+                            &lt;tbody&gt;
+                              &lt;tr&gt;
+                                &lt;td width="100%" height="5" style="font-size:1px; line-height:1px; mso-line-height-rule: exactly;"&gt;&amp;nbsp;&lt;/td&gt;
+                              &lt;/tr&gt;
+                            &lt;/tbody&gt;
+                          &lt;/table&gt;
+                          &lt;!-- end of for mobile devices--&gt;
+                          &lt;!-- start of right column --&gt;
+                          &lt;table width="280" align="center" border="0" cellpadding="0" cellspacing="0" class="devicewidth"&gt;
+                            &lt;tbody&gt;&lt;br&gt;
+                              &lt;tr&gt;
+                                &lt;td&gt;
+                                  &lt;table width="280" align="center" border="0" cellpadding="0" cellspacing="0" class="devicewidth"&gt;
+                                    &lt;tbody&gt;
+                                      &lt;!-- title --&gt;
+                                      &lt;tr&gt;
+                                        &lt;td style="font-family: Helvetica, arial, sans-serif; font-size: 23px; color: #889098; text-align:center; line-height: 24px;"&gt;
+                                          Booking submitted to @Model.ShopName.&lt;br&gt;
+                                        &lt;/td&gt;
+                                      &lt;/tr&gt;
+                                      &lt;br&gt;
+                                      &lt;!-- end of title --&gt;
+                                      &lt;!-- Spacing --&gt;
+                                      &lt;tr&gt;
+                                      &lt;tr&gt;
+                                        &lt;td style="font-family: Helvetica, arial, sans-serif; font-size: 16px; color: #889098; text-align:center; line-height: 24px;"&gt;&lt;br&gt;
+                                          Name: &lt;b&gt;@Model.ContactName&lt;/b&gt;&lt;br&gt;
+                                          Email: &lt;b&gt;@Model.UserEmail&lt;/b&gt;&lt;br&gt;
+                                          Phone: &lt;b&gt;@Model.CustomerPhone&lt;/b&gt;&lt;br&gt;
+                                          &lt;br&gt;
+                                          Made a Reservation Request To:&lt;br&gt;
+                                          &lt;br&gt;
+                                          &lt;b&gt;@Model.ShopName:&lt;/b&gt;&lt;br&gt;
+                                          : &lt;b&gt;@Model.Address&lt;/b&gt;&lt;br&gt;
+                                          : &lt;b&gt;@Model.PhoneNumber&lt;/b&gt;&lt;br&gt;
+                                          : &lt;b&gt;@Model.ShopEmail&lt;/b&gt;&lt;br&gt;
+                                          &lt;br&gt;
+                                          For:&lt;br&gt;
+                                          &lt;b&gt;@Model.NumberOfAdults Adults&lt;/b&gt;&lt;br&gt;
+                                          &lt;b&gt;@Model.NumberOfChilds Children&lt;/b&gt;&lt;br&gt;
+                                          &lt;br&gt;
+                                          On:&lt;br&gt;
+                                          &lt;b&gt;@Model.BookingDate&lt;/b&gt;&lt;br&gt;
+                                          &lt;b&gt;@Model.BookingTime&lt;/b&gt;&lt;br&gt;
+                                        &lt;/td&gt;
+                                      &lt;/tr&gt;
+                                      &lt;!-- end of content --&gt;
+                                      &lt;!-- end of read more --&gt;
+                                    &lt;/tbody&gt;
+                                  &lt;/table&gt;
+                                &lt;/td&gt;
+                              &lt;/tr&gt;
+                            &lt;/tbody&gt;
+                          &lt;/table&gt;
+                          &lt;!-- end of right column --&gt;
+                        &lt;/td&gt;
+                      &lt;/tr&gt;
+                    &lt;/tbody&gt;
+                  &lt;/table&gt;
+                &lt;/td&gt;
+              &lt;/tr&gt;
+            &lt;/tbody&gt;
+          &lt;/table&gt;
+        &lt;/td&gt;
+      &lt;/tr&gt;
+    &lt;/tbody&gt;
+  &lt;/table&gt;
+  &lt;!-- End of Left Image --&gt;
+  &lt;!-- Start of seperator --&gt;
+  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="seperator"&gt;
+    &lt;tbody&gt;
+      &lt;tr&gt;
+        &lt;td&gt;
+          &lt;table width="600" align="center" cellspacing="0" cellpadding="0" border="0" class="devicewidth"&gt;
+            &lt;tbody&gt;
+              &lt;tr&gt;
+                &lt;td align="center" height="15" style="font-size:1px; line-height:1px;"&gt;&amp;nbsp;&lt;/td&gt;
+              &lt;/tr&gt;
+            &lt;/tbody&gt;
+          &lt;/table&gt;
+        &lt;/td&gt;
+      &lt;/tr&gt;
+    &lt;/tbody&gt;
+  &lt;/table&gt;
+  &lt;!-- End of seperator --&gt;
+                  &lt;!-- Start of seperator --&gt;
+                  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="seperator"&gt;
+                    &lt;tbody&gt;
+                      &lt;tr&gt;
+                        &lt;td&gt;
+                          &lt;table width="600" align="center" cellspacing="0" cellpadding="0" border="0" class="devicewidth"&gt;
+                            &lt;tbody&gt;
+                              &lt;tr&gt;
+                                &lt;td align="center" height="30" style="font-size:1px; line-height:1px;"&gt;&amp;nbsp;&lt;/td&gt;
+                              &lt;/tr&gt;
+                            &lt;/tbody&gt;
+                          &lt;/table&gt;
+                        &lt;/td&gt;
+                      &lt;/tr&gt;
+                    &lt;/tbody&gt;
+                  &lt;/table&gt;
+                  &lt;!-- End of seperator --&gt;
+                  &lt;!-- Start of seperator --&gt;
+                  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="seperator"&gt;
+                    &lt;tbody&gt;
+                      &lt;tr&gt;
+                        &lt;td&gt;
+                          &lt;table width="600" align="center" cellspacing="0" cellpadding="0" border="0" class="devicewidth"&gt;
+                            &lt;tbody&gt;
+                              &lt;tr&gt;
+                                &lt;td align="center" height="0" style="font-size:1px; line-height:1px;"&gt;&amp;nbsp;&lt;/td&gt;
+                              &lt;/tr&gt;
+                            &lt;/tbody&gt;
+                          &lt;/table&gt;
+                        &lt;/td&gt;
+                      &lt;/tr&gt;
+                    &lt;/tbody&gt;
+                  &lt;/table&gt;
+                  &lt;!-- End of seperator --&gt;
+                  &lt;!-- Start of footer --&gt;
+                  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="footer"&gt;
+                    &lt;tbody&gt;
+                      &lt;tr&gt;
+                        &lt;td&gt;
+                          &lt;table width="600" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" align="center" class="devicewidth"&gt;
+                            &lt;tbody&gt;
+                              &lt;tr&gt;
+                                &lt;td width="100%"&gt;
+                                  &lt;table bgcolor="#ffffff" width="600" cellpadding="0" cellspacing="0" border="0" align="center" class="devicewidth"&gt;
+                                    &lt;tbody&gt;
+                                      &lt;tr&gt;
+                                        &lt;td&gt;
+                                          &lt;!-- Social icons --&gt;
+                                          &lt;table width="150" align="center" border="0" cellpadding="0" cellspacing="0" class="devicewidth"&gt;
+                                            &lt;tbody&gt;
+                                              &lt;tr&gt;
+                                                &lt;td align="center" valign="middle" style="font-family: Helvetica, arial, sans-serif; font-size: 13px;color: #282828" st-content="preheader"&gt;
+                                                  These emails are powered by
+                                                &lt;/td&gt;
+                                              &lt;/tr&gt;
+                                              &lt;tr&gt;
+                                                &lt;td width="142" height="121" align="center"&gt;
+                                                  &lt;div class="imgpop"&gt;
+                                                    &lt;a target="_blank" href="#"&gt;
+                                                    &lt;img src="https://images.motionmedia.ie/web/motion_media_logo.jpg" alt="" border="0" width=142 height="121"&gt;
+                                                   &lt;/a&gt;
+                                                  &lt;/div&gt;
+                                                &lt;/td&gt;
+                                              &lt;/tr&gt;
+                                            &lt;/tbody&gt;
+                                          &lt;/table&gt;
+                                          &lt;!-- end of Social icons --&gt;
+                                        &lt;/td&gt;
+                                      &lt;/tr&gt;
+                                      &lt;!-- Spacing --&gt;
+                                      &lt;tr&gt;
+                                        &lt;td height="10" style="font-size:1px; line-height:1px; mso-line-height-rule: exactly;"&gt;&amp;nbsp;&lt;/td&gt;
+                                      &lt;/tr&gt;
+                                      &lt;!-- Spacing --&gt;
+                                    &lt;/tbody&gt;
+                                  &lt;/table&gt;
+                                &lt;/td&gt;
+                              &lt;/tr&gt;
+                            &lt;/tbody&gt;
+                          &lt;/table&gt;
+                        &lt;/td&gt;
+                      &lt;/tr&gt;
+                    &lt;/tbody&gt;
+                  &lt;/table&gt;
+                  &lt;!-- End of footer --&gt;
+&lt;/body&gt;
+
+&lt;/html&gt;</value>
+  </data>
+  <data name="irebooking" xml:space="preserve">
+    <value>&lt;!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"&gt;
+&lt;html xmlns="http://www.w3.org/1999/xhtml"&gt;
+
+&lt;head&gt;
+  &lt;meta http-equiv="Content-Type" content="text/html; charset=utf-8" /&gt;
+  &lt;meta name="viewport" content="width=device-width, initial-scale=1.0" /&gt;
+  &lt;title&gt;New Booking&lt;/title&gt;
+
+  &lt;style type="text/css"&gt;
+    /* Client-specific Styles */
+    div,
+    p,
+    a,
+    li,
+    td {
+      -webkit-text-size-adjust: none;
+    }
+
+    #outlook a {
+      padding: 0;
+    }
+    /* Force Outlook to provide a "view in browser" menu link. */
+    html {
+      width: 100%;
+    }
+
+    body {
+      width: 100% !important;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    /* Prevent Webkit and Windows Mobile platforms from changing default font sizes, while not breaking desktop design. */
+
+    .ExternalClass {
+      width: 100%;
+    }
+    /* Force Hotmail to display emails at full width */
+
+    .ExternalClass,
+    .ExternalClass p,
+    .ExternalClass span,
+    .ExternalClass font,
+    .ExternalClass td,
+    .ExternalClass div {
+      line-height: 100%;
+    }
+    /* Force Hotmail to display normal line spacing. */
+
+    #backgroundTable {
+      margin: 0;
+      padding: 0;
+      width: 100% !important;
+      line-height: 100% !important;
+    }
+
+    img {
+      outline: none;
+      text-decoration: none;
+      border: none;
+      -ms-interpolation-mode: bicubic;
+    }
+
+    a img {
+      border: none;
+    }
+
+    .image_fix {
+      display: block;
+    }
+
+    p {
+      margin: 0px 0px !important;
+    }
+
+    table td {
+      border-collapse: collapse;
+    }
+
+    table {
+      border-collapse: collapse;
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+    }
+
+    a {
+      color: #33b9ff;
+      text-decoration: none;
+      text-decoration: none!important;
+    }
+    /*STYLES*/
+
+    table[class=full] {
+      width: 100%;
+      clear: both;
+    }
+    /*IPAD STYLES*/
+
+    @@media only screen and (max-width: 640px) {
+      a[href^="tel"],
+      a[href^="sms"] {
+        text-decoration: none;
+        color: #33b9ff;
+        /* or whatever your want */
+        pointer-events: none;
+        cursor: default;
+      }
+      .mobile_link a[href^="tel"],
+      .mobile_link a[href^="sms"] {
+        text-decoration: default;
+        color: #33b9ff !important;
+        pointer-events: auto;
+        cursor: default;
+      }
+      table[class=devicewidth] {
+        width: 440px!important;
+        text-align: center!important;
+      }
+      table[class=devicewidthinner] {
+        width: 420px!important;
+        text-align: center!important;
+      }
+      img[class=banner] {
+        width: 440px!important;
+        height: 220px!important;
+      }
+      img[class=col2img] {
+        width: 440px!important;
+        height: 220px!important;
+      }
+    }
+    /*IPHONE STYLES*/
+
+    @@media only screen and (max-width: 480px) {
+      a[href^="tel"],
+      a[href^="sms"] {
+        text-decoration: none;
+        color: #33b9ff;
+        /* or whatever your want */
+        pointer-events: none;
+        cursor: default;
+      }
+      .mobile_link a[href^="tel"],
+      .mobile_link a[href^="sms"] {
+        text-decoration: default;
+        color: #33b9ff !important;
+        pointer-events: auto;
+        cursor: default;
+      }
+      table[class=devicewidth] {
+        width: 95%!important;
+        text-align: center!important;
+      }
+      table[class=devicewidthbanner] {
+        width: 100%!important;
+        text-align: center!important;
+      }
+      table[class=devicewidthinner] {
+        width: 100%!important;
+        text-align: center!important;
+      }
+      img[class=banner] {
+        width: 280px!important;
+        height: 140px!important;
+      }
+      img[class=col2img] {
+        width: 280px!important;
+        height: 140px!important;
+      }
+    }
+  &lt;/style&gt;
+&lt;/head&gt;
+
+&lt;body&gt;
+  &lt;!-- Start of preheader --&gt;
+  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="preheader"&gt;
+    &lt;tbody&gt;
+      &lt;tr&gt;
+        &lt;td&gt;
+          &lt;table width="600" cellpadding="0" cellspacing="0" border="0" align="center" class="devicewidth"&gt;
+            &lt;tbody&gt;
+              &lt;tr&gt;
+                &lt;td width="100%"&gt;
+                  &lt;table width="600" cellpadding="0" cellspacing="0" border="0" align="center" class="devicewidth"&gt;
+                    &lt;tbody&gt;
+                      &lt;!-- Spacing --&gt;
+                      &lt;tr&gt;
+                        &lt;td width="100%" height="20"&gt;&lt;/td&gt;
+                      &lt;/tr&gt;
+                      &lt;!-- Spacing --&gt;
+                      &lt;!-- Spacing --&gt;
+                      &lt;tr&gt;
+                        &lt;td width="100%" height="20"&gt;&lt;/td&gt;
+                      &lt;/tr&gt;
+                      &lt;!-- Spacing --&gt;
+                    &lt;/tbody&gt;
+                  &lt;/table&gt;
+                &lt;/td&gt;
+              &lt;/tr&gt;
+            &lt;/tbody&gt;
+          &lt;/table&gt;
+        &lt;/td&gt;
+      &lt;/tr&gt;
+    &lt;/tbody&gt;
+  &lt;/table&gt;
+  &lt;!-- End of preheader --&gt;
+  &lt;!-- Start of header --&gt;
+  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="header"&gt;
+    &lt;tbody&gt;
+      &lt;tr&gt;
+        &lt;td&gt;
+          &lt;table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" &gt;
+            &lt;tbody&gt;
+              &lt;tr&gt;
+                &lt;td width="100%"&gt;
+                  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" align="center"&gt;
+                    &lt;tbody&gt;
+                      &lt;tr&gt;
+                        &lt;td&gt;
+                          &lt;!-- start of menu --&gt;
+                          &lt;table background="https://wiiyaimage.blob.core.windows.net/images/bookingbackground.jpg" width="100%" height="150px" border="0" align="center" valign="middle" cellpadding="0" cellspacing="0" border="0" class="devicewidthbanner"&gt;
+                            &lt;tbody&gt;
+                              &lt;tr&gt;
+                                &lt;td height="100" align="center" valign="middle" style="font-family: Helvetica, arial, sans-serif; line-height:35px; font-size: 32px;color: #282828" st-content="menu"&gt;
+                                  &lt;a style="color: #ffffff;text-decoration: none;"&gt;&lt;b&gt;New Booking&lt;/b&gt;&lt;/a&gt; &amp;nbsp;&amp;nbsp;&amp;nbsp;
+                                &lt;/td&gt;
+                              &lt;/tr&gt;
+                            &lt;/tbody&gt;
+                          &lt;/table&gt;
+                          &lt;!-- end of menu --&gt;
+                        &lt;/td&gt;
+                      &lt;/tr&gt;
+                    &lt;/tbody&gt;
+                  &lt;/table&gt;
+                &lt;/td&gt;
+              &lt;/tr&gt;
+            &lt;/tbody&gt;
+          &lt;/table&gt;
+        &lt;/td&gt;
+      &lt;/tr&gt;
+    &lt;/tbody&gt;
+  &lt;/table&gt;
+  &lt;!-- End of Header --&gt;
+  &lt;!-- Start of Left Image --&gt;
+  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="left-image"&gt;
+    &lt;tbody&gt;
+      &lt;tr&gt;
+        &lt;td&gt;
+          &lt;table width="100%" cellpadding="0" cellspacing="0" border="0" align="center" class="devicewidth"&gt;
+            &lt;tbody&gt;
+              &lt;tr&gt;
+                &lt;td width="100%"&gt;
+                  &lt;table width="800" cellpadding="0" cellspacing="0" border="0" align="center" class="devicewidth"&gt;
+                    &lt;tbody&gt;
+                      &lt;tr&gt;
+                        &lt;td&gt;
+                          &lt;!-- spacing for mobile devices--&gt;
+                          &lt;table align="left" border="0" cellpadding="0" cellspacing="0" class="mobilespacing"&gt;
+                            &lt;tbody&gt;
+                              &lt;tr&gt;
+                                &lt;td width="100%" height="5" style="font-size:1px; line-height:1px; mso-line-height-rule: exactly;"&gt;&amp;nbsp;&lt;/td&gt;
+                              &lt;/tr&gt;
+                            &lt;/tbody&gt;
+                          &lt;/table&gt;
+                          &lt;!-- end of for mobile devices--&gt;
+                          &lt;!-- start of right column --&gt;
+                          &lt;table width="280" align="center" border="0" cellpadding="0" cellspacing="0" class="devicewidth"&gt;
+                            &lt;tbody&gt;&lt;br&gt;
+                              &lt;tr&gt;
+                                &lt;td&gt;
+                                  &lt;table width="280" align="center" border="0" cellpadding="0" cellspacing="0" class="devicewidth"&gt;
+                                    &lt;tbody&gt;
+                                      &lt;!-- title --&gt;
+                                      &lt;tr&gt;
+                                        &lt;td style="font-family: Helvetica, arial, sans-serif; font-size: 23px; color: #889098; text-align:center; line-height: 24px;"&gt;
+                                          Booking Ref: @Model.Booking.Ref&lt;br&gt;
+                                        &lt;/td&gt;
+                                      &lt;/tr&gt;
+                                      &lt;br&gt;
+                                      &lt;!-- end of title --&gt;
+                                      &lt;!-- Spacing --&gt;
+                                      &lt;tr&gt;
+                                      &lt;tr&gt;
+                                        &lt;td style="font-family: Helvetica, arial, sans-serif; font-size: 16px; color: #889098; text-align:center; line-height: 24px;"&gt;&lt;br&gt;
+                                          Name: &lt;b&gt;@Model.Booking.Name&lt;/b&gt;&lt;br&gt;
+                                          Email: &lt;b&gt;@Model.Booking.Email&lt;/b&gt;&lt;br&gt;
+                                          Phone: &lt;b&gt;@Model.Booking.PhoneNumber&lt;/b&gt;&lt;br&gt;
+                                          &lt;br&gt;
+                                          Made a Booking:&lt;br&gt;
+                                          &lt;br&gt;
+                                          &lt;b&gt;@Model.Booking.Tour.Name&lt;/b&gt;&lt;br&gt;
+                                          For:&lt;br&gt;
+                                          &lt;b&gt;@Model.Booking.NumberOfPeople&lt;/b&gt;&lt;br&gt;
+                                          On:&lt;br&gt;
+                                          &lt;b&gt;@Model.Booking.SelectDate&lt;/b&gt;&lt;br&gt;
+                                        &lt;/td&gt;
+                                      &lt;/tr&gt;
+                                      &lt;!-- end of content --&gt;
+                                      &lt;!-- end of read more --&gt;
+                                    &lt;/tbody&gt;
+                                  &lt;/table&gt;
+                                &lt;/td&gt;
+                              &lt;/tr&gt;
+                            &lt;/tbody&gt;
+                          &lt;/table&gt;
+                          &lt;!-- end of right column --&gt;
+                        &lt;/td&gt;
+                      &lt;/tr&gt;
+                    &lt;/tbody&gt;
+                  &lt;/table&gt;
+                &lt;/td&gt;
+              &lt;/tr&gt;
+            &lt;/tbody&gt;
+          &lt;/table&gt;
+        &lt;/td&gt;
+      &lt;/tr&gt;
+    &lt;/tbody&gt;
+  &lt;/table&gt;
+  &lt;!-- End of Left Image --&gt;
+  &lt;!-- Start of seperator --&gt;
+  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="seperator"&gt;
+    &lt;tbody&gt;
+      &lt;tr&gt;
+        &lt;td&gt;
+          &lt;table width="600" align="center" cellspacing="0" cellpadding="0" border="0" class="devicewidth"&gt;
+            &lt;tbody&gt;
+              &lt;tr&gt;
+                &lt;td align="center" height="15" style="font-size:1px; line-height:1px;"&gt;&amp;nbsp;&lt;/td&gt;
+              &lt;/tr&gt;
+            &lt;/tbody&gt;
+          &lt;/table&gt;
+        &lt;/td&gt;
+      &lt;/tr&gt;
+    &lt;/tbody&gt;
+  &lt;/table&gt;
+  &lt;!-- End of seperator --&gt;
+                  &lt;!-- Start of seperator --&gt;
+                  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="seperator"&gt;
+                    &lt;tbody&gt;
+                      &lt;tr&gt;
+                        &lt;td&gt;
+                          &lt;table width="600" align="center" cellspacing="0" cellpadding="0" border="0" class="devicewidth"&gt;
+                            &lt;tbody&gt;
+                              &lt;tr&gt;
+                                &lt;td align="center" height="30" style="font-size:1px; line-height:1px;"&gt;&amp;nbsp;&lt;/td&gt;
+                              &lt;/tr&gt;
+                            &lt;/tbody&gt;
+                          &lt;/table&gt;
+                        &lt;/td&gt;
+                      &lt;/tr&gt;
+                    &lt;/tbody&gt;
+                  &lt;/table&gt;
+                  &lt;!-- End of seperator --&gt;
+                  &lt;!-- Start of seperator --&gt;
+                  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="seperator"&gt;
+                    &lt;tbody&gt;
+                      &lt;tr&gt;
+                        &lt;td&gt;
+                          &lt;table width="600" align="center" cellspacing="0" cellpadding="0" border="0" class="devicewidth"&gt;
+                            &lt;tbody&gt;
+                              &lt;tr&gt;
+                                &lt;td align="center" height="0" style="font-size:1px; line-height:1px;"&gt;&amp;nbsp;&lt;/td&gt;
+                              &lt;/tr&gt;
+                            &lt;/tbody&gt;
+                          &lt;/table&gt;
+                        &lt;/td&gt;
+                      &lt;/tr&gt;
+                    &lt;/tbody&gt;
+                  &lt;/table&gt;
+                  &lt;!-- End of seperator --&gt;
+                  &lt;!-- Start of footer --&gt;
+                  &lt;table width="100%" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" id="backgroundTable" st-sortable="footer"&gt;
+                    &lt;tbody&gt;
+                      &lt;tr&gt;
+                        &lt;td&gt;
+                          &lt;table width="600" bgcolor="#ffffff" cellpadding="0" cellspacing="0" border="0" align="center" class="devicewidth"&gt;
+                            &lt;tbody&gt;
+                              &lt;tr&gt;
+                                &lt;td width="100%"&gt;
+                                  &lt;table bgcolor="#ffffff" width="600" cellpadding="0" cellspacing="0" border="0" align="center" class="devicewidth"&gt;
+                                    &lt;tbody&gt;
+                                      &lt;tr&gt;
+                                        &lt;td&gt;
+                                          &lt;!-- Social icons --&gt;
+                                          &lt;table width="150" align="center" border="0" cellpadding="0" cellspacing="0" class="devicewidth"&gt;
+                                            &lt;tbody&gt;
+                                              &lt;tr&gt;
+                                                &lt;td align="center" valign="middle" style="font-family: Helvetica, arial, sans-serif; font-size: 13px;color: #282828" st-content="preheader"&gt;
+                                                &lt;/td&gt;
+                                              &lt;/tr&gt;
+                                              &lt;tr&gt;
+                                                &lt;td width="142" height="121" align="center"&gt;
+                                                  &lt;div class="imgpop"&gt;
+                                                    &lt;a target="_blank" href="#"&gt;
+                                                    &lt;img src="https://wiiyaimage.blob.core.windows.net/images/emaillogo.jpg" alt="" border="0" width=142 height="121"&gt;
+                                                   &lt;/a&gt;
+                                                  &lt;/div&gt;
+                                                &lt;/td&gt;
+                                              &lt;/tr&gt;
+                                            &lt;/tbody&gt;
+                                          &lt;/table&gt;
+                                          &lt;!-- end of Social icons --&gt;
+                                        &lt;/td&gt;
+                                      &lt;/tr&gt;
+                                      &lt;!-- Spacing --&gt;
+                                      &lt;tr&gt;
+                                        &lt;td height="10" style="font-size:1px; line-height:1px; mso-line-height-rule: exactly;"&gt;&amp;nbsp;&lt;/td&gt;
+                                      &lt;/tr&gt;
+                                      &lt;!-- Spacing --&gt;
+                                    &lt;/tbody&gt;
+                                  &lt;/table&gt;
+                                &lt;/td&gt;
+                              &lt;/tr&gt;
+                            &lt;/tbody&gt;
+                          &lt;/table&gt;
+                        &lt;/td&gt;
+                      &lt;/tr&gt;
+                    &lt;/tbody&gt;
+                  &lt;/table&gt;
+                  &lt;!-- End of footer --&gt;
+&lt;/body&gt;
+
+&lt;/html&gt;</value>
+  </data>
+  <data name="objJSon" xml:space="preserve">
+    <value>{"numberOfPeople":"2","name":"bingliang chen","phoneNumber":"0860107230","email":"bingliangchan@gmail.com","tour":{"name":"Aran Islands (Inisheer) and Cliffs of Moher","price":40,"countryId":1,"ratingNumber":4,"tagCat":1,"content":"\t\t\t&lt;div id=\"single_tour_feat\"&gt;\r\n\t\t\t\t\t\t&lt;ul&gt;\r\n\t\t\t\t\t\t\t&lt;li&gt;\r\n\t\t\t\t\t\t\t\t&lt;i class=\"icon_set_1_icon-83\"&gt;&lt;/i&gt;1 Day\r\n\t\t\t\t\t\t\t&lt;/li&gt;\r\n\t\t\t\t\t\t\t&lt;li&gt;\r\n\t\t\t\t\t\t\t\t&lt;i class=\"icon_set_1_icon-14\"&gt;&lt;/i&gt;Lunch not included\r\n\t\t\t\t\t\t\t&lt;/li&gt;\r\n\t\t\t\t\t\t\t&lt;li&gt;\r\n\t\t\t\t\t\t\t\t&lt;i class=\"icon_set_1_icon-41\"&gt;&lt;/i&gt;Cliffs Of Moher\r\n\t\t\t\t\t\t\t&lt;/li&gt;\r\n\t\t\t\t\t\t\t&lt;li&gt;\r\n\t\t\t\t\t\t\t\t&lt;i class=\"icon_set_1_icon-29\"&gt;&lt;/i&gt;No age restriction\r\n\t\t\t\t\t\t\t&lt;/li&gt;\r\n\t\t\t\t\t\t&lt;/ul&gt;\r\n\t\t\t\t\t&lt;/div&gt;\r\n\r\n\t\t\t\t\t&lt;p class=\"visible-sm visible-xs\"&gt;\r\n\r\n\t\t\t\t\t\t&lt;router-link class=\"btn_map\" data-toggle=\"collapse\" :to=\"'/booking?id='+selectedTour.id\"\r\n\t\t\t\t\t\t\taria-expanded=\"false\" aria-controls=\"collapseMap\" data-text-swap=\"Hide map\"\r\n\t\t\t\t\t\t\tdata-text-original=\"Booking Now\"&gt;Booking Now&lt;/router-link&gt;\r\n\t\t\t\t\t&lt;/p&gt;\r\n\t\t\t\t\t&lt;!-- Map button for tablets/mobiles --&gt;\r\n\r\n\t\t\t\t\t&lt;div id=\"Img_carousel\" class=\"slider-pro\"&gt;\r\n\t\t\t\t\t\t&lt;div class=\"sp-slides\"&gt;\r\n\r\n\t\t\t\t\t\t\t&lt;div class=\"sp-slide\"&gt;\r\n\t\t\t\t\t\t\t\t&lt;img alt=\"Image\" class=\"sp-image\" src=\"css\\images\\blank.gif\"\r\n\t\t\t\t\t\t\t\t\tdata-src=\"img/tours/003_1_m.jpg\" data-small=\"img/tours/003_1_s.jpg\"\r\n\t\t\t\t\t\t\t\t\tdata-medium=\"img/tours/003_1_m.jpg\" data-large=\"img/slider_single_tour/003_1_m.jpg\"\r\n\t\t\t\t\t\t\t\t\tdata-retina=\"img/tours/003_1_m.jpg\"&gt;\r\n\t\t\t\t\t\t\t&lt;/div&gt;\r\n\r\n\t\t\t\t\t\t&lt;/div&gt;\r\n\t\t\t\t\t\t&lt;div class=\"sp-thumbnails\"&gt;\r\n\t\t\t\t\t\t\t&lt;img alt=\"Image\" class=\"sp-thumbnail\" src=\"img\\tours\\003_1_m.jpg\"&gt;\r\n\r\n\t\t\t\t\t\t&lt;/div&gt;\r\n\t\t\t\t\t&lt;/div&gt;\r\n\r\n\t\t\t\t\t&lt;hr&gt;\r\n\r\n\t\t\t\t\t&lt;div class=\"row\"&gt;\r\n\t\t\t\t\t\t&lt;div class=\"col-md-3\"&gt;\r\n\t\t\t\t\t\t\t&lt;h3&gt;Description&lt;/h3&gt;\r\n\t\t\t\t\t\t&lt;/div&gt;\r\n\t\t\t\t\t\t&lt;div class=\"col-md-9\"&gt;\r\n\t\t\t\t\t\t\t&lt;p&gt;This unique tour gives you a minimum 5 hour stop at the Cliffs of Moher (entry fee\r\n\t\t\t\t\t\t\t\tincluded).\r\n\t\t\t\t\t\t\t&lt;/p&gt;\r\n\r\n\t\t\t\t\t\t\t&lt;p&gt;If you’re into walking, photography, exploring or quite simply wish to take your time and\r\n\t\t\t\t\t\t\t\tenjoy\r\n\t\t\t\t\t\t\t\ta day at the world famous Cliffs of Moher, this is the tour for you.\r\n\t\t\t\t\t\t\t&lt;/p&gt;\r\n\t\t\t\t\t\t\t&lt;p&gt;Departing from the Kinlay Hostel on Merchants Road, Galway at 09:00 daily, your fully\r\n\t\t\t\t\t\t\t\ttrained,\r\n\t\t\t\t\t\t\t\tlocal driver / guide will take you on a scenic journey along the Wild Atlantic Way,\r\n\t\t\t\t\t\t\t\tthrough\r\n\t\t\t\t\t\t\t\tthe lunar-like landscape of the Burren and on to the Cliffs of Moher.\r\n\t\t\t\t\t\t\t&lt;/p&gt;\r\n\t\t\t\t\t\t\t&lt;p&gt;Heading towards the Cliffs of Moher, you will pass through the picturesque villages of\r\n\t\t\t\t\t\t\t\tClarenbridge\r\n\t\t\t\t\t\t\t\t(home to the Clarenbridge International Oyster Festival every September), Kilcolgan,\r\n\t\t\t\t\t\t\t\tBallindereen,\r\n\t\t\t\t\t\t\t\tKinvara, Ballyvaughan and Doolin.\r\n\t\t\t\t\t\t\t&lt;/p&gt;\r\n\t\t\t\t\t\t\t&lt;p&gt;Along the way you will see Medieval ruins, 16th century tower house castles, churches and\r\n\t\t\t\t\t\t\t\tgraveyards,\r\n\t\t\t\t\t\t\t\tdry stone walls, quays and harbours, ponies and horses, calves and cows, lambs and sheep\r\n\t\t\t\t\t\t\t\tand maybe even a leprechaun or two.\r\n\t\t\t\t\t\t\t&lt;/p&gt;\r\n\t\t\t\t\t\t\t&lt;p&gt;Turning right in Ballyvaughan, your local driver / guide will take you south following\r\n\t\t\t\t\t\t\t\tthe Wild\r\n\t\t\t\t\t\t\t\tAtlantic Way along the coast of Co. Clare, via Blackhead (Wild Atlantic Way – Discovery\r\n\t\t\t\t\t\t\t\tPoint),\r\n\t\t\t\t\t\t\t\tFanore Strand (Wild Atlantic Way – Discovery Point) and the fishing village of Doolin.\r\n\t\t\t\t\t\t\t&lt;/p&gt;\r\n\t\t\t\t\t\t\t&lt;p&gt;From here you can witness the power of the Atlantic Ocean as it battles the coastline of\r\n\t\t\t\t\t\t\t\tIreland,\r\n\t\t\t\t\t\t\t\tthis is the Wild Atlantic Way.\r\n\t\t\t\t\t\t\t&lt;/p&gt;\r\n\t\t\t\t\t\t\t&lt;p&gt;Once at the Cliffs of Moher (Wild Atlantic Way – Signature Point) your local driver /\r\n\t\t\t\t\t\t\t\tguide will\r\n\t\t\t\t\t\t\t\tpresent you with your complmentary ticket to the Cliffs of Moher visitor centre, the\r\n\t\t\t\t\t\t\t\tAtlantic\r\n\t\t\t\t\t\t\t\tEdge. Now you’ll have a minimum 5 hours to spend as you wish at the Cliffs of Moher.\r\n\t\t\t\t\t\t\t&lt;/p&gt;\r\n\t\t\t\t\t\t\t&lt;p&gt;At the end of your Cliffs of Moher stop, you will return to Galway via Lisdoonvarna (home\r\n\t\t\t\t\t\t\t\tto\r\n\t\t\t\t\t\t\t\tthe world famous match-making festival every September) and once agin through the\r\n\t\t\t\t\t\t\t\tlimestone,\r\n\t\t\t\t\t\t\t\tglacio-karst landscape that makes up the Burren.\r\n\t\t\t\t\t\t\t&lt;/p&gt;\r\n\r\n\t\t\t\t\t\t\t&lt;hr&gt;\r\n\t\t\t\t\t\t\t&lt;table class=\"table table-striped\"&gt;\r\n\t\t\t\t\t\t\t\t&lt;thead&gt;\r\n\t\t\t\t\t\t\t\t\t&lt;tr&gt;\r\n\t\t\t\t\t\t\t\t\t\t&lt;th colspan=\"2\"&gt;\r\n\t\t\t\t\t\t\t\t\t\t\tSummary\r\n\t\t\t\t\t\t\t\t\t\t&lt;/th&gt;\r\n\t\t\t\t\t\t\t\t\t&lt;/tr&gt;\r\n\t\t\t\t\t\t\t\t&lt;/thead&gt;\r\n\t\t\t\t\t\t\t\t&lt;tbody&gt;\r\n\t\t\t\t\t\t\t\t\t&lt;tr&gt;\r\n\t\t\t\t\t\t\t\t\t\t&lt;td&gt;\r\n\t\t\t\t\t\t\t\t\t\t\tDepart/Return Location\r\n\t\t\t\t\t\t\t\t\t\t&lt;/td&gt;\r\n\t\t\t\t\t\t\t\t\t\t&lt;td&gt;\r\n\t\t\t\t\t\t\t\t\t\t\tGalway\r\n\t\t\t\t\t\t\t\t\t\t&lt;/td&gt;\r\n\t\t\t\t\t\t\t\t\t&lt;/tr&gt;\r\n\t\t\t\t\t\t\t\t\t&lt;tr&gt;\r\n\t\t\t\t\t\t\t\t\t\t&lt;td&gt;\r\n\t\t\t\t\t\t\t\t\t\t\tDepart Time\r\n\t\t\t\t\t\t\t\t\t\t&lt;/td&gt;\r\n\t\t\t\t\t\t\t\t\t\t&lt;td&gt;\r\n\t\t\t\t\t\t\t\t\t\t\t9:00AM (Arrive 10 mins before)\r\n\t\t\t\t\t\t\t\t\t\t&lt;/td&gt;\r\n\t\t\t\t\t\t\t\t\t&lt;/tr&gt;\r\n\t\t\t\t\t\t\t\t\t&lt;tr&gt;\r\n\t\t\t\t\t\t\t\t\t\t&lt;td&gt;\r\n\t\t\t\t\t\t\t\t\t\t\tReturn Time\r\n\t\t\t\t\t\t\t\t\t\t&lt;/td&gt;\r\n\t\t\t\t\t\t\t\t\t\t&lt;td&gt;\r\n\t\t\t\t\t\t\t\t\t\t\tApproximately 19:30pm .\r\n\t\t\t\t\t\t\t\t\t\t&lt;/td&gt;\r\n\t\t\t\t\t\t\t\t\t&lt;/tr&gt;\r\n\t\t\t\t\t\t\t\t\t&lt;tr&gt;\r\n\t\t\t\t\t\t\t\t\t\t&lt;td&gt;\r\n\t\t\t\t\t\t\t\t\t\t\tWe recommend you clothing\r\n\t\t\t\t\t\t\t\t\t\t&lt;/td&gt;\r\n\t\t\t\t\t\t\t\t\t\t&lt;td&gt;\r\n\t\t\t\t\t\t\t\t\t\t\tT-shirt， sport shoes\r\n\t\t\t\t\t\t\t\t\t\t&lt;/td&gt;\r\n\t\t\t\t\t\t\t\t\t&lt;/tr&gt;\r\n\t\t\t\t\t\t\t\t\t&lt;tr&gt;\r\n\t\t\t\t\t\t\t\t\t\t&lt;td&gt;\r\n\t\t\t\t\t\t\t\t\t\t\tTour included\r\n\t\t\t\t\t\t\t\t\t\t&lt;/td&gt;\r\n\t\t\t\t\t\t\t\t\t\t&lt;td&gt;\r\n\t\t\t\t\t\t\t\t\t\t\t&lt;ul class=\"list_ok\"&gt;\r\n\t\t\t\t\t\t\t\t\t\t\t\t&lt;li&gt;Tour guide&lt;/li&gt;\r\n\t\t\t\t\t\t\t\t\t\t\t\t&lt;li&gt;One hour free&lt;/li&gt;\r\n\t\t\t\t\t\t\t\t\t\t\t\t&lt;li&gt;Coach&lt;/li&gt;\r\n\r\n\t\t\t\t\t\t\t\t\t\t\t&lt;/ul&gt;\r\n\t\t\t\t\t\t\t\t\t\t&lt;/td&gt;\r\n\t\t\t\t\t\t\t\t\t&lt;/tr&gt;\r\n\t\t\t\t\t\t\t\t\t&lt;tr&gt;\r\n\t\t\t\t\t\t\t\t\t\t&lt;td&gt;\r\n\t\t\t\t\t\t\t\t\t\t\tNOT INCLUDED\r\n\t\t\t\t\t\t\t\t\t\t&lt;/td&gt;\r\n\t\t\t\t\t\t\t\t\t\t&lt;td&gt;\r\n\t\t\t\t\t\t\t\t\t\t\t&lt;ul&gt;\r\n\t\t\t\t\t\t\t\t\t\t\t\t&lt;li&gt;Shopping&lt;/li&gt;\r\n\t\t\t\t\t\t\t\t\t\t\t\t&lt;li&gt;Lunch&lt;/li&gt;\r\n\t\t\t\t\t\t\t\t\t\t\t\t&lt;li&gt;Accommodation&lt;/li&gt;\r\n\r\n\t\t\t\t\t\t\t\t\t\t\t&lt;/ul&gt;\r\n\t\t\t\t\t\t\t\t\t\t&lt;/td&gt;\r\n\t\t\t\t\t\t\t\t\t&lt;/tr&gt;\r\n\r\n\t\t\t\t\t\t\t\t&lt;/tbody&gt;\r\n\t\t\t\t\t\t\t&lt;/table&gt;\r\n\r\n\r\n\r\n\t\t\t\t\t\t&lt;/div&gt;\r\n\t\t\t\t\t&lt;/div&gt;\r\n\t\t\t\t\t&lt;hr&gt;","image":"https://wiiyaimage.blob.core.windows.net/images/tour_box_1.jpg","images":null,"availableDates":["2021-07-06T00:00:00"],"id":"146928AB-7A60-4E12-978E-1AEA7EF3AD79","guid":null,"hash":null,"tempId":0,"shopId":11,"created":"1930-05-29T21:55:41","updated":"1945-06-30T04:10:07","sortOrder":62,"isActive":true,"results":false},"selectDate":"2021-07-06T00:00:00"}</value>
+  </data>
+</root>

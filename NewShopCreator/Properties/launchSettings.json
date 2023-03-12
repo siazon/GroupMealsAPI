@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "NewShopCreator": {
+      "commandName": "Project",
+      "commandLineArgs": "--shopid 1 --country IE"
+    }
+  }
+}

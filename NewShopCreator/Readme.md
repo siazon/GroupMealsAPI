@@ -1,0 +1,1 @@
+ dotnet run NewShopCreator.csproj --shopid 1 --country IE

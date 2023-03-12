@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Authors>IndaSoft</Authors>
+    <Version>1.0.0.1</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Audit\**" />
+    <EmbeddedResource Remove="Audit\**" />
+    <None Remove="Audit\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove=".DS_Store" />
+    <None Remove="nuget.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Exception\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="nuget.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,53 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Builders\Retail\**" />
+    <Compile Remove="Utility\Shop\**" />
+    <EmbeddedResource Remove="Builders\Retail\**" />
+    <EmbeddedResource Remove="Utility\Shop\**" />
+    <None Remove="Builders\Retail\**" />
+    <None Remove="Utility\Shop\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Class1.cs" />
+    <Compile Remove="InfrastructureModule.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Builders\IreHoliday\" />
+    <Folder Include="Exceptions\" />
+    <Folder Include="Validation\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\App.Domain\App.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="GoogleMapsApi" Version="0.80.0" />
+    <PackageReference Include="Hangfire.AzureDocumentDB" Version="3.1.2" />
+    <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.6" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="5.0.7" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="FluentValidation.AspNetCore" Version="9.5.0" />
+    <PackageReference Include="JWT" Version="5.2.2" />
+    <PackageReference Include="NLog.Extensions.AzureBlobStorage" Version="3.0.0" />
+    <PackageReference Include="NLog.Extensions.Logging" Version="1.7.0" />
+    <PackageReference Include="RazorLight" Version="2.0.0-beta4" />
+    <PackageReference Include="Sendgrid" Version="9.12.0" />
+    <PackageReference Include="StackExchange.Redis" Version="2.0.601" />
+    <PackageReference Include="Stripe.net" Version="36.8.1" />
+    <PackageReference Include="TimeZoneConverter" Version="3.2.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.Extensions.Identity.Core">
+      <HintPath>C:\Program Files\dotnet\sdk\NuGetFallbackFolder\microsoft.extensions.identity.core\2.2.0\lib\netstandard2.0\Microsoft.Extensions.Identity.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Options">
+      <HintPath>..\..\..\..\..\usr\local\share\dotnet\sdk\NuGetFallbackFolder\microsoft.extensions.options\2.2.0\lib\netstandard2.0\Microsoft.Extensions.Options.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
