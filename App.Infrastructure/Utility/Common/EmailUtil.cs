@@ -26,8 +26,8 @@ namespace App.Infrastructure.Utility.Common
 
     public class EmailUtil : IEmailUtil
     {
-        public async Task<bool> SendEmail(List<DbSetting> settings, string fromEmail, string fromEmailDescription, string toEmail, string toEmailDescription, string subject, string body, string bodyHtml,
-            List<string> attachments = null, bool important = true)
+        public async Task<bool> SendEmail(List<DbSetting> settings, string fromEmail, string fromEmailDescription, string toEmail, string toEmailDescription, 
+            string subject, string body, string bodyHtml, List<string> attachments = null, bool important = true)
         {
             try
             {

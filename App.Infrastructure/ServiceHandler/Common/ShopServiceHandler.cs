@@ -37,5 +37,6 @@ namespace App.Infrastructure.ServiceHandler.Common
                 throw new ServiceException("Cannot find shop info");
             return shopInfo;
         }
+       
     }
 }

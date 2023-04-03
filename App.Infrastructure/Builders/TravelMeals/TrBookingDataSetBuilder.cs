@@ -18,7 +18,7 @@ namespace App.Infrastructure.Builders.TravelMeals
             {
                 ShopName = restaurant.StoreName,
                 PhoneNumber = restaurant.StoreNumber,
-                Address = restaurant.ShopAddress1,
+                Address = restaurant.ShopAddress,
                 ShopEmail = restaurant.Email,
                 NumberOfAdults = booking.NumberOfAdults,
                 BookingDate = GetBookingDateTime(booking.SelectDateTime),

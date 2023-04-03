@@ -131,7 +131,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         {
             Guard.NotNull(customer);
             var existingCustomer =
-                _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Email == customer.Email);
+               await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Email == customer.Email);
             if (existingCustomer != null)
                 throw new ServiceException("Customer Already Exists");
 

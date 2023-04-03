@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
+using App.Domain.Common.Customer;
 using App.Domain.Config;
 using App.Domain.TravelMeals;
 using App.Domain.TravelMeals.Restaurant;
@@ -32,7 +33,14 @@ namespace KingfoodIO.Controllers.TravelMeals
             return await ExecuteAsync(shopId, cache,
                 async () => await _restaurantServiceHandler.GetRestaurantInfo(shopId));
         }
-
+        [HttpGet]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> SearchRestaurants(int shopId,string searchContent, bool cache = true)
+        {
+            return await ExecuteAsync(shopId, cache,
+                async () => await _restaurantServiceHandler.SearchRestaurantInfo(shopId, searchContent));
+        }
         [HttpPost]
         [ProducesResponseType(typeof(TrDbRestaurantBooking), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
@@ -40,6 +48,22 @@ namespace KingfoodIO.Controllers.TravelMeals
         {
             return await ExecuteAsync(shopId, false,
                 async () => await _restaurantServiceHandler.RequestBooking(booking, shopId));
+        }
+        [HttpPost]
+        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> AddRestaurant([FromBody] TrDbRestaurant restaurant, int shopId)
+        {
+            return await ExecuteAsync(shopId, false,
+                async () => await _restaurantServiceHandler.AddRestaurant(restaurant, shopId));
+        }
+        [HttpGet]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> SearchBookings(int shopId, string email, bool cache = true)
+        {
+            return await ExecuteAsync(shopId, cache,
+                async () => await _restaurantServiceHandler.SearchBookings(shopId, email));
         }
     }
 }

@@ -1,6 +1,8 @@
 ﻿using App.Domain.Common.Shop;
 using App.Domain.Config;
+using App.Domain.TravelMeals;
 using App.Infrastructure.ServiceHandler.Common;
+using App.Infrastructure.ServiceHandler.TravelMeals;
 using App.Infrastructure.Utility.Common;
 using KingfoodIO.Application.Filter;
 using Microsoft.AspNetCore.Mvc;
@@ -29,5 +31,6 @@ namespace KingfoodIO.Controllers.Common
             return await ExecuteAsync(shopId, cache,
                 async () => await _shopServiceHandler.GetShopInfo(shopId));
         }
+       
     }
 }

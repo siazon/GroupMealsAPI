@@ -147,9 +147,15 @@ namespace KingfoodIO
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
+#if DEBUG
                 app.UseCors(builder =>
-                    builder.WithOrigins("http://localhost:2712").AllowAnyMethod()
+                    builder.WithOrigins("http://127.0.0.1:2712").AllowAnyMethod()
                         .AllowAnyHeader());
+#else
+app.UseCors(builder =>
+                    builder.WithOrigins("https://groupmeals.z16.web.core.windows.net/").AllowAnyMethod()
+                        .AllowAnyHeader());
+#endif
             }
             else
             {

@@ -1,16 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <PreserveCompilationContext>true</PreserveCompilationContext>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Remove="Utility\**" />
-    <EmbeddedResource Remove="Utility\**" />
-    <None Remove="Utility\**" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="GenFu" Version="1.5.6" />

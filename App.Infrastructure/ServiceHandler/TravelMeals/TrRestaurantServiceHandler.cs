@@ -20,8 +20,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
     public interface ITrRestaurantServiceHandler
     {
         Task<List<TrDbRestaurant>> GetRestaurantInfo(int shopId);
+        Task<List<TrDbRestaurant>> SearchRestaurantInfo(int shopId,string searchContent);
 
         Task<TrDbRestaurantBooking> RequestBooking(TrDbRestaurantBooking booking, int shopId);
+        Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId);
+        Task<List<TrDbRestaurantBooking>> SearchBookings(int shopId, string email);
     }
 
     public class TrRestaurantServiceHandler : ITrRestaurantServiceHandler
@@ -52,9 +55,22 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<List<TrDbRestaurant>> GetRestaurantInfo(int shopId)
         {
             var restaurants = await _restaurantRepository.GetManyAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
-            return restaurants.ClearForOutPut();
+            var temp = restaurants.ClearForOutPut();
+            return temp;
         }
-
+        public async Task<List<TrDbRestaurant>> SearchRestaurantInfo(int shopId,string searchContent)
+        {
+            var restaurants = await _restaurantRepository.GetManyAsync(r => r.ShopId == shopId 
+            && (r.StoreName.Contains(searchContent)||r.StoreNameCn.Contains(searchContent)||r.ShopAddress.Contains(searchContent))
+            && r.IsActive.HasValue && r.IsActive.Value);
+            var temp = restaurants.ClearForOutPut();
+            return temp;//TrDbRestaurant
+        }
+        public async Task<List<TrDbRestaurantBooking>> SearchBookings(int shopId, string email)
+        {
+            var Bookings = await _restaurantBookingRepository.GetManyAsync(r => r.UserEmail == email);
+            return Bookings.ToList();
+        }
         public async Task<TrDbRestaurantBooking> RequestBooking(TrDbRestaurantBooking booking, int shopId)
         {
             Guard.NotNull(booking);
@@ -70,27 +86,42 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //1. Creating Booking record
             var newItem = await _restaurantBookingRepository.CreateAsync(booking);
 
-            ////2. Getting Template for Shop and email to Wiiya
-            //var content = await _shopContentRepository.GetOneAsync(r =>
-            //    r.ShopId == shopId && r.Key == EmailTemplateEnum.BookingEmailTemplateTravelMealsShop.ToString());
+            //2. Getting Template for Shop and email to Wiiya
+            DbShop shop = await _shopRepository.GetOneAsync(r => r.ShopId == shopId);
+            var content = shop.ShopContents.FirstOrDefault(a=>a.Key == EmailTemplateEnum.BookingEmailTemplateTravelMealsShop.ToString());
+            var restaurant =
+                await _restaurantRepository.GetOneAsync(r => r.Id == booking.RestaurantId && r.ShopId == shopId);
+            if (restaurant == null)
+                throw new ServiceException("Cannot find shop info");
 
-            //var restaurant =
-            //    await _restaurantRepository.GetOneAsync(r => r.Id == booking.RestaurantId && r.ShopId == shopId);
-            //if (restaurant == null)
-            //    throw new ServiceException("Cannot find shop info");
-
-            //var dataset = _bookingDataSetBuilder.BuildTravelMealContent(shopInfo, restaurant, booking);
-            //var bodyHtml = await _contentBuilder.BuildRazorContent(dataset, content.Content);
-
-            ////2. Email Trello
-            //var resultTrello = await _emailUtil.SendEmail(settings.ToList(), shopInfo.Email, "Travel Meals Booking",
-            //    shopInfo.ContactEmail, "", "New Booking", null, bodyHtml, null);
+            var dataset = _bookingDataSetBuilder.BuildTravelMealContent(shopInfo, restaurant, booking);
+            var bodyHtml = await _contentBuilder.BuildRazorContent(dataset, content.Content);
+            //2. Email Trello
+            var resultTrello = await _emailUtil.SendEmail(shop.ShopSettings, shopInfo.Email, "Travel Meals Booking",
+                shopInfo.ContactEmail, "", "New Group Meals Booking", null, bodyHtml, null);
 
             ////3. Email Client
 
             ////4. Email Shop
 
             return newItem;
+        }
+        public async Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId)
+        {
+            Guard.NotNull(restaurant);
+            var existingRestaurant =
+               await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.StoreName == restaurant.StoreName&&r.ShopAddress== restaurant.ShopAddress);
+            if (existingRestaurant != null)
+                throw new ServiceException("Customer Already Exists");
+            var newItem = restaurant.Clone();
+
+            newItem.ShopId = shopId;
+            newItem.Created = _dateTimeUtil.GetCurrentTime();
+            newItem.Updated = _dateTimeUtil.GetCurrentTime();
+            newItem.IsActive = true;
+
+            var savedRestaurant = await _restaurantRepository.CreateAsync(newItem);
+            return savedRestaurant;
         }
     }
 }

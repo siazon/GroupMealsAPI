@@ -14,10 +14,11 @@ namespace KingfoodIO.Controllers.Common
     public class CustomerController : BaseController
     {
         private readonly ICustomerServiceHandler _customerServiceHandler;
-
+        ILogManager logger;
         public CustomerController(IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache,
             ICustomerServiceHandler customerServiceHandler, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
         {
+            this.logger= logger;
             _customerServiceHandler = customerServiceHandler;
         }
 
@@ -27,6 +28,7 @@ namespace KingfoodIO.Controllers.Common
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> LoginCustomer(string email, string password, int shopId)
         {
+            logger.LogDebug("test:"+email+password+shopId);
             return await ExecuteAsync( shopId, false,
                 async () => await _customerServiceHandler.LoginCustomer(email, password, shopId));
         }
