@@ -32,20 +32,16 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private readonly IDbCommonRepository<TrDbRestaurant> _restaurantRepository;
         private readonly IDateTimeUtil _dateTimeUtil;
         private readonly IDbCommonRepository<DbShop> _shopRepository;
-        private readonly IDbCommonRepository<DbShopContent> _shopContentRepository;
-        private readonly IDbCommonRepository<DbSetting> _settingRepository;
         private readonly ITrBookingDataSetBuilder _bookingDataSetBuilder;
         private readonly IDbCommonRepository<TrDbRestaurantBooking> _restaurantBookingRepository;
         private readonly IContentBuilder _contentBuilder;
         private readonly IEmailUtil _emailUtil;
 
-        public TrRestaurantServiceHandler(IDbCommonRepository<TrDbRestaurant> restaurantRepository, IDateTimeUtil dateTimeUtil, IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IDbCommonRepository<DbSetting> settingRepository, ITrBookingDataSetBuilder bookingDataSetBuilder, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository, IContentBuilder contentBuilder, IEmailUtil emailUtil)
+        public TrRestaurantServiceHandler(IDbCommonRepository<TrDbRestaurant> restaurantRepository, IDateTimeUtil dateTimeUtil, IDbCommonRepository<DbShop> shopRepository,  ITrBookingDataSetBuilder bookingDataSetBuilder, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository, IContentBuilder contentBuilder, IEmailUtil emailUtil)
         {
             _restaurantRepository = restaurantRepository;
             _dateTimeUtil = dateTimeUtil;
             _shopRepository = shopRepository;
-            _shopContentRepository = shopContentRepository;
-            _settingRepository = settingRepository;
             _bookingDataSetBuilder = bookingDataSetBuilder;
             _restaurantBookingRepository = restaurantBookingRepository;
             _contentBuilder = contentBuilder;
@@ -82,27 +78,26 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
             if (shopInfo == null)
                 throw new ServiceException("Cannot find shop info");
-            var settings = await _settingRepository.GetManyAsync(r => r.ShopId == shopId);
             //1. Creating Booking record
             var newItem = await _restaurantBookingRepository.CreateAsync(booking);
 
-            //2. Getting Template for Shop and email to Wiiya
-            DbShop shop = await _shopRepository.GetOneAsync(r => r.ShopId == shopId);
-            var content = shop.ShopContents.FirstOrDefault(a=>a.Key == EmailTemplateEnum.BookingEmailTemplateTravelMealsShop.ToString());
+            //2. Getting Template for email
+            var content = shopInfo.ShopContents.FirstOrDefault(a=>a.Key == EmailTemplateEnum.BookingEmailTemplateTravelMealsShop.ToString());
+            var temp = content.Content;
             var restaurant =
                 await _restaurantRepository.GetOneAsync(r => r.Id == booking.RestaurantId && r.ShopId == shopId);
             if (restaurant == null)
                 throw new ServiceException("Cannot find shop info");
 
-            var dataset = _bookingDataSetBuilder.BuildTravelMealContent(shopInfo, restaurant, booking);
+            var dataset = _bookingDataSetBuilder.BuildTravelMealContent( restaurant, booking);
             var bodyHtml = await _contentBuilder.BuildRazorContent(dataset, content.Content);
             //2. Email Trello
-            var resultTrello = await _emailUtil.SendEmail(shop.ShopSettings, shopInfo.Email, "Travel Meals Booking",
+            var resultTrello = await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, "Travel Meals Booking",
                 shopInfo.ContactEmail, "", "New Group Meals Booking", null, bodyHtml, null);
+            //3. Email Client
+            var resultClient = await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, "Travel Meals Booking",
+                booking.UserEmail, "", "New Group Meals Booking", null, bodyHtml, null);
 
-            ////3. Email Client
-
-            ////4. Email Shop
 
             return newItem;
         }

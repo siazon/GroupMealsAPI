@@ -7,12 +7,12 @@ namespace App.Infrastructure.Builders.TravelMeals
 {
     public interface ITrBookingDataSetBuilder
     {
-        TrDbRestaurantBooking BuildTravelMealContent(DbShop shopInfo, TrDbRestaurant restaurant, TrDbRestaurantBooking booking);
+        TrDbRestaurantBooking BuildTravelMealContent( TrDbRestaurant restaurant, TrDbRestaurantBooking booking);
     }
 
     public class TrBookingDataSetBuilder : ITrBookingDataSetBuilder
     {
-        public TrDbRestaurantBooking BuildTravelMealContent(DbShop shopInfo, TrDbRestaurant restaurant, TrDbRestaurantBooking booking)
+        public TrDbRestaurantBooking BuildTravelMealContent(TrDbRestaurant restaurant, TrDbRestaurantBooking booking)
         {
             var emailDataSet = new TrDbRestaurantBooking
             {
