@@ -22,7 +22,8 @@ namespace App.Domain.Common.Customer
         public string Eircode { get; set; }
         public DateTime? FirstPurchaseDate { get; set; }
         public string Area { get; set; }
-        [Column(TypeName = "decimal(18, 2)")] public decimal? DeliveryCharge { get; set; }
+        [Column(TypeName = "decimal(18, 2)")] 
+        public decimal? DeliveryCharge { get; set; }
         public string PinCode { get; set; }
 
     }

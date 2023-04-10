@@ -1,4 +1,6 @@
-﻿using App.Domain.Config;
+﻿using App.Domain.Common.Stripe;
+using App.Domain.Config;
+using App.Domain.TravelMeals;
 using App.Domain.TravelMeals.Restaurant;
 using App.Infrastructure.ServiceHandler.TravelMeals;
 using App.Infrastructure.Utility.Common;
@@ -15,14 +17,38 @@ using System.Threading.Tasks;
 namespace KingfoodIO.Controllers.Common
 {
     [Route("api/[controller]/[action]")]
-    public class StripeCheckoutController : Controller
+    public class StripeCheckoutController : BaseController
     {
-        [HttpPost]
-        public string Create()
+        private ITrRestaurantBookingServiceHandler _trRestaurantBookingServiceHandler;
+        ILogManager _logger;
+        public StripeCheckoutController(
+          IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache,   ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
         {
-            string sessionUrl = StripeUtil.Pay("Lily's cafe 30 Group Meals", "12*25 Adults 8*5 Children", 34000, "usd");
-           
-            //Response.Headers.Add("Location", sessionUrl);
+            _trRestaurantBookingServiceHandler = restaurantBookingServiceHandler;
+            _logger= logger;
+        }
+        [HttpPost]
+        public string Create([FromBody] CheckoutParam checkoutParam)
+        {
+            
+            checkoutParam.Amount *= 100;
+            _logger.LogDebug("Create");
+            Console.WriteLine("Create");
+            string productId = StripeUtil.GetProductId(checkoutParam.PayName, checkoutParam.PayDesc);
+
+            _logger.LogDebug("productId:"+ productId);
+            Console.WriteLine("productId:" + productId);
+            string priceId = StripeUtil.GetPriceId(productId, checkoutParam.Amount, checkoutParam.Payment);
+            _logger.LogDebug("priceId:" + priceId);
+            Console.WriteLine("priceId:" + priceId);
+            string sessionUrl = "";
+            var res = _trRestaurantBookingServiceHandler.UpdateBooking(0, checkoutParam.BillId, productId, priceId);
+            if (res.Result)
+            {
+                sessionUrl = StripeUtil.Pay(priceId,checkoutParam.Amount);
+            }
+            _logger.LogDebug("sessionUrl:" + sessionUrl);
+            Console.WriteLine("sessionUrl:" + sessionUrl);
             return sessionUrl;
         }
 
@@ -35,12 +61,19 @@ namespace KingfoodIO.Controllers.Common
             Console.WriteLine("CXS WebHook:" + json);
             try
             {
-                var stripeEvent = EventUtility.ConstructEvent(
-                  json,
-                  Request.Headers["Stripe-Signature"],
-                  secret
-                );
+                var stripeEvent = EventUtility.ConstructEvent(json,Request.Headers["Stripe-Signature"],secret);
+                switch (stripeEvent.Type) {
+                    case Events.ChargeSucceeded:
+                        var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
+                        break;
+                    case Events.CheckoutSessionCompleted:
+                        {
+                            var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
+                            _trRestaurantBookingServiceHandler.BookingPaid(session);
 
+                        }
+                        break;
+                }
                 return Ok();
             }
             catch (StripeException e)

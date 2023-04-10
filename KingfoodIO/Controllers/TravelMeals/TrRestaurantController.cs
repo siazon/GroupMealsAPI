@@ -44,10 +44,9 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpPost]
         [ProducesResponseType(typeof(TrDbRestaurantBooking), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> RequestTravelMealsBooking([FromBody] TrDbRestaurantBooking booking, int shopId)
+        public async Task<string> RequestTravelMealsBooking([FromBody] TrDbRestaurantBooking booking, int shopId)
         {
-            return await ExecuteAsync(shopId, false,
-                async () => await _restaurantServiceHandler.RequestBooking(booking, shopId));
+            return await  _restaurantServiceHandler.RequestBooking(booking, shopId);
         }
         [HttpPost]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
@@ -60,10 +59,10 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpGet]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> SearchBookings(int shopId, string email, bool cache = true)
+        public async Task<IActionResult> SearchBookings(int shopId, string email,string content, bool cache = true)
         {
             return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantServiceHandler.SearchBookings(shopId, email));
+                async () => await _restaurantServiceHandler.SearchBookings(shopId, email, content));
         }
     }
 }
