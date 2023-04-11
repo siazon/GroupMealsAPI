@@ -11,11 +11,11 @@ namespace App.Infrastructure.Utility.Common
 {
     public class StripeUtil
     {
-        
 
-        const string key = "sk_test_51MsNeuEOhoHb4C89kuTDIQd4WTiRiWGXSrFMnJMxsk0ufrGw7VMTsilTZKmVYbYn9zHyW98De7hXcrOwfrbGJXcY00DE8tswlW";
 
-        public static  string GetProductId(string name, string description)
+        const string key = "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";// "sk_test_51MsNeuEOhoHb4C89kuTDIQd4WTiRiWGXSrFMnJMxsk0ufrGw7VMTsilTZKmVYbYn9zHyW98De7hXcrOwfrbGJXcY00DE8tswlW";
+
+        public static string GetProductId(string name, string description)
         {
             StripeConfiguration.ApiKey = key;
             var optionsProduct = new ProductCreateOptions
@@ -27,7 +27,7 @@ namespace App.Infrastructure.Utility.Common
             Product product = serviceProduct.Create(optionsProduct);
             return product.Id;
         }
-        public static string GetPriceId(string productId,  long amount, string payment)
+        public static string GetPriceId(string productId, long amount, string payment)
         {
             StripeConfiguration.ApiKey = key;
             var optionsPrice = new PriceCreateOptions
@@ -54,15 +54,32 @@ namespace App.Infrastructure.Utility.Common
             Price price = servicePrice.Create(optionsPrice);
             return price.Id;
         }
-        public static string Pay(string priceId,decimal amount )
+        public static string GetTax()
         {
-         
+            StripeConfiguration.ApiKey = key;
+            var options = new TaxRateCreateOptions
+            {
+                DisplayName = "Sales Tax",
+                Inclusive = false,
+                Percentage = 7.25m,
+                Country = "US",
+                State = "CA",
+                Jurisdiction = "US - CA",
+                Description = "CA Sales Tax",
+            };
+            var service = new TaxRateService();
+            TaxRate taxRate = service.Create(options);
+            return taxRate.Id;
+        }
+        public static string Pay(string priceId, decimal amount)
+        {
+
             StripeConfiguration.ApiKey = key;
             Dictionary<string, string> meta = new Dictionary<string, string>
             {
                 { "priceId", priceId }
             };
-            string successUrl = "",cancelUrl="";
+            string successUrl = "", cancelUrl = "";
 #if DEBUG
             successUrl = "http://127.0.0.1:2712/ShopBookingComplete?amount=" + amount;
             cancelUrl = "http://127.0.0.1:2712/ShopBooking";
@@ -70,6 +87,9 @@ namespace App.Infrastructure.Utility.Common
            successUrl = "https://groupmeals.z16.web.core.windows.net/ShopBookingComplete?amount="+ amount;
             cancelUrl = "https://groupmeals.z16.web.core.windows.net/ShopBooking";
 #endif
+
+            string TaxId = GetTax();
+
             var options = new SessionCreateOptions
             {
                 LineItems = new List<SessionLineItemOptions>
@@ -78,13 +98,14 @@ namespace App.Infrastructure.Utility.Common
                   {
                     Price =priceId,
                     Quantity = 1,
+                   TaxRates= new List<string>{ TaxId, },
                   },
                 },
                 Mode = "payment",
                 SuccessUrl = successUrl,
                 CancelUrl = cancelUrl,
-                AutomaticTax = new SessionAutomaticTaxOptions { Enabled = true },
-                Metadata= meta
+                //AutomaticTax = new SessionAutomaticTaxOptions { Enabled = true },
+                Metadata = meta
             };
             var service = new SessionService();
             Session session = service.Create(options);

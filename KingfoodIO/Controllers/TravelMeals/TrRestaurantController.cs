@@ -18,11 +18,12 @@ namespace KingfoodIO.Controllers.TravelMeals
     public class TrRestaurantController : BaseController
     {
         private readonly ITrRestaurantServiceHandler _restaurantServiceHandler;
-
+        ILogManager _logger;
         public TrRestaurantController(
             IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache, ITrRestaurantServiceHandler restaurantServiceHandler, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
         {
             _restaurantServiceHandler = restaurantServiceHandler;
+            _logger = logger;
         }
 
         [HttpGet]
