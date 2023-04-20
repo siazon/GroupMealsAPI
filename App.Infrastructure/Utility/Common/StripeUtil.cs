@@ -13,7 +13,8 @@ namespace App.Infrastructure.Utility.Common
     {
 
 
-        const string key = "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";// "sk_test_51MsNeuEOhoHb4C89kuTDIQd4WTiRiWGXSrFMnJMxsk0ufrGw7VMTsilTZKmVYbYn9zHyW98De7hXcrOwfrbGJXcY00DE8tswlW";
+        //const string key = "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";
+        const string key = "sk_test_51MsNeuEOhoHb4C89kuTDIQd4WTiRiWGXSrFMnJMxsk0ufrGw7VMTsilTZKmVYbYn9zHyW98De7hXcrOwfrbGJXcY00DE8tswlW";
 
         public static string GetProductId(string name, string description)
         {
@@ -113,6 +114,16 @@ namespace App.Infrastructure.Utility.Common
         }
         public static string Pay(string name, string description, int amount, string payment = "eur")
         {
+
+            string successUrl = "", cancelUrl = "";
+#if DEBUG
+            successUrl = "http://127.0.0.1:2712/ShopBookingComplete?amount=" + amount;
+            cancelUrl = "http://127.0.0.1:2712/ShopBooking";
+#else
+           successUrl = "https://groupmeals.z16.web.core.windows.net/ShopBookingComplete?amount="+ amount;
+            cancelUrl = "https://groupmeals.z16.web.core.windows.net/ShopBooking";
+#endif
+
             StripeConfiguration.ApiKey = key;
             string priceId = GetPriceId(name, description, amount, payment);
             var options = new SessionCreateOptions
@@ -126,8 +137,8 @@ namespace App.Infrastructure.Utility.Common
                   },
                 },
                 Mode = "payment",
-                SuccessUrl = "http://127.0.0.1:2712/ShopBookingComplete",
-                CancelUrl = "http://127.0.0.1:2712/ShopBooking",
+                SuccessUrl = successUrl,
+                CancelUrl = cancelUrl,
                 AutomaticTax = new SessionAutomaticTaxOptions { Enabled = true },
             };
             var service = new SessionService();

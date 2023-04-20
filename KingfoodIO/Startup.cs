@@ -23,6 +23,7 @@ using System.Reflection;
 using Hangfire;
 using Microsoft.Azure.Documents.Client;
 using LogManager = App.Infrastructure.Utility.Common.LogManager;
+using Stripe;
 
 namespace KingfoodIO
 {
@@ -144,28 +145,21 @@ namespace KingfoodIO
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            StripeConfiguration.ApiKey = "sk_test_51MsNeuEOhoHb4C89kuTDIQd4WTiRiWGXSrFMnJMxsk0ufrGw7VMTsilTZKmVYbYn9zHyW98De7hXcrOwfrbGJXcY00DE8tswlW";
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-//#if DEBUG
-//                //app.UseCors(builder =>
-//                //    builder.WithOrigins("http://127.0.0.1:2712").AllowAnyMethod()
-//                //        .AllowAnyHeader());
-                app.UseCors(builder =>
-                 builder.WithOrigins("*").AllowAnyMethod()
-                     .AllowAnyHeader());
-//#else
-//app.UseCors(builder =>
-//                    builder.WithOrigins("https://groupmeals.z16.web.core.windows.net/").AllowAnyMethod()
-//                        .AllowAnyHeader());
-//#endif
+
+                app.UseCors(builder => builder.WithOrigins("*").AllowAnyMethod().AllowAnyHeader());
+
             }
             else
             {
+               
                 app.UseExceptionHandler("/Error");
                 app.UseHsts();
             }
-
+            app.UseCors(builder => builder.WithOrigins("*").AllowAnyMethod().AllowAnyHeader());
             app.UseHttpsRedirection();
 
             app.UseRouting();

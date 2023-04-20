@@ -24,6 +24,11 @@ namespace App.Domain.TravelMeals
         public string StripeProductId { get; set; }
         public string StripePriceId { get; set; }
         public string StripePaymentId { get; set; }
+        public string StripeCustomerId { get; set; }
+        public string StripeReceiptUrl { get; set; }
+        public bool StripeSetupIntent{ get; set; }
+        public string StripeClientSecretKey{ get; set; }
+        public string BillReceipt { get; set; }
         public bool IsPaid { get; set; }
     }
     public class BookingCourses: TrDbRestaurantMenuCourse

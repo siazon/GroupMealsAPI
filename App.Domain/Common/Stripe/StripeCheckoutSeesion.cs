@@ -11,4 +11,5 @@ namespace App.Domain.Common.Stripe
         public string BookingId { get; set; }
         public Object Data { get; set; }
     }
+ 
 }

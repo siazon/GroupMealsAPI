@@ -108,38 +108,36 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             //1. Creating Booking record
             var newItem = await _restaurantBookingRepository.CreateAsync(booking);
-            //Task.Run(async () => { 
-            ////2. Getting Template for email
-            //var content = shopInfo.ShopContents.FirstOrDefault(a => a.Key == EmailTemplateEnum.BookingEmailTemplateTravelMealsShop.ToString());
-            //var temp = content.Content;
-            //var bodyHtml = await _contentBuilder.BuildRazorContent(bookingBD, content.Content);
-            ////2. Email Trello
-            //var resultTrello = await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, "Travel Meals Booking",
-            //    shopInfo.ContactEmail, "", "New Group Meals Booking", null, bodyHtml, null);
-            ////3. Email Client
-            //var resultClient = await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, "Travel Meals Booking",
-            //    booking.CustomerEmail, "", "New Group Meals Booking", null, bodyHtml, null);
+            //Task.Run(async () =>
+            //{
+            //    //2. Getting Template for email
+            //    var content = shopInfo.ShopContents.FirstOrDefault(a => a.Key == EmailTemplateEnum.BookingEmailTemplateTravelMealsShop.ToString());
+            //    var temp = content.Content;
+            //    var bodyHtml = await _contentBuilder.BuildRazorContent(bookingBD, content.Content);
+            //    //2. Email Trello
+            //    //var resultTrello = await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, "Group Meals Booking",
+            //    //    shopInfo.ContactEmail, "", "New Group Meals Booking", null, bodyHtml, null);
+            //    //3. Email Client
+            //    var resultClient = await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, "Group Meals Booking",
+            //        booking.CustomerEmail, "", "New Group Meals Booking", null, bodyHtml, null);
             //});
+            //decimal amount = 0;
+            //string payDesc = "";
+            //foreach (var item in booking.Courses) {
+            //    payDesc += " " + item.Price + "*" + item.qty + " " + item.CourseName;
+            //    amount += item.Price * item.qty;
+            //}
+            //amount *= 100;
+            //string payName = booking.RestaurantName +" "+ booking.Courses.Count + " Group Meals";
+            //string productId = StripeUtil.GetProductId(payName, payDesc);
 
-            decimal amount = 0;
-            string payDesc = "";
-            foreach (var item in booking.Courses) {
-                payDesc += " " + item.Price + "*" + item.qty + " " + item.CourseName;
-                amount += item.Price * item.qty;
-            }
-            amount *= 100;
-            string payName = booking.RestaurantName +" "+ booking.Courses.Count + " Group Meals";
-            string productId = StripeUtil.GetProductId(payName, payDesc);
-
-            string priceId = StripeUtil.GetPriceId(productId, (long)amount, "eur");
-            string sessionUrl = "";
-            var res = _trRestaurantBookingServiceHandler.UpdateBooking(0, booking.Id, productId, priceId);
-            if (res.Result)
-            {
-                sessionUrl = StripeUtil.Pay(priceId, amount);
-            }
-
-
+            //string priceId = StripeUtil.GetPriceId(productId, (long)amount, "eur");
+            string sessionUrl = newItem.Id;
+            //var res = _trRestaurantBookingServiceHandler.UpdateBooking(0, booking.Id, productId, priceId);
+            //if (res.Result)
+            //{
+            //    sessionUrl = StripeUtil.Pay(priceId, amount);
+            //}
             return sessionUrl;
         }
         public async Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId)
