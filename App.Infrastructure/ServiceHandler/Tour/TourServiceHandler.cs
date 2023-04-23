@@ -76,7 +76,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
                 throw new ServiceException("Cannot find shop info");
 
             var newBooking = booking.Clone();
-            newBooking.Id = Guid.NewGuid().ToString();
+            newBooking.Id = "IHO"+SnowflakeId.getSnowId();
             newBooking.Created = _dateTimeUtil.GetCurrentTime();
             newBooking.Ref = GuidHashUtil.Get6DigitNumber();
 
