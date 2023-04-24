@@ -1,7 +1,9 @@
 ﻿using App.Domain.Common.Stripe;
 using App.Domain.Config;
+using App.Domain.Holiday;
 using App.Domain.TravelMeals;
 using App.Domain.TravelMeals.Restaurant;
+using App.Infrastructure.ServiceHandler.Tour;
 using App.Infrastructure.ServiceHandler.TravelMeals;
 using App.Infrastructure.Utility.Common;
 using Azure.Core;
@@ -22,13 +24,16 @@ namespace KingfoodIO.Controllers.Common
     public class StripeCheckoutController : BaseController
     {
         private ITrRestaurantBookingServiceHandler _trRestaurantBookingServiceHandler;
+        private ITourServiceHandler _tourServiceHandler;
         ILogManager _logger;
         public StripeCheckoutController(
-          IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache, ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
+          IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache, ITourServiceHandler tourServiceHandler, ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
         {
             _trRestaurantBookingServiceHandler = restaurantBookingServiceHandler;
+            _tourServiceHandler = tourServiceHandler;       
             _logger = logger;
         }
+
         [HttpPost]
         public string Create([FromBody] CheckoutParam checkoutParam)
         {
@@ -58,8 +63,9 @@ namespace KingfoodIO.Controllers.Common
 #else
   const string secret = "whsec_5PgH1FaDf5b1Lj3cbut5F1SmjAkCCX5E";
 #endif
+        //strip Webhook
         [HttpPost]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Webhook()
         {
 
             var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
@@ -76,7 +82,15 @@ namespace KingfoodIO.Controllers.Common
                     case Events.ChargeSucceeded:
                         var paymentIntent = stripeEvent.Data.Object as Charge;
                         string bookingId = paymentIntent.Metadata["bookingId"];
-                        _trRestaurantBookingServiceHandler.BookingPaid(bookingId, paymentIntent.CustomerId, paymentIntent.PaymentMethod, paymentIntent.ReceiptUrl);
+                        string billType = paymentIntent.Metadata["billType"];
+                        if (billType == "TOUR")
+                        {
+                            _tourServiceHandler.BookingPaid(bookingId, paymentIntent.CustomerId, paymentIntent.PaymentMethod, paymentIntent.ReceiptUrl);
+                        }
+                        else
+                        {
+                            _trRestaurantBookingServiceHandler.BookingPaid(bookingId, paymentIntent.CustomerId, paymentIntent.PaymentMethod, paymentIntent.ReceiptUrl);
+                        } 
                         break;
                     case Events.CheckoutSessionCompleted:
                         {
@@ -187,16 +201,27 @@ namespace KingfoodIO.Controllers.Common
             return Json(new { msg = "OK" });
         }
         [HttpPost]
-        public async Task<ActionResult> CreatePayIntent([FromBody] string bookingId)
+        public async Task<ActionResult> CreatePayIntent([FromBody] PayIntentParam bill)
         {
             Dictionary<string, string> meta = new Dictionary<string, string>
             {
-                { "bookingId", bookingId}
+                { "bookingId", bill.BillId}
             };
+            long Amount = 0;
+            if (bill.BillType == "TOUR")
+            {
+                meta["billType"] = "TOUR";
+                Amount = await CalculateTourOrderAmount(bill.BillId);
+            }
+            else
+            {
+                meta["billType"] = "GROUPMEALS";
+                Amount = await CalculateOrderAmount(bill.BillId);
+            }
             var paymentIntentService = new PaymentIntentService();
             var paymentIntent = paymentIntentService.Create(new PaymentIntentCreateOptions
             {
-                Amount = await CalculateOrderAmount(bookingId),
+                Amount = Amount,
                 Currency = "eur",
                 AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
                 {
@@ -207,12 +232,23 @@ namespace KingfoodIO.Controllers.Common
 
             return Json(new { clientSecret = paymentIntent.ClientSecret });
         }
-
-        private async Task<long> CalculateOrderAmount(string bookingId)
+        private async Task<long> CalculateTourOrderAmount(string billId)
         {
             // Calculate the order total on the server to prevent
             // people from directly manipulating the amount on the client
-            TrDbRestaurantBooking booking = await _trRestaurantBookingServiceHandler.GetBooking(11, bookingId);
+            TourBooking booking = await _tourServiceHandler.GetTourBooking( billId);
+            decimal amount = 0;
+            if (booking != null)
+            {
+                amount += booking.NumberOfPeople??0 * booking.Tour.Price??0;
+            }
+            return (long)Math.Round(amount, 2) * 100;
+        }
+        private async Task<long> CalculateOrderAmount(string billId)
+        {
+            // Calculate the order total on the server to prevent
+            // people from directly manipulating the amount on the client
+            TrDbRestaurantBooking booking = await _trRestaurantBookingServiceHandler.GetBooking(11, billId);
             decimal amount = 0;
             if (booking != null)
             {
@@ -224,5 +260,5 @@ namespace KingfoodIO.Controllers.Common
             return (long)Math.Round(amount, 2) * 100;
         }
     }
-
+    
 }

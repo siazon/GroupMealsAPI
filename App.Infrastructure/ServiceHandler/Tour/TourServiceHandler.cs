@@ -1,6 +1,7 @@
 using App.Domain.Common.Shop;
 using App.Domain.Enum;
 using App.Domain.Holiday;
+using App.Domain.TravelMeals;
 using App.Infrastructure.Builders.Common;
 using App.Infrastructure.Builders.IreHoliday;
 using App.Infrastructure.Exceptions;
@@ -10,6 +11,7 @@ using App.Infrastructure.Validation;
 using Hangfire;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -20,6 +22,8 @@ namespace App.Infrastructure.ServiceHandler.Tour
         Task<List<Domain.Holiday.Tour>> ListTours(int shopId);
 
         Task<TourBooking> RequestBooking(TourBooking booking, int shopId);
+        Task<bool> BookingPaid(string bookingId, string customerId = "", string payMethodId = "", string receiptUrl = "");
+        Task<TourBooking> GetTourBooking(string id);
     }
 
     public class TourServiceHandler : ITourServiceHandler
@@ -60,6 +64,10 @@ namespace App.Infrastructure.ServiceHandler.Tour
 
             return tourlist;
         }
+        public async Task<TourBooking> GetTourBooking(string id) {
+            var Booking = await _tourBookingRepository.GetOneAsync(r => r.Id == id);
+            return Booking;
+        }
 
         public async Task<TourBooking> RequestBooking(TourBooking booking, int shopId)
         {
@@ -69,21 +77,51 @@ namespace App.Infrastructure.ServiceHandler.Tour
             if (findTour == null)
                 throw new ServiceException("Cannot Find tour");
 
-            var shopInfo =
-                await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
-
-            if (shopInfo == null)
-                throw new ServiceException("Cannot find shop info");
+        
 
             var newBooking = booking.Clone();
             newBooking.Id = "IHO"+SnowflakeId.getSnowId();
             newBooking.Created = _dateTimeUtil.GetCurrentTime();
             newBooking.Ref = GuidHashUtil.Get6DigitNumber();
 
-            var savedBooking = await _tourBookingRepository.CreateAsync(newBooking);
+            var savedBooking =await _tourBookingRepository.CreateAsync(newBooking);
 
+          
+
+        
+            return savedBooking;
+        }
+
+        public async Task<bool> BookingPaid(string bookingId, string customerId = "", string payMethodId = "", string receiptUrl = "")
+        {
+            _logger.LogInfo("BookingPaid");
+            TourBooking booking = await _tourBookingRepository.GetOneAsync(r => r.Id == bookingId);
+            if (booking == null)
+            {
+                _logger.LogInfo("bookingId: [" + bookingId + "] not found");
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(payMethodId))
+                booking.StripePaymentId = payMethodId;
+            if (!string.IsNullOrWhiteSpace(customerId))
+            {
+                booking.StripeCustomerId = customerId;
+                booking.StripeSetupIntent = true;
+            }
+            if (!string.IsNullOrWhiteSpace(receiptUrl))
+            {
+                booking.StripeReceiptUrl = receiptUrl;
+                booking.Paid = true;
+            }
+            _logger.LogInfo("BookingPaid" + booking.Id);
+            var temp = await _tourBookingRepository.UpdateAsync(booking);
+            var shopInfo =
+            await _shopRepository.GetOneAsync(r => r.ShopId == 11 && r.IsActive.HasValue && r.IsActive.Value);
+
+            if (shopInfo == null)
+                throw new ServiceException("Cannot find shop info");
             var dataset = _holidayDataBuilder.BuildContent(shopInfo, booking);
-
             //Add to Trello
             await EmailTrello(booking, shopInfo, dataset);
 
@@ -93,7 +131,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             //Email to boss
             await EmailBoss(booking, shopInfo, dataset);
 
-            return savedBooking;
+            return true;
         }
 
         private async Task EmailBoss(TourBooking booking, DbShop shopInfo, TourDataSet dataset)

@@ -21,7 +21,7 @@ namespace App.UnitTest.Infrastructure.Utility
              */
             var tokenObj = new DbToken()
             {
-                ShopId = 11,
+                ShopId = 13,
                 ExpiredTime = DateTime.UtcNow.AddYears(100),
                 //ServerKey = Guid.NewGuid().ToString(),
                 ServerKey = "41A2AEFF-B784-4CAF-A00F-C72C1D0CADF4",
@@ -29,6 +29,7 @@ namespace App.UnitTest.Infrastructure.Utility
             };
 
             var encodestring = tokenEn.Encrypt(tokenObj);
+            Console.WriteLine("encodestring:::" + encodestring);
             Assert.IsNotNull(encodestring);
 
             var decodeobj = tokenEn.Decrypt<DbToken>(encodestring);

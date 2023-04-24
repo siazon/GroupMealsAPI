@@ -64,7 +64,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _logger.LogInfo("BookingPaid");
             TrDbRestaurantBooking booking = await _restaurantBookingRepository.GetOneAsync(r => r.StripePriceId == session.Metadata["priceId"]);
             if (booking == null) return false;
-            booking.IsPaid = true;
+            booking.Paid = true;
 
             _logger.LogInfo("BookingPaid" + booking.Id);
             var temp = await _restaurantBookingRepository.UpdateAsync(booking);
@@ -94,7 +94,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (!string.IsNullOrWhiteSpace(receiptUrl))
             {
                 booking.StripeReceiptUrl = receiptUrl;
-                booking.IsPaid = true;
+                booking.Paid = true;
             }
             _logger.LogInfo("BookingPaid" + booking.Id);
             var temp = await _restaurantBookingRepository.UpdateAsync(booking);

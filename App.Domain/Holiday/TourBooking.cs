@@ -4,7 +4,7 @@ using System.Diagnostics;
 
 namespace App.Domain.Holiday
 {
-    public class TourBooking : DbEntity
+    public class TourBooking : StripeBase
     {
         public string Comment { get; set; }
 
@@ -39,7 +39,13 @@ namespace App.Domain.Holiday
             dest.Email = source.Email;
             dest.Tour = source.Tour;
             dest.SelectDate = source.SelectDate;
-
+            dest.StripeClientSecretKey= source.StripeClientSecretKey;
+            dest.StripeCustomerId = source.StripeCustomerId;
+            dest.StripePaymentId = source.StripePaymentId;
+            dest.StripePriceId = source.StripePriceId;
+            dest.StripeProductId = source.StripeProductId;
+            dest.StripeReceiptUrl = source.StripeReceiptUrl;
+            dest.StripeSetupIntent = source.StripeSetupIntent;
             return dest;
         }
 

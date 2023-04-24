@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace App.Domain.TravelMeals
 {
-    public class TrDbRestaurantBooking : DbEntity
+    public class TrDbRestaurantBooking : StripeBase
     {
         public string RestaurantId { get; set; }
         public string RestaurantName { get; set; }
@@ -21,15 +21,7 @@ namespace App.Domain.TravelMeals
         public string BookingNotes { get; set; }
         public DateTime? SelectDateTime { get; set; }
         public List<BookingCourses> Courses { get; set; } =new List<BookingCourses>();
-        public string StripeProductId { get; set; }
-        public string StripePriceId { get; set; }
-        public string StripePaymentId { get; set; }
-        public string StripeCustomerId { get; set; }
-        public string StripeReceiptUrl { get; set; }
-        public bool StripeSetupIntent{ get; set; }
-        public string StripeClientSecretKey{ get; set; }
-        public string BillReceipt { get; set; }
-        public bool IsPaid { get; set; }
+   
     }
     public class BookingCourses: TrDbRestaurantMenuCourse
     {
