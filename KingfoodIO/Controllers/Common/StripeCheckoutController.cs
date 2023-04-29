@@ -85,7 +85,7 @@ namespace KingfoodIO.Controllers.Common
                         string billType = paymentIntent.Metadata["billType"];
                         if (billType == "TOUR")
                         {
-                            _tourServiceHandler.BookingPaid(bookingId, paymentIntent.CustomerId, paymentIntent.PaymentMethod, paymentIntent.ReceiptUrl);
+                            _tourServiceHandler.BookingPaid(bookingId, paymentIntent.CustomerId, paymentIntent.Id, paymentIntent.PaymentMethod, paymentIntent.ReceiptUrl);
                         }
                         else
                         {
@@ -232,6 +232,40 @@ namespace KingfoodIO.Controllers.Common
 
             return Json(new { clientSecret = paymentIntent.ClientSecret });
         }
+
+
+        [HttpPost]
+        public async Task<ActionResult> RefundPay([FromBody] PayIntentParam bill)
+        {
+            Dictionary<string, string> meta = new Dictionary<string, string>
+            {
+                { "bookingId", bill.BillId}
+            };
+            string chargeId = "";
+            if (bill.BillType == "TOUR")
+            {
+              TourBooking tourBooking=await _tourServiceHandler.GetTourBooking(bill.BillId);
+                if ((DateTime.Now - DateTime.Parse(tourBooking.SelectDate)).TotalHours < 24)
+                    chargeId = tourBooking.StripeChargeId;
+                else {
+                    return Json(new { msg="Invalid" });
+                }
+            }
+            else
+            {
+                TrDbRestaurantBooking booking = await _trRestaurantBookingServiceHandler.GetBooking(13, bill.BillId);
+                chargeId=booking.StripeChargeId;
+            }
+            var options = new RefundCreateOptions
+            {
+                Charge = chargeId,
+            };
+            var service = new RefundService();
+            var temp= service.Create(options);
+
+            return Json(new { clientSecret = temp.ChargeId });
+        }
+
         private async Task<long> CalculateTourOrderAmount(string billId)
         {
             // Calculate the order total on the server to prevent

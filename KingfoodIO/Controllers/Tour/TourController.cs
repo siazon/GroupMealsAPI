@@ -4,6 +4,7 @@ using App.Infrastructure.ServiceHandler.Tour;
 using App.Infrastructure.Utility.Common;
 using KingfoodIO.Application.Filter;
 using KingfoodIO.Controllers.Common;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Collections.Generic;
@@ -16,11 +17,13 @@ namespace KingfoodIO.Controllers.Tour
     public class TourController : BaseController
     {
         private readonly ITourServiceHandler _tourServiceHandler;
+        private IHostingEnvironment _environment;
 
         public TourController(
-            IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache, ILogManager logger, ITourServiceHandler tourServiceHandler) : base(cachesettingConfig, redisCache, logger)
+            IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache, IHostingEnvironment environment,ILogManager logger, ITourServiceHandler tourServiceHandler) : base(cachesettingConfig, redisCache, logger)
         {
             _tourServiceHandler = tourServiceHandler;
+            _environment = environment;
         }
 
         [HttpGet]
@@ -28,6 +31,7 @@ namespace KingfoodIO.Controllers.Tour
         [ProducesResponseType(typeof(List<App.Domain.Holiday.Tour>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> ListTours(int shopId, bool cache = true)
         {
+         
             return await ExecuteAsync(shopId, cache,
                 async () => await _tourServiceHandler.ListTours(shopId));
         }
@@ -39,6 +43,15 @@ namespace KingfoodIO.Controllers.Tour
         {
             return await ExecuteAsync(shopId, false,
                 async () => await _tourServiceHandler.RequestBooking(booking, shopId));
+        }
+
+        [HttpGet]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TourBooking>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> ListTourBookings(int shopId,string code,string email, bool cache = true)
+        {
+            return await ExecuteAsync(shopId, cache,
+                async () => await _tourServiceHandler.GetTourBookings(code,email));
         }
     }
 }
