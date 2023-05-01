@@ -155,8 +155,8 @@ namespace KingfoodIO
             }
             else
             {
-               
-                app.UseExceptionHandler("/Error");
+                app.UseCors(builder => builder.WithOrigins("*").AllowAnyMethod().AllowAnyHeader());
+                //app.UseExceptionHandler("/Error");
                 app.UseHsts();
             }
             app.UseCors(builder => builder.WithOrigins("*").AllowAnyMethod().AllowAnyHeader());

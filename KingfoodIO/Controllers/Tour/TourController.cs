@@ -28,12 +28,20 @@ namespace KingfoodIO.Controllers.Tour
 
         [HttpGet]
         [ServiceFilter(typeof(AuthActionFilter))]
-        [ProducesResponseType(typeof(List<App.Domain.Holiday.Tour>), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(List<App.Domain.Holiday.DbTour>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> ListTours(int shopId, bool cache = true)
         {
          
             return await ExecuteAsync(shopId, cache,
                 async () => await _tourServiceHandler.ListTours(shopId));
+        }
+        [HttpPost]
+        [ProducesResponseType(typeof(DbTour), (int)HttpStatusCode.OK)]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> CreateTour([FromBody] DbTour tour, int shopId)
+        {
+            return await ExecuteAsync(shopId, false,
+                async () => await _tourServiceHandler.CreateTour(tour, shopId));
         }
 
         [HttpPost]
@@ -53,5 +61,32 @@ namespace KingfoodIO.Controllers.Tour
             return await ExecuteAsync(shopId, cache,
                 async () => await _tourServiceHandler.GetTourBookings(code,email));
         }
+        [HttpGet]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TourBooking>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> ListTourBookingsByAdmin(int shopId, string code, bool cache = true)
+        {
+            return await ExecuteAsync(shopId, cache,
+                async () => await _tourServiceHandler.GetTourBookingsByAdmin(code));
+        }
+
+        [HttpGet]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(bool), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> DeleteTourBookingsById(int shopId, string id, bool cache = true)
+        {
+            return await ExecuteAsync(shopId, cache,
+                async () => await _tourServiceHandler.DeleteTourBookingById(id));
+        }
+
+        [HttpPost]
+        [ProducesResponseType(typeof(TourBooking), (int)HttpStatusCode.OK)]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> UpdateBooking([FromBody] TourBooking booking, int shopId)
+        {
+            return await ExecuteAsync(shopId, false,
+                async () => await _tourServiceHandler.UpdateTourBooking(booking));
+        }
+
     }
 }

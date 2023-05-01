@@ -1,4 +1,5 @@
-﻿using System;
+﻿using App.Domain.Enum;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
@@ -9,13 +10,16 @@ namespace App.Domain.Holiday
         public string Comment { get; set; }
 
         public int? NumberOfPeople { get; set; }
+        public int? NumberOfAgedOrStudent { get; set; }
+        public int? NumberOfChild { get; set; }
 
         public string Name { get; set; }
         public string PhoneNumber { get; set; }
         public string WeChat { get; set; }
         public string Email { get; set; }
         public string Ref { get; set; }
-        public Tour Tour { get; set; }
+        public OrderStatusEnum Status { get; set; } = OrderStatusEnum.None;
+        public DbTour Tour { get; set; }
 
         public string SelectDate { get; set; }
 
@@ -33,6 +37,8 @@ namespace App.Domain.Holiday
             var dest = new TourBooking();
             dest.Comment = source.Comment;
             dest.NumberOfPeople = source.NumberOfPeople;
+            dest.NumberOfAgedOrStudent = source.NumberOfAgedOrStudent;
+            dest.NumberOfChild = source.NumberOfChild;
             dest.Name = source.Name;
             dest.PhoneNumber = source.PhoneNumber;
             dest.WeChat = source.WeChat;

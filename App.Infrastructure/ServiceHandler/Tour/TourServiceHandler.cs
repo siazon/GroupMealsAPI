@@ -22,17 +22,22 @@ namespace App.Infrastructure.ServiceHandler.Tour
 {
     public interface ITourServiceHandler
     {
-        Task<List<Domain.Holiday.Tour>> ListTours(int shopId);
+        Task<List<Domain.Holiday.DbTour>> ListTours(int shopId);
 
         Task<TourBooking> RequestBooking(TourBooking booking, int shopId);
+        Task<DbTour> CreateTour(DbTour tour, int shopId);
         Task<bool> BookingPaid(string bookingId, string customerId = "", string chargeId = "", string payMethodId = "", string receiptUrl = "");
-        Task<TourBooking> GetTourBooking(string id); 
+        Task<TourBooking> GetTourBooking(string id);
         Task<List<TourBooking>> GetTourBookings(string code,string email);
+        Task<List<TourBooking>> GetTourBookingsByAdmin(string code);
+        Task<bool> DeleteTourBookingById(string code);
+        Task<TourBooking> UpdateTourBooking(TourBooking booking);
+
     }
 
     public class TourServiceHandler : ITourServiceHandler
     {
-        private readonly IDbCommonRepository<Domain.Holiday.Tour> _tourRepository;
+        private readonly IDbCommonRepository<Domain.Holiday.DbTour> _tourRepository;
         private readonly IDbCommonRepository<Domain.Holiday.TourBooking> _tourBookingRepository;
         private readonly IDbCommonRepository<DbShop> _shopRepository;
         private readonly IDateTimeUtil _dateTimeUtil;
@@ -42,7 +47,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
         private readonly IContentBuilder _contentBuilder;
         IHostingEnvironment _environment;
 
-        public TourServiceHandler(IDbCommonRepository<Domain.Holiday.Tour> tourRepository, IHostingEnvironment environment, IDbCommonRepository<TourBooking> tourBookingRepository, IDateTimeUtil dateTimeUtil, IEmailUtil emailUtil, ILogManager logger, IDbCommonRepository<DbShop> shopRepository, IHolidayDataBuilder holidayDataBuilder, IContentBuilder contentBuilder)
+        public TourServiceHandler(IDbCommonRepository<Domain.Holiday.DbTour> tourRepository, IHostingEnvironment environment, IDbCommonRepository<TourBooking> tourBookingRepository, IDateTimeUtil dateTimeUtil, IEmailUtil emailUtil, ILogManager logger, IDbCommonRepository<DbShop> shopRepository, IHolidayDataBuilder holidayDataBuilder, IContentBuilder contentBuilder)
         {
             _tourRepository = tourRepository;
             _tourBookingRepository = tourBookingRepository;
@@ -55,12 +60,8 @@ namespace App.Infrastructure.ServiceHandler.Tour
             _environment = environment;
         }
 
-        public async Task<List<Domain.Holiday.Tour>> ListTours(int shopId)
+        public async Task<List<Domain.Holiday.DbTour>> ListTours(int shopId)
         {
-
-
-
-
 
             var tours = await _tourRepository.GetManyAsync(r => r.ShopId == shopId);
 
@@ -72,16 +73,27 @@ namespace App.Infrastructure.ServiceHandler.Tour
             {
                 tour.AvailableDates = tour.AvailableDates.Where(r => r.HasValue && r.Value >= compareDate).ToList();
             }
-
-
-
-
             return tourlist;
         }
         public async Task<TourBooking> GetTourBooking(string id)
         {
             var Booking = await _tourBookingRepository.GetOneAsync(r => r.Id == id);
             return Booking;
+        }
+        public async Task<DbTour> CreateTour(DbTour tour, int shopId)
+        {
+            Guard.NotNull(tour);
+
+            var findTour = await _tourRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == tour.Id);
+            if (findTour == null)
+                throw new ServiceException("Cannot Find tour");
+            var newBooking = tour.DeepClone();
+            newBooking.Id = "T" + SnowflakeId.getSnowId();
+            newBooking.Created = _dateTimeUtil.GetCurrentTime();
+
+            var savedBooking = await _tourRepository.CreateAsync(newBooking);
+
+            return savedBooking;
         }
 
         public async Task<TourBooking> RequestBooking(TourBooking booking, int shopId)
@@ -190,6 +202,24 @@ namespace App.Infrastructure.ServiceHandler.Tour
             var bookings = await _tourBookingRepository.GetManyAsync(r => r.Ref == code&&r.Email==email);
             var tickets = bookings.ToList();
             return tickets;
+        }
+        public async Task<List<TourBooking>> GetTourBookingsByAdmin(string code)
+        {
+            var bookings = await _tourBookingRepository.GetManyAsync(r => r.Email == code);
+            var tickets = bookings.ToList();
+            return tickets;
+        }
+        public async Task<bool> DeleteTourBookingById(string Id) {
+            var booking=await _tourBookingRepository.GetOneAsync(r=>r.Id==Id);
+            var res = await _tourBookingRepository.DeleteAsync(booking);
+            return res!=null;
+
+        }
+        public async Task<TourBooking> UpdateTourBooking(TourBooking booking)
+        {
+            Guard.NotNull(booking);
+            var res=await _tourBookingRepository.UpdateAsync(booking);
+            return res;
         }
     }
 }

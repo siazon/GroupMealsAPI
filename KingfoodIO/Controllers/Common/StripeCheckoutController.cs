@@ -30,7 +30,7 @@ namespace KingfoodIO.Controllers.Common
           IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache, ITourServiceHandler tourServiceHandler, ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
         {
             _trRestaurantBookingServiceHandler = restaurantBookingServiceHandler;
-            _tourServiceHandler = tourServiceHandler;       
+            _tourServiceHandler = tourServiceHandler;
             _logger = logger;
         }
 
@@ -90,7 +90,7 @@ namespace KingfoodIO.Controllers.Common
                         else
                         {
                             _trRestaurantBookingServiceHandler.BookingPaid(bookingId, paymentIntent.CustomerId, paymentIntent.PaymentMethod, paymentIntent.ReceiptUrl);
-                        } 
+                        }
                         break;
                     case Events.CheckoutSessionCompleted:
                         {
@@ -244,24 +244,25 @@ namespace KingfoodIO.Controllers.Common
             string chargeId = "";
             if (bill.BillType == "TOUR")
             {
-              TourBooking tourBooking=await _tourServiceHandler.GetTourBooking(bill.BillId);
+                TourBooking tourBooking = await _tourServiceHandler.GetTourBooking(bill.BillId);
                 if ((DateTime.Now - DateTime.Parse(tourBooking.SelectDate)).TotalHours < 24)
                     chargeId = tourBooking.StripeChargeId;
-                else {
-                    return Json(new { msg="Invalid" });
+                else
+                {
+                    return Json(new { msg = "Invalid" });
                 }
             }
             else
             {
                 TrDbRestaurantBooking booking = await _trRestaurantBookingServiceHandler.GetBooking(13, bill.BillId);
-                chargeId=booking.StripeChargeId;
+                chargeId = booking.StripeChargeId;
             }
             var options = new RefundCreateOptions
             {
                 Charge = chargeId,
             };
             var service = new RefundService();
-            var temp= service.Create(options);
+            var temp = service.Create(options);
 
             return Json(new { clientSecret = temp.ChargeId });
         }
@@ -270,11 +271,11 @@ namespace KingfoodIO.Controllers.Common
         {
             // Calculate the order total on the server to prevent
             // people from directly manipulating the amount on the client
-            TourBooking booking = await _tourServiceHandler.GetTourBooking( billId);
+            TourBooking booking = await _tourServiceHandler.GetTourBooking(billId);
             decimal amount = 0;
             if (booking != null)
             {
-                amount += booking.NumberOfPeople??0 * booking.Tour.Price??0;
+                amount += (booking.NumberOfPeople ?? 0) * (booking.Tour.Price ?? 0) + (booking.NumberOfAgedOrStudent ?? 0) * (booking.Tour.ConcessionPrice ?? 0) + (booking.NumberOfChild ?? 0 )* (booking.Tour.ChildPrice ?? 0);
             }
             return (long)Math.Round(amount, 2) * 100;
         }
@@ -294,5 +295,5 @@ namespace KingfoodIO.Controllers.Common
             return (long)Math.Round(amount, 2) * 100;
         }
     }
-    
+
 }

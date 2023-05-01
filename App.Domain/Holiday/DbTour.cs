@@ -1,10 +1,11 @@
-﻿using System;
+﻿using App.Domain.Enum;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace App.Domain.Holiday
 {
-    public class Tour : DbEntity
+    public class DbTour : DbEntity
     {
         public string Name { get; set; }
         public string NameCn { get; set; }
@@ -19,6 +20,10 @@ namespace App.Domain.Holiday
 
         [Column(TypeName = "decimal(18, 2)")]
         public decimal? Price { get; set; }
+        [Column(TypeName = "decimal(18, 2)")]
+        public decimal? ChildPrice { get; set; }
+        [Column(TypeName = "decimal(18, 2)")]
+        public decimal? ConcessionPrice { get; set; }
 
         public int? CountryId { get; set; }
 
@@ -35,7 +40,8 @@ namespace App.Domain.Holiday
         public string ContentEn { get; set; }
 
         public string ContentTc { get; set; }
-
+        public double TourTimeSpan { get; set; }
+        public int FreeReundDays { get; set; }
         public string Image { get; set; }
         public List<string> Images { get; set; }
 
@@ -49,7 +55,7 @@ namespace App.Domain.Holiday
         public List<string> BreadCrumbHeaderTc { get; set; }
         public List<string> BreadCrumbHeaderCn { get; set; }
 
-        public Tour()
+        public DbTour()
         {
             Images = new List<string>();
             StopPointCn = new List<string>();
