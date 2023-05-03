@@ -145,7 +145,8 @@ namespace KingfoodIO
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            StripeConfiguration.ApiKey = "sk_test_51MsNeuEOhoHb4C89kuTDIQd4WTiRiWGXSrFMnJMxsk0ufrGw7VMTsilTZKmVYbYn9zHyW98De7hXcrOwfrbGJXcY00DE8tswlW";
+            var settings = Configuration.GetSection("AppSetting").Get<AppSettingConfig>();
+            StripeConfiguration.ApiKey = settings.StripeKey;//"sk_test_51MsNeuEOhoHb4C89kuTDIQd4WTiRiWGXSrFMnJMxsk0ufrGw7VMTsilTZKmVYbYn9zHyW98De7hXcrOwfrbGJXcY00DE8tswlW";
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();

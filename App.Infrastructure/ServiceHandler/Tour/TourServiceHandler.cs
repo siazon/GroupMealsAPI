@@ -26,12 +26,16 @@ namespace App.Infrastructure.ServiceHandler.Tour
 
         Task<TourBooking> RequestBooking(TourBooking booking, int shopId);
         Task<DbTour> CreateTour(DbTour tour, int shopId);
+        Task<DbTour> UpdateTour(DbTour tour, int shopId);
+        Task<DbTour> GetTourById(string tourId);
         Task<bool> BookingPaid(string bookingId, string customerId = "", string chargeId = "", string payMethodId = "", string receiptUrl = "");
         Task<TourBooking> GetTourBooking(string id);
         Task<List<TourBooking>> GetTourBookings(string code,string email);
         Task<List<TourBooking>> GetTourBookingsByAdmin(string code);
         Task<bool> DeleteTourBookingById(string code);
         Task<TourBooking> UpdateTourBooking(TourBooking booking);
+        Task<bool> BookingRefund(string chargeId); 
+        Task<TourBooking> TourBookingRefundApply(string id);
 
     }
 
@@ -75,6 +79,11 @@ namespace App.Infrastructure.ServiceHandler.Tour
             }
             return tourlist;
         }
+
+     public async   Task<DbTour> GetTourById(string tourId) {
+            var Booking = await _tourRepository.GetOneAsync(r => r.Id == tourId);
+            return Booking;
+        }
         public async Task<TourBooking> GetTourBooking(string id)
         {
             var Booking = await _tourBookingRepository.GetOneAsync(r => r.Id == id);
@@ -92,6 +101,20 @@ namespace App.Infrastructure.ServiceHandler.Tour
             newBooking.Created = _dateTimeUtil.GetCurrentTime();
 
             var savedBooking = await _tourRepository.CreateAsync(newBooking);
+
+            return savedBooking;
+        }
+
+        public async Task<DbTour> UpdateTour(DbTour tour, int shopId)
+        {
+            Guard.NotNull(tour);
+
+            var findTour = await _tourRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == tour.Id);
+            if (findTour == null)
+                throw new ServiceException("Cannot Find tour");
+            tour.Updated = _dateTimeUtil.GetCurrentTime();
+
+            var savedBooking = await _tourRepository.UpdateAsync(tour);
 
             return savedBooking;
         }
@@ -142,6 +165,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             {
                 booking.StripeReceiptUrl = receiptUrl;
                 booking.Paid = true;
+                booking.Status=OrderStatusEnum.Paid;
             }
             _logger.LogInfo("BookingPaid" + booking.Id);
             var temp = await _tourBookingRepository.UpdateAsync(booking);
@@ -156,22 +180,48 @@ namespace App.Infrastructure.ServiceHandler.Tour
             await EmailCustomer(booking, shopInfo);
 
             //Email to boss
-            await EmailBoss(booking, shopInfo); 
+            await EmailBoss(booking, shopInfo, $"New Booking: {booking.Ref}"); 
+            return true;
+        }
+        public async Task<bool> BookingRefund( string chargeId )
+        {
+            TourBooking booking = await _tourBookingRepository.GetOneAsync(r => r.StripeChargeId == chargeId);
+            if (booking == null)
+            {
+                _logger.LogInfo("chargeId: [" + chargeId + "] not found");
+                return false;
+            }
+
+                booking.Paid = false;
+                booking.Status = OrderStatusEnum.Refunded;
+            _logger.LogInfo("BookingPaid" + booking.Id);
+            var temp = await _tourBookingRepository.UpdateAsync(booking);
+            //var shopInfo =
+            //await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
+
+            //if (shopInfo == null)
+            //    throw new ServiceException("Cannot find shop info");
+            //var dataset = _holidayDataBuilder.BuildContent(shopInfo, booking);
+
+            ////Email to Customer
+            //await EmailCustomer(booking, shopInfo);
+
+            ////Email to boss
+            //await EmailBoss(booking, shopInfo);
             return true;
         }
 
 
-
-        private async Task EmailBoss(TourBooking booking, DbShop shopInfo)
+        private async Task EmailBoss(TourBooking booking, DbShop shopInfo,string subject)
         {
             string wwwPath = this._environment.WebRootPath;
-            string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "tour_ticket");
+            string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "system_message");
             var emailHtml = await _contentBuilder.BuildRazorContent(booking, htmlTemp);
 
             try
             {
                 BackgroundJob.Enqueue<ITourBatchServiceHandler>(
-                    s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, shopInfo.Email, $"New Booking: {booking.Ref}",
+                    s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, shopInfo.Email, subject,
                         emailHtml));
             }
             catch (Exception ex)
@@ -205,9 +255,16 @@ namespace App.Infrastructure.ServiceHandler.Tour
         }
         public async Task<List<TourBooking>> GetTourBookingsByAdmin(string code)
         {
-            var bookings = await _tourBookingRepository.GetManyAsync(r => r.Email == code);
-            var tickets = bookings.ToList();
-            return tickets;
+            if (string.IsNullOrEmpty(code)) {
+                var bookings = await _tourBookingRepository.GetManyAsync(r=>1==1);
+                var tickets = bookings.ToList().FindAll(a => a.Status != OrderStatusEnum.Disable);
+                return tickets;
+            } else {
+                var bookings = await _tourBookingRepository.GetManyAsync(r => r.Email == code);
+                var tickets = bookings.ToList().FindAll(a => a.Status != OrderStatusEnum.Disable);
+                return tickets;
+            }
+         
         }
         public async Task<bool> DeleteTourBookingById(string Id) {
             var booking=await _tourBookingRepository.GetOneAsync(r=>r.Id==Id);
@@ -219,6 +276,18 @@ namespace App.Infrastructure.ServiceHandler.Tour
         {
             Guard.NotNull(booking);
             var res=await _tourBookingRepository.UpdateAsync(booking);
+            return res;
+        }
+
+        public async Task<TourBooking> TourBookingRefundApply(string id) {
+            var booking = await _tourBookingRepository.GetOneAsync(r => r.Id == id);
+            booking.Status = OrderStatusEnum.ApplyRefund;
+            var res = await _tourBookingRepository.UpdateAsync(booking);
+
+            var shopInfo =
+            await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
+            await EmailBoss(booking, shopInfo, $"New Refund: {booking.Ref}");
+
             return res;
         }
     }
