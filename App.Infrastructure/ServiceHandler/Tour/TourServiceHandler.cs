@@ -67,7 +67,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
         public async Task<List<Domain.Holiday.DbTour>> ListTours(int shopId)
         {
 
-            var tours = await _tourRepository.GetManyAsync(r => r.ShopId == shopId);
+            var tours = await _tourRepository.GetManyAsync(r => r.ShopId == shopId&&r.IsActive==true);
 
             var compareDate = DateTime.Today.AddDays(1);
 
