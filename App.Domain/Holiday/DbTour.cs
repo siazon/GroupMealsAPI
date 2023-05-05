@@ -7,16 +7,7 @@ namespace App.Domain.Holiday
 {
     public class DbTour : DbEntity
     {
-        public string Name { get; set; }
-        public string NameCn { get; set; }
 
-        public string DepartFromCn { get; set; }
-        public string DepartFromTc { get; set; }
-        public string CountryCn { get; set; }
-        public string CountryTc { get; set; }
-       
-        public string NameEn { get; set; }
-        public string NameTc { get; set; }
 
         [Column(TypeName = "decimal(18, 2)")]
         public decimal? Price { get; set; }
@@ -40,27 +31,25 @@ namespace App.Domain.Holiday
         public string ContentEn { get; set; }
 
         public string ContentTc { get; set; }
+        public TourInfo TourInfo { get; set; }
         public double TourTimeSpan { get; set; }
-        public int FreeReundDays { get; set; }
+        public int FreeRefundDays { get; set; }
         public string Image { get; set; }
         public List<string> Images { get; set; }
 
-        public List<string> StopPointCn { get; set; }
 
         public List<string> Tags { get; set; }
 
-        public List<string> StopPointTc { get; set; }
         public List<DateTime?> AvailableDates { get; set; }
 
+        public List<string> BreadCrumbHeader { get; set; }
         public List<string> BreadCrumbHeaderTc { get; set; }
         public List<string> BreadCrumbHeaderCn { get; set; }
 
         public DbTour()
         {
             Images = new List<string>();
-            StopPointCn = new List<string>();
             Tags = new List<string>();
-            StopPointTc = new List<string>();
             BreadCrumbHeaderTc = new List<string>();
             BreadCrumbHeaderCn = new List<string>();
             AvailableDates = new List<DateTime?>();
