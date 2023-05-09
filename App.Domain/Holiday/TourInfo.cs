@@ -22,9 +22,9 @@ namespace App.Domain.Holiday
         public List<string> Bref { get; set; }
         public List<TourDescription> Description { get; set; }
         public List<string> DetailSummary { get; set; }
-        public List<TourDetail> Detail { get; set; }
+        public List<string> Detail { get; set; }
         public List<string> Notes { get; set; }
-        public List<TourInclude> Include { get; set; }
+        public List<string> Include { get; set; }
         public List<string> RefundRules { get; set; }
         public List<string> Remarks { get; set; }
         public List<string> Reminders { get; set; }
@@ -40,9 +40,9 @@ namespace App.Domain.Holiday
         public List<string> BrefCn { get; set; }
         public List<TourDescription> DescriptionCn { get; set; }
         public List<string> DetailSummaryCn { get; set; }
-        public List<TourDetail> DetailCn { get; set; }
+        public List<string> DetailCn { get; set; }
         public List<string> NotesCn { get; set; }
-        public List<TourInclude> IncludeCn { get; set; }
+        public List<string> IncludeCn { get; set; }
         public List<string> RefundRulesCn { get; set; }
         public List<string> RemarksCn { get; set; }
         public List<string> RemindersCn { get; set; }
@@ -59,9 +59,9 @@ namespace App.Domain.Holiday
         public List<string> BrefTc{ get; set; }
         public List<TourDescription> DescriptionTc{ get; set; }
         public List<string> DetailSummaryTc{ get; set; }
-        public List<TourDetail> DetailTc{ get; set; }
+        public List<string> DetailTc{ get; set; }
         public List<string> NotesTc{ get; set; }
-        public List<TourInclude> IncludeTc{ get; set; }
+        public List<string> IncludeTc{ get; set; }
         public List<string> RefundRulesTc{ get; set; }
         public List<string> RemarksTc{ get; set; }
         public List<string> RemindersTc{ get; set; }
@@ -71,11 +71,11 @@ namespace App.Domain.Holiday
             Summary =new List<string>();
             Fee=new List<string>();
             Bref=new List<string>();
-            Description = new List<TourDescription>() {new TourDescription() };
+            Description = new List<TourDescription>();
             DetailSummary = new List<string>();
-            Detail = new List<TourDetail>() { new TourDetail()};
+            Detail = new List<string>();
             Notes = new List<string>();
-            Include=new List<TourInclude>() { new TourInclude() };
+            Include=new List<string>();
             RefundRules=new List<string>();
             Remarks=new List<string>();
             Reminders=new List<string>();
@@ -84,11 +84,11 @@ namespace App.Domain.Holiday
             SummaryCn = new List<string>();
             FeeCn = new List<string>();
             BrefCn = new List<string>();
-            DescriptionCn = new List<TourDescription>() { new TourDescription() };
+            DescriptionCn = new List<TourDescription>();
             DetailSummaryCn = new List<string>();
-            DetailCn = new List<TourDetail>() { new TourDetail() };
+            DetailCn = new List<string>();
             NotesCn = new List<string>();
-            IncludeCn = new List<TourInclude>() { new TourInclude() };
+            IncludeCn = new List<string>();
             RefundRulesCn = new List<string>();
             RemarksCn = new List<string>();
             RemindersCn = new List<string>();
@@ -97,28 +97,22 @@ namespace App.Domain.Holiday
             SummaryTc = new List<string>();
             FeeTc= new List<string>();
             BrefTc= new List<string>();
-            DescriptionTc= new List<TourDescription>() { new TourDescription() };
+            DescriptionTc= new List<TourDescription>() ;
             DetailSummaryTc= new List<string>();
-            DetailTc= new List<TourDetail>() { new TourDetail() };
+            DetailTc= new List<string>() ;
             NotesTc= new List<string>();
-            IncludeTc= new List<TourInclude>() { new TourInclude() };
+            IncludeTc = new List<string>();
             RefundRulesTc= new List<string>();
             RemarksTc= new List<string>();
             RemindersTc= new List<string>();
         }
 
     }
-    public class TourDescription : TourDetail
+    public class TourDescription 
     {
-        public string Images { get; set; }
-    }
-    public class TourDetail
-    {
+        public string Image { get; set; }
         public string Name { get; set; }
         public string Desc { get; set; }
     }
-    public class TourInclude {
-        public bool IsInclude { get; set; }
-        public string Desc { get; set; }
-    }
+ 
 }

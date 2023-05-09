@@ -107,6 +107,9 @@ namespace KingfoodIO
 
             services.Configure<DocumentDbConfig>(Configuration.GetSection("DocumentDb"));
 
+
+            services.Configure<AzureStorageConfig>(Configuration.GetSection("AzureStorageConfig"));
+
             //DI resolver
             var assemblyToScan = Assembly.GetAssembly(typeof(BookingBatchServiceHandler));
 
