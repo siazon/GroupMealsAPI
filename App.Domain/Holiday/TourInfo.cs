@@ -10,24 +10,24 @@ namespace App.Domain.Holiday
     public class TourInfo
     {
 
-        public string Name { get; set; }
-        public string Subtitle { get; set; }
+        public string NameEn { get; set; }
+        public string SubtitleEn { get; set; }
 
-        public string DepartFrom { get; set; }
-        public string Country { get; set; }
-        public List<string> StopPoints { get; set; }
-        public List<string> Summary { get; set; }
+        public string DepartFromEn { get; set; }
+        public string CountryEn { get; set; }
+        public List<string> StopPointsEn { get; set; }
+        public List<string> SummaryEn { get; set; }
 
-        public List<string> Fee { get; set; }
-        public List<string> Bref { get; set; }
-        public List<TourDescription> Description { get; set; }
-        public List<string> DetailSummary { get; set; }
-        public List<string> Detail { get; set; }
-        public List<string> Notes { get; set; }
-        public List<string> Include { get; set; }
-        public List<string> RefundRules { get; set; }
-        public List<string> Remarks { get; set; }
-        public List<string> Reminders { get; set; }
+        public List<string> FeeEn { get; set; }
+        public List<string> BrefEn { get; set; }
+        public List<TourDescription> DescriptionEn { get; set; }
+        public List<string> DetailSummaryEn { get; set; }
+        public List<string> DetailEn { get; set; }
+        public List<string> NotesEn { get; set; }
+        public List<string> IncludeEn { get; set; }
+        public List<string> RefundRulesEn { get; set; }
+        public List<string> RemarksEn { get; set; }
+        public List<string> RemindersEn { get; set; }
 
 
         public string NameCn { get; set; }
@@ -67,18 +67,18 @@ namespace App.Domain.Holiday
         public List<string> RemindersTc{ get; set; }
 
         public TourInfo() {
-            StopPoints = new List<string>();
-            Summary =new List<string>();
-            Fee=new List<string>();
-            Bref=new List<string>();
-            Description = new List<TourDescription>();
-            DetailSummary = new List<string>();
-            Detail = new List<string>();
-            Notes = new List<string>();
-            Include=new List<string>();
-            RefundRules=new List<string>();
-            Remarks=new List<string>();
-            Reminders=new List<string>();
+            StopPointsEn = new List<string>();
+            SummaryEn =new List<string>();
+            FeeEn=new List<string>();
+            BrefEn=new List<string>();
+            DescriptionEn = new List<TourDescription>();
+            DetailSummaryEn = new List<string>();
+            DetailEn = new List<string>();
+            NotesEn = new List<string>();
+            IncludeEn=new List<string>();
+            RefundRulesEn=new List<string>();
+            RemarksEn=new List<string>();
+            RemindersEn=new List<string>();
 
             StopPointsCn = new List<string>();
             SummaryCn = new List<string>();
