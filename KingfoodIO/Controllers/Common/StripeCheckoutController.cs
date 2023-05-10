@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Stripe;
+using Stripe.FinancialConnections;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -70,8 +71,8 @@ namespace KingfoodIO.Controllers.Common
                 return "";
             }
         }
-     
-    
+
+
         [HttpPost]
         public async Task<IActionResult> Webhook()
         {
@@ -229,10 +230,11 @@ namespace KingfoodIO.Controllers.Common
             {
 
 
+
                 Dictionary<string, string> meta = new Dictionary<string, string>
-            {
-                { "bookingId", bill.BillId}
-            };
+                {
+                    { "bookingId", bill.BillId}
+                };
                 long Amount = 0;
                 if (bill.BillType == "TOUR")
                 {
@@ -244,18 +246,26 @@ namespace KingfoodIO.Controllers.Common
                     meta["billType"] = "GROUPMEALS";
                     Amount = await CalculateOrderAmount(bill.BillId);
                 }
-                var paymentIntentService = new PaymentIntentService();
-                var paymentIntent = paymentIntentService.Create(new PaymentIntentCreateOptions
+                if (!string.IsNullOrWhiteSpace(bill.PaymentIntentId))//upload exist payment
                 {
-                    Amount = Amount,
-                    Currency = "eur",
-                    AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
+                    var payment = updatePaymentIntent(bill.PaymentIntentId, Amount, meta);
+                    return Json(new { clientSecret = payment.ClientSecret, paymentIntentId=payment.Id });
+                }
+                else// create a new payment
+                {
+                    var paymentIntentService = new PaymentIntentService();
+                    var paymentIntent = paymentIntentService.Create(new PaymentIntentCreateOptions
                     {
-                        Enabled = true,
-                    },
-                    Metadata = meta
-                });
-                return Json(new { clientSecret = paymentIntent.ClientSecret });
+                        Amount = Amount,
+                        Currency = "eur",
+                        AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
+                        {
+                            Enabled = true,
+                        },
+                        Metadata = meta
+                    });
+                    return Json(new { clientSecret = paymentIntent.ClientSecret, paymentIntentId=paymentIntent.Id });
+                }
             }
             catch (Exception ex)
             {
@@ -264,7 +274,21 @@ namespace KingfoodIO.Controllers.Common
             }
 
         }
+        private PaymentIntent updatePaymentIntent(string paymentId, long Amount, Dictionary<string, string> meta)
+        {
+            //var service = new PaymentIntentService();
+            //var paymentIntent = service.Get(paymentId);
 
+            var options = new PaymentIntentUpdateOptions
+            {
+                Amount = Amount,
+                Currency = "eur",
+                Metadata = meta
+            };
+            var service = new PaymentIntentService();
+            var payment = service.Update(paymentId, options);
+            return payment;
+        }
 
         [HttpPost]
         public async Task<ActionResult> RefundPay([FromBody] PayIntentParam bill)

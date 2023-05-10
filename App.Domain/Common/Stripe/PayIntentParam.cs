@@ -11,5 +11,6 @@ namespace App.Domain.Common.Stripe
 
         public string BillType { get; set; }
         public string BillId { get; set; }
+        public string PaymentIntentId { get; set; }
     }
 }
