@@ -49,7 +49,7 @@ namespace KingfoodIO.Controllers.Tour
         public async Task<IActionResult> CreateTour([FromBody] DbTour tour, int shopId)
         {
             return await ExecuteAsync(shopId, false,
-                async () => await _tourServiceHandler.CreateTour(tour, shopId));
+                async () => await _tourServiceHandler.CreateTour( shopId));
         }
         [HttpPost]
         [ProducesResponseType(typeof(DbTour), (int)HttpStatusCode.OK)]

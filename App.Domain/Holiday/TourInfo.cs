@@ -10,11 +10,11 @@ namespace App.Domain.Holiday
     public class TourInfo
     {
 
-        public string NameEn { get; set; }
-        public string SubtitleEn { get; set; }
+        public string NameEn { get; set; } = "Example Text";
+        public string SubtitleEn { get; set; } = "Example Text";
 
-        public string DepartFromEn { get; set; }
-        public string CountryEn { get; set; }
+        public string DepartFromEn { get; set; } = "Example Text";
+        public string CountryEn { get; set; } = "Example Text";
         public List<string> StopPointsEn { get; set; }
         public List<string> SummaryEn { get; set; }
 
@@ -30,11 +30,11 @@ namespace App.Domain.Holiday
         public List<string> RemindersEn { get; set; }
 
 
-        public string NameCn { get; set; }
-        public string SubtitleCn { get; set; }
-        public string DepartFromCn { get; set; }
+        public string NameCn { get; set; } = "Example Text";
+        public string SubtitleCn { get; set; } = "Example Text";
+        public string DepartFromCn { get; set; } = "Example Text";
         public List<string> StopPointsCn { get; set; }
-        public string CountryCn { get; set; }
+        public string CountryCn { get; set; } = "Example Text";
         public List<string> SummaryCn { get; set; }
         public List<string> FeeCn { get; set; }
         public List<string> BrefCn { get; set; }
@@ -48,11 +48,11 @@ namespace App.Domain.Holiday
         public List<string> RemindersCn { get; set; }
 
 
-        public string NameTc { get; set; }
-        public string SubtitleTc { get; set; }
-        public string DepartFromTc { get; set; }
+        public string NameTc { get; set; } = "Example Text";
+        public string SubtitleTc { get; set; } = "Example Text";
+        public string DepartFromTc { get; set; } = "Example Text";
         public List<string> StopPointsTc { get; set; }
-        public string CountryTc { get; set; }
+        public string CountryTc { get; set; } = "Example Text";
         public List<string> SummaryTc{ get; set; }
 
         public List<string> FeeTc{ get; set; }

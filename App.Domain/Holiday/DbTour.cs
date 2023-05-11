@@ -10,31 +10,29 @@ namespace App.Domain.Holiday
 
 
         [Column(TypeName = "decimal(18, 2)")]
-        public decimal? Price { get; set; }
+        public decimal? Price { get; set; } = 0;
         [Column(TypeName = "decimal(18, 2)")]
-        public decimal? ChildPrice { get; set; }
+        public decimal? ChildPrice { get; set; } = 0;
         [Column(TypeName = "decimal(18, 2)")]
-        public decimal? ConcessionPrice { get; set; }
+        public decimal? ConcessionPrice { get; set; } = 0;
 
-        public int? CountryId { get; set; }
+        public int? CountryId { get; set; } = 0;
 
-        public int? RatingNumber { get; set; }
+        public int? RatingNumber { get; set; } = 0;
 
         //Top Rate or Popular
-        public int? TagCat { get; set; }
-        public string Category { get; set; }
+        public int? TagCat { get; set; } = 0;
+        public string Category { get; set; } = "Example Text";
 
-        public string Content { get; set; }
+        public string ContentCn { get; set; } = "Example Text";
 
-        public string ContentCn { get; set; }
+        public string ContentEn { get; set; } = "Example Text";
 
-        public string ContentEn { get; set; }
-
-        public string ContentTc { get; set; }
-        public TourInfo TourInfo { get; set; }
-        public double TourTimeSpan { get; set; }
-        public int FreeRefundDays { get; set; }
-        public string Image { get; set; }
+        public string ContentTc { get; set; } = "Example Text";
+        public TourInfo TourInfo { get; set; }=new TourInfo();
+        public double TourTimeSpan { get; set; } = 0;
+        public int FreeRefundDays { get; set; } = 0;
+        public string Image { get; set; } = "Example Text";
         public List<string> Images { get; set; }
 
 
@@ -42,7 +40,7 @@ namespace App.Domain.Holiday
 
         public List<DateTime?> AvailableDates { get; set; }
 
-        public List<string> BreadCrumbHeader { get; set; }
+        public List<string> BreadCrumbHeaderEn { get; set; }
         public List<string> BreadCrumbHeaderTc { get; set; }
         public List<string> BreadCrumbHeaderCn { get; set; }
 
@@ -50,6 +48,7 @@ namespace App.Domain.Holiday
         {
             Images = new List<string>();
             Tags = new List<string>();
+            BreadCrumbHeaderEn=new List<string>();
             BreadCrumbHeaderTc = new List<string>();
             BreadCrumbHeaderCn = new List<string>();
             AvailableDates = new List<DateTime?>();

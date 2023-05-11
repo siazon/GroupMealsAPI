@@ -25,7 +25,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
         Task<List<Domain.Holiday.DbTour>> ListTours(int shopId);
 
         Task<TourBooking> RequestBooking(TourBooking booking, int shopId);
-        Task<DbTour> CreateTour(DbTour tour, int shopId);
+        Task<DbTour> CreateTour( int shopId);
         Task<DbTour> UpdateTour(DbTour tour, int shopId);
         Task<DbTour> GetTourById(string tourId);
         Task<bool> BookingPaid(string bookingId, string customerId = "", string chargeId = "", string payMethodId = "", string receiptUrl = "");
@@ -89,18 +89,16 @@ namespace App.Infrastructure.ServiceHandler.Tour
             var Booking = await _tourBookingRepository.GetOneAsync(r => r.Id == id);
             return Booking;
         }
-        public async Task<DbTour> CreateTour(DbTour tour, int shopId)
+        public async Task<DbTour> CreateTour( int shopId)
         {
-            Guard.NotNull(tour);
+            DbTour tour =new DbTour();
 
-            var findTour = await _tourRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == tour.Id);
-            if (findTour == null)
-                throw new ServiceException("Cannot Find tour");
-            var newBooking = tour.DeepClone();
-            newBooking.Id = "T" + SnowflakeId.getSnowId();
-            newBooking.Created = _dateTimeUtil.GetCurrentTime();
+            tour.Id = "T" + SnowflakeId.getSnowId();
+            tour.Created = _dateTimeUtil.GetCurrentTime();
+            tour.IsActive=true;
+            tour.ShopId=shopId;
 
-            var savedBooking = await _tourRepository.CreateAsync(newBooking);
+            var savedBooking = await _tourRepository.CreateAsync(tour);
 
             return savedBooking;
         }
