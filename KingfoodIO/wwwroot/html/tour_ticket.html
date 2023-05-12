@@ -178,7 +178,7 @@
 															<td class="pad" style="padding-bottom:10px;padding-left:10px;padding-right:10px;padding-top:20px;">
 																<div style="font-family: sans-serif">
 																	<div class style="font-size: 12px; font-family: Oswald, Arial, Helvetica Neue, Helvetica, sans-serif; mso-line-height-alt: 14.399999999999999px; color: #3fb9bc; line-height: 1.2;">
-																		<p style="margin: 0; font-size: 14px; mso-line-height-alt: 16.8px;"><span style="font-size:22px;color:#3fb9bc;">IreHolidays Ticket</span></p>
+																		<p style="margin: 0; font-size: 14px; mso-line-height-alt: 16.8px;"><span style="font-size:22px;color:#3fb9bc;">IreHolidays Ticket: &#8202; @Model.booking.Tour.TourInfo.NameEn</span></p>
 																	</div>
 																</div>
 															</td>
@@ -218,7 +218,7 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:15px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #3a4848; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 12px; mso-line-height-alt: 33px;"><span style="font-size:22px;">@Model.Ref</span></p>
+																		<p style="margin: 0; font-size: 12px; mso-line-height-alt: 33px;"><span style="font-size:22px;">@Model.booking.Ref</span></p>
 																	</div>
 																</div>
 															</td>
@@ -287,7 +287,7 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:15px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #3a4848; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;">@Model.SelectDate</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;">@Model.booking.SelectDate</span></p>
 																	</div>
 																</div>
 															</td>
@@ -425,7 +425,12 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:15px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #3a4848; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 24px;"><span style="font-size:16px;">@Model.Name&nbsp; @Model.NumberOfPeople&nbsp; @Model.NumberOfPeople*@Model.Tour.Price</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 24px;">
+																			<span style="font-size:16px;">@Model.booking.Name</span></p>
+																			<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 24px;">
+																				<span style="font-size:16px;">No.: @Model.booking.NumberOfPeople+@Model.booking.NumberOfAgedOrStudent+@Model.booking.NumberOfChild</span></p>
+																				<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 24px;">
+																					<span style="font-size:16px;">€ @Model.amount</span></p>
 																	</div>
 																</div>
 															</td>
@@ -494,7 +499,7 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:15px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #3a4848; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 24px;"><span style="font-size:16px;">@Model.Created</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 24px;"><span style="font-size:16px;">@Model.booking.Created</span></p>
 																	</div>
 																</div>
 															</td>
