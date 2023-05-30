@@ -45,7 +45,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpPost]
         [ProducesResponseType(typeof(TrDbRestaurantBooking), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<string> RequestTravelMealsBooking([FromBody] TrDbRestaurantBooking booking, int shopId)
+        public async Task<TrDbRestaurantBooking> RequestTravelMealsBooking([FromBody] TrDbRestaurantBooking booking, int shopId)
         {
             return await  _restaurantServiceHandler.RequestBooking(booking, shopId);
         }

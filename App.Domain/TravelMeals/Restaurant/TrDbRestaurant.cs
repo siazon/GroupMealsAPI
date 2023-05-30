@@ -1,4 +1,5 @@
 using App.Domain.Common.Shop;
+using App.Domain.Enum;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -22,10 +23,11 @@ namespace App.Domain.TravelMeals.Restaurant
         public string DescriptionHtmlCn { get; set; }
         public string PhoneNumber { get; set; }
         public int Rating { get; set; }
+        public RestaurantCategoryEnum FoodCategory { get; set; }
+        public RestaurantTagEnum RestaurantTag { get; set; }
         public string Website { get; set; }
         public string Image { get; set; }
         public string ShopAddress { get; set; }
-        public string FoodCategory { get; set; }
         public string City { get; set; }
         public string Country { get; set; }
         public string Email { get; set; }

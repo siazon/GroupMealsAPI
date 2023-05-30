@@ -1,3 +1,4 @@
+using App.Domain.Enum;
 using App.Domain.TravelMeals.Restaurant;
 using System;
 using System.Collections.Generic;
@@ -7,6 +8,7 @@ namespace App.Domain.TravelMeals
     public class TrDbRestaurantBooking : StripeBase
     {
         public string RestaurantId { get; set; }
+        public OrderStatusEnum Status { get; set; } = OrderStatusEnum.None;
         public string RestaurantName { get; set; }
         public string RestaurantPhone { get; set; }
         public string RestaurantEmail { get; set; }

@@ -1,8 +1,10 @@
-﻿using App.Domain.Common.Stripe;
+﻿using App.Domain;
+using App.Domain.Common.Stripe;
 using App.Domain.Config;
 using App.Domain.Holiday;
 using App.Domain.TravelMeals;
 using App.Domain.TravelMeals.Restaurant;
+using App.Infrastructure.ServiceHandler.Common;
 using App.Infrastructure.ServiceHandler.Tour;
 using App.Infrastructure.ServiceHandler.TravelMeals;
 using App.Infrastructure.Utility.Common;
@@ -27,14 +29,18 @@ namespace KingfoodIO.Controllers.Common
         private ITrRestaurantBookingServiceHandler _trRestaurantBookingServiceHandler;
         private ITourServiceHandler _tourServiceHandler;
         private ITourBookingServiceHandler _tourBookingServiceHandler;
+        private IStripeServiceHandler _stripeServiceHandler;
         ILogManager _logger;
         private readonly AppSettingConfig _appsettingConfig;
         private string secret = "";
         public StripeCheckoutController(
-          IOptions<CacheSettingConfig> cachesettingConfig, IOptions<AppSettingConfig> appsettingConfig, IRedisCache redisCache, ITourBookingServiceHandler tourBookingServiceHandler, ITourServiceHandler tourServiceHandler, ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
+          IOptions<CacheSettingConfig> cachesettingConfig, IOptions<AppSettingConfig> appsettingConfig, IRedisCache redisCache,
+          ITourBookingServiceHandler tourBookingServiceHandler, ITourServiceHandler tourServiceHandler, IStripeServiceHandler stripeServiceHandler,
+          ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
         {
             _trRestaurantBookingServiceHandler = restaurantBookingServiceHandler;
-            _tourServiceHandler = tourServiceHandler; 
+            _tourServiceHandler = tourServiceHandler;
+            _stripeServiceHandler = stripeServiceHandler;
             _tourBookingServiceHandler = tourBookingServiceHandler;
             _logger = logger;
             _appsettingConfig = appsettingConfig.Value;
@@ -58,7 +64,7 @@ namespace KingfoodIO.Controllers.Common
                 _logger.LogDebug("priceId:" + priceId);
                 Console.WriteLine("priceId:" + priceId);
                 string sessionUrl = "";
-                var res = _trRestaurantBookingServiceHandler.UpdateBooking(0, checkoutParam.BillId, productId, priceId);
+                var res = _trRestaurantBookingServiceHandler.UpdateBooking( checkoutParam.BillId, productId, priceId);
                 if (res.Result)
                 {
                     sessionUrl = StripeUtil.Pay(priceId, checkoutParam.Amount);
@@ -120,6 +126,7 @@ namespace KingfoodIO.Controllers.Common
                             _tourBookingServiceHandler.BookingRefund(charge.Id);
                         }
                         break;
+                    //case Events.SetupIntentCreated: 
                     case Events.SetupIntentSucceeded:
                         {
                             var setupIntent = stripeEvent.Data.Object as SetupIntent;
@@ -149,6 +156,7 @@ namespace KingfoodIO.Controllers.Common
             {
                 { "bookingId", bookingId}
             };
+                meta["billType"] = "GROUPMEALS";
                 var customer = new CustomerService().Create(new CustomerCreateOptions { });
 
                 var options = new SetupIntentCreateOptions
@@ -161,7 +169,8 @@ namespace KingfoodIO.Controllers.Common
 
                 var service = new SetupIntentService();
                 var paymentIntent = service.Create(options);
-                _trRestaurantBookingServiceHandler.UpdateStripeClientKey(bookingId, paymentIntent.ClientSecret);
+
+                _trRestaurantBookingServiceHandler.UpdateStripeClientKey(bookingId, paymentIntent.PaymentMethodId, customer.Id, paymentIntent.ClientSecret);
                 return Json(new { clientSecret = paymentIntent.ClientSecret });
             }
             catch (Exception ex)
@@ -179,11 +188,20 @@ namespace KingfoodIO.Controllers.Common
                 {
                     { "bookingId", bookingId}
                 };
-                var booking = await _trRestaurantBookingServiceHandler.GetBooking(11, bookingId);
-                var service = new PaymentIntentService();
+                meta["billType"] = "GROUPMEALS";
+
+                var booking = await _trRestaurantBookingServiceHandler.GetBooking( bookingId);
+
+                //paySetup(booking.StripeClientSecretKey);
+
+                //return Json(new { msg = "OK" });
+
+                //var setupService = new SetupIntentService();
+                //var temp = setupService.Get(booking.StripePaymentId);
+
                 var options = new PaymentIntentCreateOptions
                 {
-                    Amount = await CalculateOrderAmount(bookingId),
+                    Amount = await CalculateOrderAmount(booking),
                     Currency = "eur",
                     AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
                     {
@@ -193,18 +211,19 @@ namespace KingfoodIO.Controllers.Common
                     PaymentMethod = booking.StripePaymentId,
                     Confirm = true,
                     OffSession = true,
-                    ReturnUrl = "https://www.qq.com",
+                    ReturnUrl = "https://www.groupmeals.com",
                     Metadata = meta
                 };
+                var service = new PaymentIntentService();
                 service.Create(options);
 
-                var setupService = new SetupIntentService();
-                var temp = setupService.Get(booking.StripeClientSecretKey);
-                setupService.Cancel(temp.Id);
+                //var setupService = new SetupIntentService();
+                //var temp = setupService.Get(booking.StripeClientSecretKey);
+                //setupService.Cancel(temp.Id);
 
 
             }
-            catch (StripeException e)
+                catch (StripeException e)
             {
                 switch (e.StripeError.Type)
                 {
@@ -232,34 +251,42 @@ namespace KingfoodIO.Controllers.Common
                 {
                     { "bookingId", bill.BillId}
                 };
-                TourBooking booking = null;
-               long Amount = 0;
+                StripeBase booking = null;
+                long Amount = 0;
                 if (bill.BillType == "TOUR")
                 {
                     meta["billType"] = "TOUR";
-                     booking = await _tourBookingServiceHandler.GetTourBooking(bill.BillId);
-                    Amount = await CalculateTourOrderAmount(booking);
+                    var tourBooking = await _tourBookingServiceHandler.GetTourBooking(bill.BillId);
+                    booking = tourBooking;
+                    Amount = CalculateTourOrderAmount(tourBooking);
                 }
                 else
                 {
                     meta["billType"] = "GROUPMEALS";
-                    Amount = await CalculateOrderAmount(bill.BillId);
+
+                    TrDbRestaurantBooking gpBooking = await _trRestaurantBookingServiceHandler.GetBooking(bill.BillId);
+                    if (gpBooking == null) { 
+                    return BadRequest("Can't find the booking by Id");
+                    }
+                    booking=gpBooking;
+                    Amount = await CalculateOrderAmount(gpBooking);
                 }
-                if (booking!=null&&!string.IsNullOrWhiteSpace(booking.StripePaymentId))//upload exist payment
+
+                if (booking != null && !string.IsNullOrWhiteSpace(booking.StripePaymentId))//upload exist payment
                 {
-                    var service = new PaymentIntentService(); ;
+                    var service = new PaymentIntentService();
                     var paymentIntent = service.Get(booking.StripePaymentId);
                     if (paymentIntent != null)
                     {
                         var temo = paymentIntent.Status;
                     }
-                    var payment = updatePaymentIntent(booking.StripePaymentId, Amount, meta);
-                    return Json(new { clientSecret = payment.ClientSecret, paymentIntentId=payment.Id });
+                    var payment = UpdatePaymentIntent(booking.StripePaymentId, Amount, meta);
+                    return Json(new { clientSecret = payment.ClientSecret, paymentIntentId = payment.Id });
                 }
                 else// create a new payment
                 {
-                    var paymentIntentService = new PaymentIntentService();
-                    var paymentIntent = paymentIntentService.Create(new PaymentIntentCreateOptions
+
+                    var options = new PaymentIntentCreateOptions
                     {
                         Amount = Amount,
                         Currency = "eur",
@@ -268,9 +295,14 @@ namespace KingfoodIO.Controllers.Common
                             Enabled = true,
                         },
                         Metadata = meta
-                    });
-                    _tourBookingServiceHandler.BindingPayInfoToTourBooking(bill.BillId, paymentIntent.Id,paymentIntent.ClientSecret);
-                    return Json(new { clientSecret = paymentIntent.ClientSecret, paymentIntentId=paymentIntent.Id });
+                    };
+                    var paymentIntentService = new PaymentIntentService();
+                    var paymentIntent = paymentIntentService.Create(options);
+                    if (bill.BillType == "TOUR")
+                        _tourBookingServiceHandler.BindingPayInfoToTourBooking(bill.BillId, paymentIntent.Id, paymentIntent.ClientSecret);
+                    else
+                        _trRestaurantBookingServiceHandler.BindingPayInfoToTourBooking(bill.BillId, paymentIntent.Id, paymentIntent.ClientSecret);
+                    return Json(new { clientSecret = paymentIntent.ClientSecret, paymentIntentId = paymentIntent.Id });
                 }
             }
             catch (Exception ex)
@@ -280,10 +312,8 @@ namespace KingfoodIO.Controllers.Common
             }
 
         }
-        private PaymentIntent updatePaymentIntent(string paymentId, long Amount, Dictionary<string, string> meta)
+        private PaymentIntent UpdatePaymentIntent(string paymentId, long Amount, Dictionary<string, string> meta)
         {
-
-
             var options = new PaymentIntentUpdateOptions
             {
                 Amount = Amount,
@@ -294,7 +324,6 @@ namespace KingfoodIO.Controllers.Common
             var payment = service.Update(paymentId, options);
             return payment;
         }
-
         [HttpPost]
         public async Task<ActionResult> RefundPay([FromBody] PayIntentParam bill, int shopId)
         {
@@ -305,10 +334,10 @@ namespace KingfoodIO.Controllers.Common
                     { "bookingId", bill.BillId}
                 };
                 string chargeId = "";
-                TourBooking tourBooking=null;
+                TourBooking tourBooking = null;
                 if (bill.BillType == "TOUR")
                 {
-                     tourBooking = await _tourBookingServiceHandler.GetTourBooking(bill.BillId);
+                    tourBooking = await _tourBookingServiceHandler.GetTourBooking(bill.BillId);
                     if ((DateTime.Now - DateTime.Parse(tourBooking.SelectDate)).TotalHours < 24)
                         chargeId = tourBooking.StripeChargeId;
                     else
@@ -318,7 +347,7 @@ namespace KingfoodIO.Controllers.Common
                 }
                 else
                 {
-                    TrDbRestaurantBooking booking = await _trRestaurantBookingServiceHandler.GetBooking(13, bill.BillId);
+                    TrDbRestaurantBooking booking = await _trRestaurantBookingServiceHandler.GetBooking(bill.BillId);
                     chargeId = booking.StripeChargeId;
                 }
                 var options = new RefundCreateOptions
@@ -338,7 +367,7 @@ namespace KingfoodIO.Controllers.Common
             }
         }
 
-        private async Task<long> CalculateTourOrderAmount(TourBooking booking)
+        private long CalculateTourOrderAmount(TourBooking booking)
         {
             // Calculate the order total on the server to prevent
             // people from directly manipulating the amount on the client
@@ -349,11 +378,10 @@ namespace KingfoodIO.Controllers.Common
             }
             return (long)Math.Round(amount, 2) * 100;
         }
-        private async Task<long> CalculateOrderAmount(string billId)
+        private async Task<long> CalculateOrderAmount(TrDbRestaurantBooking booking)
         {
             // Calculate the order total on the server to prevent
             // people from directly manipulating the amount on the client
-            TrDbRestaurantBooking booking = await _trRestaurantBookingServiceHandler.GetBooking(11, billId);
             decimal amount = 0;
             if (booking != null)
             {

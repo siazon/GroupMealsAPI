@@ -26,11 +26,11 @@ namespace App.Infrastructure.ServiceHandler.Tour
         Task<TourBooking> RequestBooking(TourBooking booking, int shopId);
         Task<bool> BookingPaid(string bookingId, string customerId = "", string chargeId = "", string payMethodId = "", string receiptUrl = "");
         Task<TourBooking> GetTourBooking(string id);
-        Task<List<TourBooking>> GetTourBookings(string code,string email);
+        Task<List<TourBooking>> GetTourBookings(string code, string email);
         Task<List<TourBooking>> GetTourBookingsByAdmin(string code);
         Task<bool> DeleteTourBookingById(string code);
         Task<TourBooking> UpdateTourBooking(TourBooking booking);
-        Task<bool> BookingRefund(string chargeId); 
+        Task<bool> BookingRefund(string chargeId);
         Task<TourBooking> TourBookingRefundApply(string id);
         Task<TourBooking> BindingPayInfoToTourBooking(string bookingId, string PaymentId, string stripeClientSecretKey);
         Task EmailCustomerForRefund(TourBooking booking);
@@ -71,17 +71,18 @@ namespace App.Infrastructure.ServiceHandler.Tour
                 throw new ServiceException("Cannot Find tour");
             TourBooking newBooking;
             var createTime = _dateTimeUtil.GetCurrentTime();
-            var exsitBookings = await _tourBookingRepository.GetManyAsync(r =>r.Status==OrderStatusEnum.None&& r.Email == booking.Email);
-            var exsitBooking=exsitBookings.FirstOrDefault(a=> (createTime - a.Created).Value.Hours < 2);
+            var exsitBookings = await _tourBookingRepository.GetManyAsync(r => r.Status == OrderStatusEnum.None && r.Email == booking.Email);
+            var exsitBooking = exsitBookings.FirstOrDefault(a => (createTime - a.Created).Value.Hours < 2);
             if (exsitBooking != null)
             {
                 exsitBooking.Created = _dateTimeUtil.GetCurrentTime();
                 exsitBooking.NumberOfPeople = booking.NumberOfPeople;
-                exsitBooking.NumberOfChild=booking.NumberOfChild;
-                exsitBooking.NumberOfAgedOrStudent=booking.NumberOfAgedOrStudent;
-                exsitBooking.PhoneNumber=booking.PhoneNumber;
-                exsitBooking.SelectDate=booking.SelectDate;
-                exsitBooking.Name=booking.Name;
+                exsitBooking.NumberOfChild = booking.NumberOfChild;
+                exsitBooking.NumberOfAgedOrStudent = booking.NumberOfAgedOrStudent;
+                exsitBooking.PhoneNumber = booking.PhoneNumber;
+                exsitBooking.SelectDate = booking.SelectDate;
+                exsitBooking.Name = booking.Name;
+                exsitBooking.Tour=booking.Tour;
                 var savedBooking = await _tourBookingRepository.UpdateAsync(exsitBooking);
 
                 return savedBooking;
@@ -99,7 +100,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             }
         }
 
-        public async Task<bool> BookingPaid(string bookingId, string customerId = "",string chargeId="", string payMethodId = "", string receiptUrl = "")
+        public async Task<bool> BookingPaid(string bookingId, string customerId = "", string chargeId = "", string payMethodId = "", string receiptUrl = "")
         {
             _logger.LogInfo("BookingPaid");
             TourBooking booking = await _tourBookingRepository.GetOneAsync(r => r.Id == bookingId);
@@ -121,7 +122,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             {
                 booking.StripeReceiptUrl = receiptUrl;
                 booking.Paid = true;
-                booking.Status=OrderStatusEnum.Paid;
+                booking.Status = OrderStatusEnum.Paid;
             }
             _logger.LogInfo("BookingPaid" + booking.Id);
             var temp = await _tourBookingRepository.UpdateAsync(booking);
@@ -136,7 +137,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             await EmailCustomer(booking, shopInfo);
 
             //Email to boss
-            await EmailBoss(booking, shopInfo, $"New Booking: {booking.Ref}"); 
+            await EmailBoss(booking, shopInfo, $"New Booking: {booking.Ref}");
             return true;
         }
         public async Task<TourBooking> GetTourBooking(string id)
@@ -144,7 +145,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             var Booking = await _tourBookingRepository.GetOneAsync(r => r.Id == id);
             return Booking;
         }
-        public async Task<bool> BookingRefund( string chargeId )
+        public async Task<bool> BookingRefund(string chargeId)
         {
             TourBooking booking = await _tourBookingRepository.GetOneAsync(r => r.StripeChargeId == chargeId);
             if (booking == null)
@@ -153,8 +154,8 @@ namespace App.Infrastructure.ServiceHandler.Tour
                 return false;
             }
 
-                booking.Paid = false;
-                booking.Status = OrderStatusEnum.Refunded;
+            booking.Paid = false;
+            booking.Status = OrderStatusEnum.Refunded;
             _logger.LogInfo("BookingPaid" + booking.Id);
             var temp = await _tourBookingRepository.UpdateAsync(booking);
             //var shopInfo =
@@ -173,7 +174,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
         }
 
 
-        private async Task EmailBoss(TourBooking booking, DbShop shopInfo,string subject)
+        private async Task EmailBoss(TourBooking booking, DbShop shopInfo, string subject)
         {
             string wwwPath = this._environment.WebRootPath;
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "system_message");
@@ -191,7 +192,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             }
         }
 
-        private async Task EmailCustomer(TourBooking booking, DbShop shopInfo )
+        private async Task EmailCustomer(TourBooking booking, DbShop shopInfo)
         {
             string wwwPath = this._environment.WebRootPath;
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "tour_ticket");
@@ -212,17 +213,16 @@ namespace App.Infrastructure.ServiceHandler.Tour
         }
         public async Task EmailCustomerForRefund(TourBooking booking)
         {
-            if(booking==null)
+            if (booking == null)
                 throw new ServiceException("Cannot find booking info");
-            var shopInfo =
-     await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
+            var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
             if (shopInfo == null)
                 throw new ServiceException("Cannot find shop info");
             string wwwPath = this._environment.WebRootPath;
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "refunded_msg");
-           decimal amount = (booking.NumberOfPeople ?? 0) * (booking.Tour.Price ?? 0) + 
-                (booking.NumberOfAgedOrStudent ?? 0) * (booking.Tour.ConcessionPrice ?? 0) + 
-                (booking.NumberOfChild ?? 0) * (booking.Tour.ChildPrice ?? 0);
+            decimal amount = (booking.NumberOfPeople ?? 0) * (booking.Tour.Price ?? 0) +
+                 (booking.NumberOfAgedOrStudent ?? 0) * (booking.Tour.ConcessionPrice ?? 0) +
+                 (booking.NumberOfChild ?? 0) * (booking.Tour.ChildPrice ?? 0);
             var emailHtml = await _contentBuilder.BuildRazorContent(new { booking, amount }, htmlTemp);
             try
             {
@@ -238,46 +238,51 @@ namespace App.Infrastructure.ServiceHandler.Tour
 
         public async Task<List<TourBooking>> GetTourBookings(string code, string email)
         {
-            var bookings = await _tourBookingRepository.GetManyAsync(r => r.Ref == code&&r.Email==email);
+            var bookings = await _tourBookingRepository.GetManyAsync(r => r.Ref == code && r.Email == email);
             var tickets = bookings.ToList();
             return tickets;
         }
         public async Task<List<TourBooking>> GetTourBookingsByAdmin(string code)
         {
-            if (string.IsNullOrEmpty(code)) {
-                var bookings = await _tourBookingRepository.GetManyAsync(r=>1==1);
+            if (string.IsNullOrEmpty(code))
+            {
+                var bookings = await _tourBookingRepository.GetManyAsync(r => 1 == 1);
                 var tickets = bookings.ToList().FindAll(a => a.Status != OrderStatusEnum.Disable);
                 return tickets;
-            } else {
+            }
+            else
+            {
                 var bookings = await _tourBookingRepository.GetManyAsync(r => r.Email == code);
                 var tickets = bookings.ToList().FindAll(a => a.Status != OrderStatusEnum.Disable);
                 return tickets;
             }
-         
+
         }
-        public async Task<bool> DeleteTourBookingById(string Id) {
-            var booking=await _tourBookingRepository.GetOneAsync(r=>r.Id==Id);
+        public async Task<bool> DeleteTourBookingById(string Id)
+        {
+            var booking = await _tourBookingRepository.GetOneAsync(r => r.Id == Id);
             var res = await _tourBookingRepository.DeleteAsync(booking);
-            return res!=null;
+            return res != null;
 
         }
         public async Task<TourBooking> UpdateTourBooking(TourBooking booking)
         {
             Guard.NotNull(booking);
-            var res=await _tourBookingRepository.UpdateAsync(booking);
+            var res = await _tourBookingRepository.UpdateAsync(booking);
             return res;
         }
-        public async Task<TourBooking> BindingPayInfoToTourBooking(string bookingId,string PaymentId,string stripeClientSecretKey)
+        public async Task<TourBooking> BindingPayInfoToTourBooking(string bookingId, string PaymentId, string stripeClientSecretKey)
         {
             var booking = await _tourBookingRepository.GetOneAsync(r => r.Id == bookingId);
             Guard.NotNull(booking);
             booking.StripePaymentId = PaymentId;
-            booking.StripeClientSecretKey= stripeClientSecretKey;
+            booking.StripeClientSecretKey = stripeClientSecretKey;
             var res = await _tourBookingRepository.UpdateAsync(booking);
             return res;
         }
 
-        public async Task<TourBooking> TourBookingRefundApply(string id) {
+        public async Task<TourBooking> TourBookingRefundApply(string id)
+        {
             var booking = await _tourBookingRepository.GetOneAsync(r => r.Id == id);
             booking.Status = OrderStatusEnum.ApplyRefund;
             var res = await _tourBookingRepository.UpdateAsync(booking);

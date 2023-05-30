@@ -12,16 +12,19 @@ using App.Infrastructure.Repository;
 using App.Infrastructure.Utility.Common;
 using App.Domain.Common.Stripe;
 using Stripe;
+using App.Domain.Holiday;
+using App.Infrastructure.Validation;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
     public interface ITrRestaurantBookingServiceHandler
     {
-        Task<TrDbRestaurantBooking> GetBooking(int shopId, string id);
-        Task<bool> UpdateBooking(int shopId, string billId, string productId, string priceId);
+        Task<TrDbRestaurantBooking> GetBooking(string id);
+        Task<bool> UpdateBooking(string billId, string productId, string priceId);
         Task<bool> BookingPaid(Stripe.Checkout.Session session);
         Task<bool> BookingPaid(string bookingId, string customerId = "", string payMethodId = "", string receiptUrl = "");
-        Task<bool> UpdateStripeClientKey(string bookingId, string secertKey);
+        Task<bool> UpdateStripeClientKey(string bookingId, string paymentId, string customerId, string secertKey);
+        Task<TrDbRestaurantBooking> BindingPayInfoToTourBooking(string bookingId, string PaymentId, string stripeClientSecretKey);
     }
     public class TrRestaurantBookingServiceHandler : ITrRestaurantBookingServiceHandler
     {
@@ -42,15 +45,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
 
 
-        public async Task<TrDbRestaurantBooking> GetBooking(int shopId, string id)
+        public async Task<TrDbRestaurantBooking> GetBooking(string id)
         {
             var Booking = await _restaurantBookingRepository.GetOneAsync(r => r.Id == id);
             return Booking;
         }
 
-        public async Task<bool> UpdateBooking(int shopId, string billId, string productId, string priceId)
+        public async Task<bool> UpdateBooking( string billId, string productId, string priceId)
         {
-            TrDbRestaurantBooking booking = GetBooking(shopId, billId).Result;
+            TrDbRestaurantBooking booking = GetBooking(billId).Result;
             if (booking == null) return false;
             booking.StripeProductId = productId;
             booking.StripePriceId = priceId;
@@ -95,6 +98,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 booking.StripeReceiptUrl = receiptUrl;
                 booking.Paid = true;
+                booking.Status=Domain.Enum.OrderStatusEnum.Paid;
             }
             _logger.LogInfo("BookingPaid" + booking.Id);
             var temp = await _restaurantBookingRepository.UpdateAsync(booking);
@@ -103,7 +107,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             return true;
         }
-        public async Task<bool> UpdateStripeClientKey(string bookingId, string secertKey)
+        public async Task<bool> UpdateStripeClientKey(string bookingId,string paymentId,string customerId, string secertKey)
         {
             TrDbRestaurantBooking booking = await _restaurantBookingRepository.GetOneAsync(r => r.Id == bookingId);
             if (booking == null)
@@ -114,14 +118,25 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             if (!string.IsNullOrWhiteSpace(secertKey))
             {
+                booking.StripeCustomerId = customerId;
                 booking.StripeClientSecretKey = secertKey;
                 booking.StripeSetupIntent = true;
+                booking.StripePaymentId=paymentId;
             }
             var temp = await _restaurantBookingRepository.UpdateAsync(booking);
 
             //var newItem = await _stripeCheckoutSeesionRepository.CreateAsync(new StripeCheckoutSeesion() { Data = session, BookingId = booking.Id });
 
             return true;
+        }
+        public async Task<TrDbRestaurantBooking> BindingPayInfoToTourBooking(string bookingId, string PaymentId, string stripeClientSecretKey)
+        {
+            var booking = await _restaurantBookingRepository.GetOneAsync(r => r.Id == bookingId);
+            Guard.NotNull(booking);
+            booking.StripePaymentId = PaymentId;
+            booking.StripeClientSecretKey = stripeClientSecretKey;
+            var res = await _restaurantBookingRepository.UpdateAsync(booking);
+            return res;
         }
 
     }

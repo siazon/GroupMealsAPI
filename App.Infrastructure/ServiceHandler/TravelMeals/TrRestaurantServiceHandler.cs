@@ -18,6 +18,8 @@ using System.Diagnostics;
 using App.Domain.Common.Stripe;
 using Stripe.Issuing;
 using Microsoft.AspNetCore.Http;
+using App.Domain.Holiday;
+using App.Domain.Common;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -26,7 +28,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<List<TrDbRestaurant>> GetRestaurantInfo(int shopId);
         Task<List<TrDbRestaurant>> SearchRestaurantInfo(int shopId, string searchContent);
 
-        Task<string> RequestBooking(TrDbRestaurantBooking booking, int shopId );
+        Task<TrDbRestaurantBooking> RequestBooking(TrDbRestaurantBooking booking, int shopId );
         Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId);
         Task<List<TrDbRestaurantBooking>> SearchBookings(int shopId, string email, string content);
     }
@@ -78,67 +80,61 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (string.IsNullOrWhiteSpace(content))
             {
                 var Bookings = await _restaurantBookingRepository.GetManyAsync(r => r.CustomerEmail == email);
-                return Bookings.ToList();
+                var list = Bookings.ToList();
+                foreach (var item in list)
+                {
+                    item.BookingDate = DatetimeUtil.GetBookingDate(item.SelectDateTime);
+                    item.BookingTime = DatetimeUtil.GetBookingTime(item.SelectDateTime);
+                }
+           
+                return list;
             }
             else
             {
                 var Bookings = await _restaurantBookingRepository.GetManyAsync(r => r.CustomerEmail == email && r.RestaurantName.Contains(content));
-                return Bookings.ToList();
+                var list = Bookings.ToList();
+                foreach (var item in list)
+                {
+                    item.BookingDate = DatetimeUtil.GetBookingDate(item.SelectDateTime);
+                    item.BookingTime = DatetimeUtil.GetBookingTime(item.SelectDateTime);
+                }
+                return list;
             }
         }
-        public async Task<string> RequestBooking(TrDbRestaurantBooking booking, int shopId )
+        public async Task<TrDbRestaurantBooking> RequestBooking(TrDbRestaurantBooking booking, int shopId )
         {
-
-
-
             Guard.NotNull(booking);
             Guard.AreEqual(booking.ShopId.Value, shopId);
-            booking.Id = Guid.NewGuid().ToString();
-            booking.Created = _dateTimeUtil.GetCurrentTime();
+            var findRestaurant = await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == booking.RestaurantId);
+            if (findRestaurant == null)
+                throw new ServiceException("Cannot Find tour");
+            TourBooking newBooking;
+            var createTime = _dateTimeUtil.GetCurrentTime();
+            var exsitBookings = await _restaurantBookingRepository.GetManyAsync(r => r.Status == OrderStatusEnum.None && r.CustomerEmail == booking.CustomerEmail);
+            var exsitBooking = exsitBookings.FirstOrDefault(a => (createTime - a.Created).Value.Hours < 2);
+            if (exsitBooking != null)
+            {
+                exsitBooking.Created = _dateTimeUtil.GetCurrentTime();
+                exsitBooking.RestaurantId    = booking.RestaurantId;
+                exsitBooking.RestaurantName = booking.RestaurantName;
+                exsitBooking.RestaurantPhone = booking.RestaurantPhone;
+                exsitBooking.RestaurantEmail = booking.RestaurantEmail;
+                exsitBooking.RestaurantAddress= booking.RestaurantAddress;
+                exsitBooking.CustomerName = booking.CustomerName;
+                exsitBooking.CustomerPhone= booking.CustomerPhone;
+                exsitBooking.SelectDateTime = booking.SelectDateTime;
+                exsitBooking.Courses = booking.Courses;
+                var savedBooking = await _restaurantBookingRepository.UpdateAsync(exsitBooking);
 
-            var shopInfo =
-                await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
-            if (shopInfo == null)
-                throw new ServiceException("Cannot find shop info");
-            var restaurant =
-               await _restaurantRepository.GetOneAsync(r => r.Id == booking.RestaurantId && r.ShopId == shopId);
-            if (restaurant == null)
-                throw new ServiceException("Cannot find shop info");
-            var bookingBD = _bookingDataSetBuilder.BuildTravelMealContent(restaurant, booking);
-
-            //1. Creating Booking record
-            var newItem = await _restaurantBookingRepository.CreateAsync(booking);
-            //Task.Run(async () =>
-            //{
-            //    //2. Getting Template for email
-            //    var content = shopInfo.ShopContents.FirstOrDefault(a => a.Key == EmailTemplateEnum.BookingEmailTemplateTravelMealsShop.ToString());
-            //    var temp = content.Content;
-            //    var bodyHtml = await _contentBuilder.BuildRazorContent(bookingBD, content.Content);
-            //    //2. Email Trello
-            //    //var resultTrello = await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, "Group Meals Booking",
-            //    //    shopInfo.ContactEmail, "", "New Group Meals Booking", null, bodyHtml, null);
-            //    //3. Email Client
-            //    var resultClient = await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, "Group Meals Booking",
-            //        booking.CustomerEmail, "", "New Group Meals Booking", null, bodyHtml, null);
-            //});
-            //decimal amount = 0;
-            //string payDesc = "";
-            //foreach (var item in booking.Courses) {
-            //    payDesc += " " + item.Price + "*" + item.qty + " " + item.CourseName;
-            //    amount += item.Price * item.qty;
-            //}
-            //amount *= 100;
-            //string payName = booking.RestaurantName +" "+ booking.Courses.Count + " Group Meals";
-            //string productId = StripeUtil.GetProductId(payName, payDesc);
-
-            //string priceId = StripeUtil.GetPriceId(productId, (long)amount, "eur");
-            string sessionUrl = newItem.Id;
-            //var res = _trRestaurantBookingServiceHandler.UpdateBooking(0, booking.Id, productId, priceId);
-            //if (res.Result)
-            //{
-            //    sessionUrl = StripeUtil.Pay(priceId, amount);
-            //}
-            return sessionUrl;
+                return savedBooking;
+            }
+            else
+            {
+                booking.Id = Guid.NewGuid().ToString();
+                booking.Created = _dateTimeUtil.GetCurrentTime();
+                var newItem = await _restaurantBookingRepository.CreateAsync(booking);
+                return newItem;
+            }
         }
         public async Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId)
         {
