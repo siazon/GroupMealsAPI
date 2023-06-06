@@ -44,6 +44,7 @@ namespace KingfoodIO
             services.AddCors();
             services.AddControllersWithViews();
             services.AddRazorPages();
+            services.AddDistributedMemoryCache();
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "Wiiya", Version = "v1" });

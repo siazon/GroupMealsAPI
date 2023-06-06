@@ -84,9 +84,7 @@ namespace KingfoodIO.Controllers.Common
         [HttpPost]
         public async Task<IActionResult> Webhook()
         {
-
             var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
-
             _logger.LogInfo("webhook:" + json.ToString());
             Console.WriteLine("CXS WebHook:" + json);
             try
@@ -192,9 +190,6 @@ namespace KingfoodIO.Controllers.Common
 
                 var booking = await _trRestaurantBookingServiceHandler.GetBooking( bookingId);
 
-                //paySetup(booking.StripeClientSecretKey);
-
-                //return Json(new { msg = "OK" });
 
                 //var setupService = new SetupIntentService();
                 //var temp = setupService.Get(booking.StripePaymentId);
@@ -281,6 +276,7 @@ namespace KingfoodIO.Controllers.Common
                         var temo = paymentIntent.Status;
                     }
                     var payment = UpdatePaymentIntent(booking.StripePaymentId, Amount, meta);
+                    _logger.LogInfo("UpdatePaymentIntent:" + booking.ToString()+bill.ToString());
                     return Json(new { clientSecret = payment.ClientSecret, paymentIntentId = payment.Id });
                 }
                 else// create a new payment
@@ -298,6 +294,7 @@ namespace KingfoodIO.Controllers.Common
                     };
                     var paymentIntentService = new PaymentIntentService();
                     var paymentIntent = paymentIntentService.Create(options);
+                    _logger.LogInfo("AddPaymentIntent:" + booking.ToString()+bill.ToString());
                     if (bill.BillType == "TOUR")
                         _tourBookingServiceHandler.BindingPayInfoToTourBooking(bill.BillId, paymentIntent.Id, paymentIntent.ClientSecret);
                     else
@@ -307,7 +304,7 @@ namespace KingfoodIO.Controllers.Common
             }
             catch (Exception ex)
             {
-                _logger.LogInfo("StripeException.Error" + ex.Message);
+                _logger.LogError("StripeException.Error" + ex.Message);
                 return BadRequest(ex.Message);
             }
 
@@ -338,11 +335,12 @@ namespace KingfoodIO.Controllers.Common
                 if (bill.BillType == "TOUR")
                 {
                     tourBooking = await _tourBookingServiceHandler.GetTourBooking(bill.BillId);
-                    if ((DateTime.Now - DateTime.Parse(tourBooking.SelectDate)).TotalHours < 24)
+                    var selectTimeSpan = (DateTime.Parse(tourBooking.SelectDate)-DateTime.Now ).TotalHours;
+                    if (selectTimeSpan>0&&selectTimeSpan < 24)
                         chargeId = tourBooking.StripeChargeId;
                     else
                     {
-                        return Json(new { msg = "Invalid" });
+                        return Json(new { msg = "Date Invalid" });
                     }
                 }
                 else
@@ -353,12 +351,13 @@ namespace KingfoodIO.Controllers.Common
                 var options = new RefundCreateOptions
                 {
                     Charge = chargeId,
+                    Amount = 1
                 };
                 var service = new RefundService();
                 var temp = service.Create(options);
                 if (bill.BillType == "TOUR")
                     _tourBookingServiceHandler.EmailCustomerForRefund(tourBooking);
-                return Json(new { clientSecret = temp.ChargeId });
+                return Json(new {msg="OK", clientSecret = temp.ChargeId });
             }
             catch (Exception ex)
             {

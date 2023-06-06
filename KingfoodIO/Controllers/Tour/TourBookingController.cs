@@ -4,6 +4,7 @@ using App.Infrastructure.ServiceHandler.Tour;
 using App.Infrastructure.Utility.Common;
 using KingfoodIO.Application.Filter;
 using KingfoodIO.Controllers.Common;
+using KingfoodIO.Filters;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -25,6 +26,7 @@ namespace KingfoodIO.Controllers.Tour
         }
 
 
+        [Idempotent]
         [HttpPost]
         [ProducesResponseType(typeof(TourBooking), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
@@ -41,6 +43,8 @@ namespace KingfoodIO.Controllers.Tour
             return await ExecuteAsync(shopId, cache,
                 async () => await _tourBookingServiceHandler.GetTourBooking(id));
         }
+
+        [Idempotent]
         [HttpGet]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(TourBooking), (int)HttpStatusCode.OK)]

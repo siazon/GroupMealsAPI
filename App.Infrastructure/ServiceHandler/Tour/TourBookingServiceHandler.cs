@@ -213,6 +213,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
         }
         public async Task EmailCustomerForRefund(TourBooking booking)
         {
+            Guard.NotNull(booking);
             if (booking == null)
                 throw new ServiceException("Cannot find booking info");
             var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
