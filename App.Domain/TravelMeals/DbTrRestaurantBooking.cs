@@ -7,25 +7,32 @@ namespace App.Domain.TravelMeals
 {
     public class TrDbRestaurantBooking : StripeBase
     {
-        public string RestaurantId { get; set; }
+       
         public OrderStatusEnum Status { get; set; } = OrderStatusEnum.None;
+     
+        public string CustomerName { get; set; }
+        public string CustomerEmail { get; set; }
+        public string CustomerPhone { get; set; }
+        public string BookingDate { get; set; } = DateTime.Now.ToString("yyyy-MMM-dd");
+        public string BookingTime { get; set; } = DateTime.Now.ToString("HH:mm");
+        public int NumberOfAdults { get; set; }
+        public int NumberOfChildren { get; set; }
+        public string BookingNotes { get; set; }
+        public List<BookingDetail> Details { get; set; }
+
+
+    }
+    public class BookingDetail
+    {
+        public string RestaurantId { get; set; }
         public string RestaurantName { get; set; }
         public string RestaurantPhone { get; set; }
         public string RestaurantEmail { get; set; }
         public string RestaurantAddress { get; set; }
-        public string CustomerName { get; set; }
-        public string CustomerEmail { get; set; }
-        public string CustomerPhone { get; set; }
-        public string BookingDate { get; set; }
-        public string BookingTime { get; set; }
-        public int NumberOfAdults { get; set; }
-        public int NumberOfChildren { get; set; }
-        public string BookingNotes { get; set; }
         public DateTime? SelectDateTime { get; set; }
-        public List<BookingCourses> Courses { get; set; } =new List<BookingCourses>();
-   
+        public List<BookingCourses> Courses { get; set; } = new List<BookingCourses>();
     }
-    public class BookingCourses: TrDbRestaurantMenuCourse
+    public class BookingCourses : TrDbRestaurantMenuCourse
     {
         public int qty { get; set; }
     }

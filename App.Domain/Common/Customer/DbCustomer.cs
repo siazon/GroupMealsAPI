@@ -1,4 +1,5 @@
-﻿using System;
+﻿using App.Domain.Common.Auth;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -25,6 +26,8 @@ namespace App.Domain.Common.Customer
         [Column(TypeName = "decimal(18, 2)")] 
         public decimal? DeliveryCharge { get; set; }
         public string PinCode { get; set; }
+        public virtual ICollection<Role> UserRoles { get; set; }
+        public bool IsVerity { get; set; }
 
     }
 

@@ -15,21 +15,22 @@ namespace App.Infrastructure.Builders.TravelMeals
     {
         public TrDbRestaurantBooking BuildTravelMealContent(TrDbRestaurant restaurant, TrDbRestaurantBooking booking)
         {
-            booking.BookingDate = GetBookingDate(booking.SelectDateTime);
-            booking.BookingTime = GetBookingTime(booking.SelectDateTime);
-
-           for(int i=0;i<booking.Courses.Count;i++)
+            foreach (var item in booking.Details)
             {
-                TrDbRestaurantMenuCourse item = booking.Courses[i];
-                var course= restaurant.Categories.FirstOrDefault(a=>a.Id==item.Id);
-                item.MenuItems=course.MenuItems;
-                item.RestaurantId=course.RestaurantId;
-                item.CourseName=course.CourseName;
-                item.CourseDescription=course.CourseDescription;
-                item.CourseDescriptionCn=course.CourseDescriptionCn;
-                item.CourseNameCn=course.CourseNameCn;
-                item.CourseName=course.CourseName.ToString();
+                for (int i = 0; i < item.Courses.Count; i++)
+                {
+                    TrDbRestaurantMenuCourse menuCourse = item.Courses[i];
+                    var course = restaurant.Categories.FirstOrDefault(a => a.Id == menuCourse.Id);
+                    menuCourse.MenuItems = course.MenuItems;
+                    menuCourse.RestaurantId = course.RestaurantId;
+                    menuCourse.CourseName = course.CourseName;
+                    menuCourse.CourseDescription = course.CourseDescription;
+                    menuCourse.CourseDescriptionCn = course.CourseDescriptionCn;
+                    menuCourse.CourseNameCn = course.CourseNameCn;
+                    menuCourse.CourseName = course.CourseName.ToString();
+                }
             }
+          
             return booking;
         }
 

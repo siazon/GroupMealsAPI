@@ -24,6 +24,9 @@ using Hangfire;
 using Microsoft.Azure.Documents.Client;
 using LogManager = App.Infrastructure.Utility.Common.LogManager;
 using Stripe;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace KingfoodIO
 {
@@ -74,6 +77,31 @@ namespace KingfoodIO
                     }
                 });
             });
+
+            var jwtTokenConfig = Configuration.GetSection("Jwt").Get<JwtTokenConfig>();
+            services.AddSingleton(jwtTokenConfig);
+            services.AddAuthentication(x =>
+            {
+                x.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                x.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            }).AddJwtBearer(x =>
+            {
+                x.RequireHttpsMetadata = true;// default is true 为metadata或者authority验证请求https
+                x.SaveToken = true;// default is true, 将JWT保存到当前的HttpContext, 以至于可以获取它通过await HttpContext.GetTokenAsync("Bearer","access_token"); 如果想设置为false, 将token保存在claim中, 然后获取通过User.FindFirst("access_token")?.value.
+                x.TokenValidationParameters = new TokenValidationParameters
+                {// 设置参数用于验证身份token
+                    ValidateIssuer = true,
+                    ValidIssuer = jwtTokenConfig.Issuer,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(jwtTokenConfig.SecretKey)),
+                    ValidAudience = jwtTokenConfig.Audience,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.FromMinutes(1)//对token过期时间验证的允许时间
+                };
+            });
+
+
 
 
             Hangfire.Azure.DocumentDbStorageOptions options = new Hangfire.Azure.DocumentDbStorageOptions

@@ -12,57 +12,45 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using App.Domain.Enum;
-using App.Domain.Holiday;
-using App.Infrastructure.ServiceHandler.Tour;
-using Hangfire;
-using Microsoft.AspNetCore.Hosting;
+using App.Domain.Common.Auth;
 
 namespace App.Infrastructure.ServiceHandler.Common
 {
-    public interface ICustomerServiceHandler
+    public interface IAuthServiceHandler
     {
         Task<List<DbCustomer>> List(int shopId);
-
-        Task<DbCustomer> LoginCustomer(string email, string password, int shopId);
-
-        Task<DbCustomer> ForgetPassword(string email, int shopId);
-
-        Task<object> RegisterAccount(DbCustomer customer, int shopId);
-        Task<object> VerityEmail(string email, string id, int shopId);
-
-        Task<DbCustomer> ResetPassword(string email, string resetCode, string password, int shopId);
+        Task<List<Menu>> ListMenus(int shopId);
+        Task<List<Role>> ListRoles(int shopId);
 
         Task<DbCustomer> UpdateAccount(DbCustomer customer, int shopId);
-
-        Task<DbCustomer> UpdatePassword(DbCustomer customer, int shopId);
+        Task<Menu> AddMenu(Menu menu);
+        Task<Role> AddRole(Role menu);
+        Task<Menu> UpdateMenu(Menu menu);
+        Task<Role> UpdateRole(Role menu);
 
         Task<DbCustomer> Delete(DbCustomer item, int shopId);
     }
 
-    public class CustomerServiceHandler : ICustomerServiceHandler
+    public class AuthServiceHandler : IAuthServiceHandler
     {
         private readonly IDbCommonRepository<DbCustomer> _customerRepository;
-        private readonly IDbCommonRepository<DbShop> _shopRepository;
-        private readonly IDbCommonRepository<DbShopContent> _shopContentRepository;
-        private readonly IDbCommonRepository<DbSetting> _settingRepository;
+        private readonly IDbCommonRepository<Menu> _menuRepository;
+        private readonly IDbCommonRepository<Role> _roleRepository;
         private readonly IEncryptionHelper _encryptionHelper;
         private readonly IDateTimeUtil _dateTimeUtil;
         private readonly IContentBuilder _contentBuilder;
         private readonly IEmailUtil _emailUtil;
 
-        IHostingEnvironment _environment;
-
-        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, IEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
+        public AuthServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, 
+            IDbCommonRepository<Menu> shopRepository, IDbCommonRepository<Role> shopContentRepository, IContentBuilder contentBuilder, IEmailUtil emailUtil)
         {
             _customerRepository = customerRepository;
             _encryptionHelper = encryptionHelper;
             _dateTimeUtil = dateTimeUtil;
-            _shopRepository = shopRepository;
-            _shopContentRepository = shopContentRepository;
+            _menuRepository = shopRepository;
+            _roleRepository = shopContentRepository;
             _contentBuilder = contentBuilder;
             _emailUtil = emailUtil;
-            _settingRepository = settingRepository;
-            _environment = environment;
         }
 
         public async Task<List<DbCustomer>> List(int shopId)
@@ -70,22 +58,52 @@ namespace App.Infrastructure.ServiceHandler.Common
             Guard.GreaterThanZero(shopId);
             var customers = await _customerRepository.GetManyAsync(r => r.ShopId == shopId);
 
-            var returnCustomers = customers.OrderByDescending(r => r.Updated).Take(2000);
+            var returnCustomers = customers.OrderByDescending(r => r.Updated).Take(200);
 
             return returnCustomers.ToList().ClearForOutPut();
         }
-
-        public async Task<DbCustomer> LoginCustomer(string email, string password, int shopId)
+        public async Task<List<Menu>> ListMenus(int shopId)
         {
             Guard.GreaterThanZero(shopId);
-            var passwordEncode = _encryptionHelper.EncryptString(password);
-            var customer = await _customerRepository.GetOneAsync(r =>
-                r.Email == email && r.Password == passwordEncode && r.IsActive.HasValue && r.IsActive.Value && r.IsVerity
-                && r.ShopId == shopId);
-            if (customer == null)
-                throw new ServiceException("User not exist");
+            var customers = await _menuRepository.GetManyAsync(r => r.ShopId == shopId);
 
-            return customer.ClearForOutPut();
+            var returnCustomers = customers.OrderByDescending(r => r.Updated).Take(200);
+
+            return returnCustomers.ToList();
+        }
+        public async Task<List<Role>> ListRoles(int shopId)
+        {
+            Guard.GreaterThanZero(shopId);
+            var customers = await _roleRepository.GetManyAsync(r => r.ShopId == shopId);
+
+            var returnCustomers = customers.OrderByDescending(r => r.Updated).Take(200);
+
+            return returnCustomers.ToList();
+        }
+
+        public async Task<Menu> AddMenu(Menu menu)
+        {
+            Guard.NotNull(menu);
+            var savedMenu = await _menuRepository.CreateAsync(menu);
+            return savedMenu;
+        }
+        public async Task<Menu> UpdateMenu(Menu menu)
+        {
+            Guard.NotNull(menu);
+            var savedMenu = await _menuRepository.UpdateAsync(menu);
+            return savedMenu;
+        }
+        public async Task<Role> AddRole(Role role)
+        {
+            Guard.NotNull(role);
+            var savedRole = await _roleRepository.CreateAsync(role);
+            return savedRole;
+        }
+        public async Task<Role> UpdateRole(Role role)
+        {
+            Guard.NotNull(role);
+            var savedRole = await _roleRepository.UpdateAsync(role);
+            return savedRole;
         }
 
         public async Task<DbCustomer> ForgetPassword(string email, int shopId)
@@ -135,13 +153,13 @@ namespace App.Infrastructure.ServiceHandler.Common
             //return updatedCustomer.ClearForOutPut();
         }
 
-        public async Task<object> RegisterAccount(DbCustomer customer, int shopId)
+        public async Task<DbCustomer> RegisterAccount(DbCustomer customer, int shopId)
         {
             Guard.NotNull(customer);
             var existingCustomer =
-               await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Email == customer.Email && r.IsVerity);
+               await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Email == customer.Email);
             if (existingCustomer != null)
-                return new { msg = "Customer Already Exists" };
+                throw new ServiceException("Customer Already Exists");
 
             var newItem = customer.Clone();
 
@@ -155,39 +173,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             newItem.PinCode = GuidHashUtil.Get6DigitNumber();
 
             var savedCustomer = await _customerRepository.CreateAsync(newItem);
-            if (savedCustomer != null)
-            {
-                var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
-                EmailVerifySender(savedCustomer, shopInfo, "Email Verify");
-            }
-            return new { msg = "ok", data = savedCustomer.ClearForOutPut() };
-        }
-
-        public async Task<object> VerityEmail(string email, string id, int shopId) {
-            var customer = await _customerRepository.GetOneAsync(c => c.Id == id);
-            customer.IsVerity=true;
-            var savedCustomer = await _customerRepository.UpdateAsync(customer);
-            if (savedCustomer != null)
-            {
-                return new { msg = "ok", data = savedCustomer.ClearForOutPut() };
-            }
-            else
-                return new { msg = "error" };
-        }
-        private async Task EmailVerifySender(DbCustomer user, DbShop shopInfo, string subject)
-        {
-            string wwwPath = this._environment.WebRootPath;
-            string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "email_verify");
-            var emailHtml = await _contentBuilder.BuildRazorContent(user, htmlTemp);
-            try
-            {
-                BackgroundJob.Enqueue<ITourBatchServiceHandler>(
-                    s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, shopInfo.Email, subject,
-                        emailHtml));
-            }
-            catch (Exception ex)
-            {
-            }
+            return savedCustomer.ClearForOutPut();
         }
 
         public async Task<DbCustomer> ResetPassword(string email, string resetCode, string password, int shopId)

@@ -81,23 +81,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 var Bookings = await _restaurantBookingRepository.GetManyAsync(r => r.CustomerEmail == email);
                 var list = Bookings.ToList();
-                foreach (var item in list)
-                {
-                    item.BookingDate = DatetimeUtil.GetBookingDate(item.SelectDateTime);
-                    item.BookingTime = DatetimeUtil.GetBookingTime(item.SelectDateTime);
-                }
-           
                 return list;
             }
             else
             {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(r => r.CustomerEmail == email && r.RestaurantName.Contains(content));
+                var Bookings = await _restaurantBookingRepository.GetManyAsync(r => r.CustomerEmail == email && r.Details[0].RestaurantName.Contains(content));
                 var list = Bookings.ToList();
-                foreach (var item in list)
-                {
-                    item.BookingDate = DatetimeUtil.GetBookingDate(item.SelectDateTime);
-                    item.BookingTime = DatetimeUtil.GetBookingTime(item.SelectDateTime);
-                }
+              
                 return list;
             }
         }
@@ -105,9 +95,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             Guard.NotNull(booking);
             Guard.AreEqual(booking.ShopId.Value, shopId);
-            var findRestaurant = await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == booking.RestaurantId);
-            if (findRestaurant == null)
-                throw new ServiceException("Cannot Find tour");
+            //var findRestaurant = await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == booking.RestaurantId);
+            //if (findRestaurant == null)
+            //    throw new ServiceException("Cannot Find tour");
             TourBooking newBooking;
             var createTime = _dateTimeUtil.GetCurrentTime();
             var exsitBookings = await _restaurantBookingRepository.GetManyAsync(r => r.Status == OrderStatusEnum.None && r.CustomerEmail == booking.CustomerEmail);
@@ -115,15 +105,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (exsitBooking != null)
             {
                 exsitBooking.Created = _dateTimeUtil.GetCurrentTime();
-                exsitBooking.RestaurantId    = booking.RestaurantId;
-                exsitBooking.RestaurantName = booking.RestaurantName;
-                exsitBooking.RestaurantPhone = booking.RestaurantPhone;
-                exsitBooking.RestaurantEmail = booking.RestaurantEmail;
-                exsitBooking.RestaurantAddress= booking.RestaurantAddress;
+                exsitBooking.Details = booking.Details;
                 exsitBooking.CustomerName = booking.CustomerName;
                 exsitBooking.CustomerPhone= booking.CustomerPhone;
-                exsitBooking.SelectDateTime = booking.SelectDateTime;
-                exsitBooking.Courses = booking.Courses;
                 var savedBooking = await _restaurantBookingRepository.UpdateAsync(exsitBooking);
 
                 return savedBooking;

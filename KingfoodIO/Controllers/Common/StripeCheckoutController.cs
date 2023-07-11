@@ -384,10 +384,14 @@ namespace KingfoodIO.Controllers.Common
             decimal amount = 0;
             if (booking != null)
             {
-                foreach (var item in booking.Courses)
+                foreach (var course in booking.Details)
                 {
-                    amount += item.Price * item.qty;
+                    foreach (var item in course.Courses)
+                    {
+                        amount += item.Price * item.qty;
+                    }
                 }
+               
             }
             return (long)Math.Round(amount, 2) * 100;
         }

@@ -1,4 +1,7 @@
-﻿using System.Net;
+﻿using System;
+using System.Collections.Generic;
+using System.Net;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using App.Domain.Common.Customer;
 using App.Domain.Config;
@@ -6,7 +9,9 @@ using App.Infrastructure.ServiceHandler.Common;
 using App.Infrastructure.Utility.Common;
 using KingfoodIO.Application.Filter;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.Documents;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 
 namespace KingfoodIO.Controllers.Common
 {
@@ -14,27 +19,43 @@ namespace KingfoodIO.Controllers.Common
     public class CustomerController : BaseController
     {
         private readonly ICustomerServiceHandler _customerServiceHandler;
+        JwtTokenConfig _jwtConfig;
         ILogManager logger;
-        public CustomerController(IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache,
-            ICustomerServiceHandler customerServiceHandler, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
+        public CustomerController(IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache, JwtTokenConfig jwtConfig,
+        ICustomerServiceHandler customerServiceHandler, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
         {
-            this.logger= logger;
+            this.logger = logger;
             _customerServiceHandler = customerServiceHandler;
+            _jwtConfig = jwtConfig;
         }
 
-
         [HttpGet]
-        [ProducesResponseType(typeof(DbCustomer), (int) HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(List<DbCustomer>), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> LoginCustomer(string email, string password, int shopId)
+        public async Task<IActionResult> ListCustomers(int shopId)
         {
-            logger.LogDebug("test:"+email+password+shopId);
-            return await ExecuteAsync( shopId, false,
-                async () => await _customerServiceHandler.LoginCustomer(email, password, shopId));
+            return await ExecuteAsync(shopId, false,
+                async () => await _customerServiceHandler.List(shopId));
+        }
+        [HttpGet]
+        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<object> LoginCustomer(string email, string password, int shopId)
+        {
+            DbCustomer customer = await _customerServiceHandler.LoginCustomer(email, password, shopId);
+            var claims = new[]
+            {
+                   new Claim("userName", customer.ContactName),
+                   new Claim("account", customer.Email),
+                   new Claim("age", customer.Phone),
+            };
+            string token = new KingfoodIO.Common.JwtAuthManager(_jwtConfig).GenerateTokens(email, claims);
+            Response.Cookies.Append("token", token);
+            return new { msg = "ok", data = customer,  token };
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(DbCustomer), (int) HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> ForgetPassword(string email, int shopId)
         {
@@ -43,38 +64,47 @@ namespace KingfoodIO.Controllers.Common
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(DbCustomer), (int) HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> ResetPassword(string email, string resetCode, string password, int shopId)
         {
-            return await ExecuteAsync( shopId, false,
+            return await ExecuteAsync(shopId, false,
                 async () => await _customerServiceHandler.ResetPassword(email, resetCode, password, shopId));
         }
 
+        [HttpGet]
+        [ProducesResponseType(typeof(object), (int)HttpStatusCode.OK)]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> VerityEmail(string email, string id, int shopId)
+        {
+            return await ExecuteAsync(shopId, false,
+                async () => await _customerServiceHandler.VerityEmail(email, id, shopId));
+        }
+
         [HttpPost]
-        [ProducesResponseType(typeof(DbCustomer), (int) HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(object), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> RegisterAccount([FromBody] DbCustomer customer, int shopId)
         {
-            return await ExecuteAsync( shopId, false,
+            return await ExecuteAsync(shopId, false,
                 async () => await _customerServiceHandler.RegisterAccount(customer, shopId));
         }
-        
+
         [HttpPost]
-        [ProducesResponseType(typeof(DbCustomer), (int) HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> UpdateAccount([FromBody] DbCustomer customer, int shopId)
         {
-            return await ExecuteAsync( shopId, false,
+            return await ExecuteAsync(shopId, false,
                 async () => await _customerServiceHandler.UpdateAccount(customer, shopId));
         }
-        
+
         [HttpPost]
-        [ProducesResponseType(typeof(DbCustomer), (int) HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> UpdatePassword([FromBody] DbCustomer customer, int shopId)
         {
-            return await ExecuteAsync( shopId, false,
+            return await ExecuteAsync(shopId, false,
                 async () => await _customerServiceHandler.UpdatePassword(customer, shopId));
         }
 
