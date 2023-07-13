@@ -31,6 +31,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<TrDbRestaurantBooking> RequestBooking(TrDbRestaurantBooking booking, int shopId );
         Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId);
         Task<List<TrDbRestaurantBooking>> SearchBookings(int shopId, string email, string content);
+      
     }
 
     public class TrRestaurantServiceHandler : ITrRestaurantServiceHandler

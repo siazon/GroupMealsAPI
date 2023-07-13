@@ -36,8 +36,11 @@ namespace App.Domain.TravelMeals.Restaurant
         public string GoogleMap { get; set; }
         public string Features { get; set; }
         public string SpecialDiets { get; set; }
+        public string ParkingLot { get; set; }
+        public int ParkingCapacity { get; set; }
         public List<string> Images { get; set; }
         public List<string> Comments { get; set; }
+        public List<string> Tags { get; set; }
         public int? BookingHourLength { get; set; }
         
         public List<TrDbRestaurantMenuCourse> Categories { get; set; }

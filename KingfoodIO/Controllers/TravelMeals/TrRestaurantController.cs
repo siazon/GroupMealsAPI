@@ -18,12 +18,14 @@ namespace KingfoodIO.Controllers.TravelMeals
     public class TrRestaurantController : BaseController
     {
         private readonly ITrRestaurantServiceHandler _restaurantServiceHandler;
+        private readonly ITrRestaurantBookingServiceHandler _restaurantBookingServiceHandler;
         ILogManager _logger;
         public TrRestaurantController(
-            IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache, ITrRestaurantServiceHandler restaurantServiceHandler, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
+            IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache, ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler, ITrRestaurantServiceHandler restaurantServiceHandler, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
         {
             _restaurantServiceHandler = restaurantServiceHandler;
             _logger = logger;
+            _restaurantBookingServiceHandler= restaurantBookingServiceHandler;
         }
 
         [HttpGet]
@@ -64,6 +66,14 @@ namespace KingfoodIO.Controllers.TravelMeals
         {
             return await ExecuteAsync(shopId, cache,
                 async () => await _restaurantServiceHandler.SearchBookings(shopId, email, content));
+        }
+        [HttpGet]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> ResendEmail(int shopId, string bookingId,  bool cache = true)
+        {
+            return await ExecuteAsync(shopId, cache,
+                async () => await _restaurantBookingServiceHandler.ResendEmail(shopId, bookingId));
         }
     }
 }

@@ -42,15 +42,27 @@ namespace KingfoodIO.Controllers.Common
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<object> LoginCustomer(string email, string password, int shopId)
         {
-            DbCustomer customer = await _customerServiceHandler.LoginCustomer(email, password, shopId);
+            DbCustomer customer = null;
+            string token = "";
+            try
+            {
+
+           
+             customer = await _customerServiceHandler.LoginCustomer(email, password, shopId);
             var claims = new[]
             {
-                   new Claim("userName", customer.ContactName),
-                   new Claim("account", customer.Email),
-                   new Claim("age", customer.Phone),
+                   new Claim("userName", customer.ContactName??""),
+                   new Claim("account", customer.Email??""),
+                   new Claim("age", customer.Phone??""),
             };
-            string token = new KingfoodIO.Common.JwtAuthManager(_jwtConfig).GenerateTokens(email, claims);
+            token = new KingfoodIO.Common.JwtAuthManager(_jwtConfig).GenerateTokens(email, claims);
             Response.Cookies.Append("token", token);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex.Message);
+
+            }
             return new { msg = "ok", data = customer,  token };
         }
 

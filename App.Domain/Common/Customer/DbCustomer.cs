@@ -28,6 +28,7 @@ namespace App.Domain.Common.Customer
         public string PinCode { get; set; }
         public virtual ICollection<Role> UserRoles { get; set; }
         public bool IsVerity { get; set; }
+        public int AuthValue { get; set; }
 
     }
 
