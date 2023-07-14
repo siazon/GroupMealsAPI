@@ -18,6 +18,7 @@ namespace App.Domain.TravelMeals.Restaurant
         public int? RestaurantId { get; set; }
         public decimal Price { get; set; }
         public bool IsChildCourse { get; set; }
+        public int CourseType { get; set; }
 
         public List<TrDbRestaurantMenuItem> MenuItems { get; set; }
         public TrDbRestaurantMenuCourse Clone()
