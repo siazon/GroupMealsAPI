@@ -16,7 +16,6 @@ namespace App.Domain.TravelMeals.Restaurant
         public string CourseDescription { get; set; }
         public string CourseDescriptionCn { get; set; }
         public int? RestaurantId { get; set; }
-        public decimal Price { get; set; }
         public bool IsChildCourse { get; set; }
         public int CourseType { get; set; }
 
@@ -30,7 +29,6 @@ namespace App.Domain.TravelMeals.Restaurant
                 CourseDescription = this.CourseDescription,
                 CourseDescriptionCn = this.CourseDescriptionCn,
                 RestaurantId = this.RestaurantId,
-                Price = this.Price,
                 IsChildCourse = this.IsChildCourse,
                 MenuItems = this.MenuItems.Select(m => m.Clone()).ToList()
             };

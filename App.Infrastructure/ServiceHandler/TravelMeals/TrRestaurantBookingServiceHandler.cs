@@ -148,7 +148,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 Detail += item.RestaurantName+"       ";
                 foreach (var course in item.Courses)
                 {
-                    Detail += course.CourseName + " * " + course.qty+"   " ;
+                    Detail += course.MenuItemName + " * " + course.qty+"   " ;
                 }
             }
             var emailHtml = await _contentBuilder.BuildRazorContent(new { booking = booking.Details[0], Detail }, htmlTemp);

@@ -63,7 +63,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             DateTime stime = DateTime.Now;
             var restaurants = await _restaurantRepository.GetManyAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
-            var temp = restaurants.ClearForOutPut();
+            var temp = restaurants.ClearForOutPut().OrderBy(a=>a.SortOrder).ToList();
             _logger.LogInfo("_restaurantRepository.GetManyAsync:" + (DateTime.Now - stime).ToString());
             Console.WriteLine("_restaurantRepository.GetManyAsync:" + (DateTime.Now - stime).ToString());
             return temp;

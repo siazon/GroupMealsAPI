@@ -19,15 +19,15 @@ namespace App.Infrastructure.Builders.TravelMeals
             {
                 for (int i = 0; i < item.Courses.Count; i++)
                 {
-                    TrDbRestaurantMenuCourse menuCourse = item.Courses[i];
-                    var course = restaurant.Categories.FirstOrDefault(a => a.Id == menuCourse.Id);
-                    menuCourse.MenuItems = course.MenuItems;
-                    menuCourse.RestaurantId = course.RestaurantId;
-                    menuCourse.CourseName = course.CourseName;
-                    menuCourse.CourseDescription = course.CourseDescription;
-                    menuCourse.CourseDescriptionCn = course.CourseDescriptionCn;
-                    menuCourse.CourseNameCn = course.CourseNameCn;
-                    menuCourse.CourseName = course.CourseName.ToString();
+                    TrDbRestaurantMenuItem menuCourse = item.Courses[i];
+                    //var course = restaurant.Categories.FirstOrDefault(a => a.Id == menuCourse.Id);
+                    //menuCourse.MenuItems = course.MenuItems;
+                    //menuCourse.RestaurantId = course.RestaurantId;
+                    //menuCourse.CourseName = course.CourseName;
+                    //menuCourse.CourseDescription = course.CourseDescription;
+                    //menuCourse.CourseDescriptionCn = course.CourseDescriptionCn;
+                    //menuCourse.CourseNameCn = course.CourseNameCn;
+                    //menuCourse.CourseName = course.CourseName.ToString();
                 }
             }
           

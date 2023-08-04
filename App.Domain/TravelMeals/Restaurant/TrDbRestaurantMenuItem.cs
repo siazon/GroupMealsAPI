@@ -11,6 +11,7 @@ namespace App.Domain.TravelMeals.Restaurant
         public int? CategoryId { get; set; }
         public string Cuisine { get; set; }
         public string Ingredieent { get; set; }
+        public decimal Price { get; set; }
         public FoodCategoryEnum Category { get; set; }
         public TrDbRestaurantMenuItem Clone()
         {

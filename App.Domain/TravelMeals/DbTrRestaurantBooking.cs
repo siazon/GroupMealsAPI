@@ -32,7 +32,7 @@ namespace App.Domain.TravelMeals
         public DateTime? SelectDateTime { get; set; }
         public List<BookingCourses> Courses { get; set; } = new List<BookingCourses>();
     }
-    public class BookingCourses : TrDbRestaurantMenuCourse
+    public class BookingCourses : TrDbRestaurantMenuItem
     {
         public int qty { get; set; }
     }
