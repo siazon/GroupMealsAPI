@@ -116,15 +116,24 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (shopInfo == null)
                 throw new ServiceException("Cannot find shop info");
             EmailCustomer(booking, shopInfo);
+            EmailBoss(booking, shopInfo,"New Order");
             //var newItem = await _stripeCheckoutSeesionRepository.CreateAsync(new StripeCheckoutSeesion() { Data = session, BookingId = booking.Id });
 
             return true;
         }
-        private async Task EmailBoss(TourBooking booking, DbShop shopInfo, string subject)
+        private async Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string subject)
         {
             string wwwPath = this._environment.WebRootPath;
-            string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "system_message");
-            var emailHtml = await _contentBuilder.BuildRazorContent(booking, htmlTemp);
+            string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "new_meals_restaurant");
+            string Detail = "";
+            foreach (var item in booking.Details)
+            {
+                foreach (var course in item.Courses)
+                {
+                    Detail += course.MenuItemName + " * " + course.Qty + "人  ";
+                }
+            }
+            var emailHtml = await _contentBuilder.BuildRazorContent(new { booking = booking,details= booking.Details[0],Detail }, htmlTemp);
 
             try
             {
@@ -148,7 +157,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 Detail += item.RestaurantName+"       ";
                 foreach (var course in item.Courses)
                 {
-                    Detail += course.MenuItemName + " * " + course.qty+"   " ;
+                    Detail += course.MenuItemName + " * " + course.Qty+"人  " ;
                 }
             }
             var emailHtml = await _contentBuilder.BuildRazorContent(new { booking = booking.Details[0], Detail }, htmlTemp);

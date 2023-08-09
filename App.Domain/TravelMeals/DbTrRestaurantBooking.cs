@@ -34,6 +34,8 @@ namespace App.Domain.TravelMeals
     }
     public class BookingCourses : TrDbRestaurantMenuItem
     {
-        public int qty { get; set; }
+        public int Qty { get; set; }
+        public int TableQty { get; set; }
+        public string Memo { get; set; }
     }
 }

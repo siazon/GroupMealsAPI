@@ -270,17 +270,16 @@ namespace KingfoodIO.Controllers.Common
                 if (booking != null && !string.IsNullOrWhiteSpace(booking.StripePaymentId))//upload exist payment
                 {
                     var service = new PaymentIntentService();
-                    var paymentIntent = service.Get(booking.StripePaymentId);
-                    if (paymentIntent != null)
+                    var existpaymentIntent = service.Get(booking.StripePaymentId);
+                    if (existpaymentIntent != null&& existpaymentIntent.Status== "requires_payment_method")
                     {
-                        var temo = paymentIntent.Status;
+                        var payment = UpdatePaymentIntent(booking.StripePaymentId, Amount, meta);
+                        _logger.LogInfo("UpdatePaymentIntent:" + booking.ToString() + bill.ToString());
+                        return Json(new { clientSecret = payment.ClientSecret, paymentIntentId = payment.Id });
                     }
-                    var payment = UpdatePaymentIntent(booking.StripePaymentId, Amount, meta);
-                    _logger.LogInfo("UpdatePaymentIntent:" + booking.ToString()+bill.ToString());
-                    return Json(new { clientSecret = payment.ClientSecret, paymentIntentId = payment.Id });
+                  
                 }
-                else// create a new payment
-                {
+            
 
                     var options = new PaymentIntentCreateOptions
                     {
@@ -300,7 +299,6 @@ namespace KingfoodIO.Controllers.Common
                     else
                         _trRestaurantBookingServiceHandler.BindingPayInfoToTourBooking(bill.BillId, paymentIntent.Id, paymentIntent.ClientSecret);
                     return Json(new { clientSecret = paymentIntent.ClientSecret, paymentIntentId = paymentIntent.Id });
-                }
             }
             catch (Exception ex)
             {
@@ -388,7 +386,7 @@ namespace KingfoodIO.Controllers.Common
                 {
                     foreach (var item in course.Courses)
                     {
-                        amount += item.Price * item.qty;
+                        amount += item.Price * item.Qty;
                     }
                 }
                
