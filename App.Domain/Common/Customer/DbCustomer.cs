@@ -28,6 +28,7 @@ namespace App.Domain.Common.Customer
         public string PinCode { get; set; }
         public virtual ICollection<Role> UserRoles { get; set; }
         public bool IsVerity { get; set; }
+        public bool IsBoss { get; set; }
         public int AuthValue { get; set; }
 
     }
@@ -75,6 +76,8 @@ namespace App.Domain.Common.Customer
             source.IsActive = copyValue.IsActive;
             source.DeliveryCharge = copyValue.DeliveryCharge;
             source.PinCode = copyValue.PinCode;
+            source.IsActive=    copyValue.IsActive;
+            source.IsBoss   = copyValue.IsBoss;
             source.Area = copyValue.Area;
             return source;
         }

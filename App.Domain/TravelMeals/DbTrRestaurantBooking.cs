@@ -9,7 +9,9 @@ namespace App.Domain.TravelMeals
     {
        
         public OrderStatusEnum Status { get; set; } = OrderStatusEnum.None;
-     
+        public int Accepted { get; set; }
+
+
         public string CustomerName { get; set; }
         public string CustomerEmail { get; set; }
         public string CustomerPhone { get; set; }

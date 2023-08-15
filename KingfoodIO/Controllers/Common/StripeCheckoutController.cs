@@ -91,10 +91,11 @@ namespace KingfoodIO.Controllers.Common
             {
                 var stripeEvent = EventUtility.ConstructEvent(json, Request.Headers["Stripe-Signature"], secret);
 
-                _logger.LogInfo("webhook:stripeEvent.Type" + stripeEvent.Type);
+                _logger.LogInfo("webhook:stripeEvent.Type:" + stripeEvent.Type);
                 switch (stripeEvent.Type)
                 {
                     case Events.ChargeSucceeded:
+                        _logger.LogInfo("ChargeSucceeded:" + stripeEvent.Type);
                         var paymentIntent = stripeEvent.Data.Object as Charge;
                         string bookingId = paymentIntent.Metadata["bookingId"];
                         string billType = paymentIntent.Metadata["billType"];
@@ -109,6 +110,7 @@ namespace KingfoodIO.Controllers.Common
                         break;
                     case Events.CheckoutSessionCompleted:
                         {
+                            _logger.LogInfo("CheckoutSessionCompleted:" + stripeEvent.Type);
                             _logger.LogInfo("webhook:CheckoutSessionCompleted");
                             var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
                             _logger.LogInfo("webhook:CheckoutSessionCompleted" + session.Id);
@@ -120,6 +122,7 @@ namespace KingfoodIO.Controllers.Common
                         break;
                     case Events.ChargeRefunded:
                         {
+                            _logger.LogInfo("ChargeRefunded:" + stripeEvent.Type);
                             var charge = stripeEvent.Data.Object as Stripe.Charge;
                             _tourBookingServiceHandler.BookingRefund(charge.Id);
                         }
@@ -127,11 +130,17 @@ namespace KingfoodIO.Controllers.Common
                     //case Events.SetupIntentCreated: 
                     case Events.SetupIntentSucceeded:
                         {
+                            _logger.LogInfo("SetupIntentSucceeded:" + stripeEvent.Type);
                             var setupIntent = stripeEvent.Data.Object as SetupIntent;
                             bookingId = setupIntent.Metadata["bookingId"];
                             _trRestaurantBookingServiceHandler.BookingPaid(bookingId, setupIntent.CustomerId, setupIntent.PaymentMethodId);
                         }
                         break;
+                        default:
+                        {
+                            _logger.LogInfo("default:" + stripeEvent.Type);
+                            break;
+                        }
                 }
 
                 _logger.LogInfo("return OK");

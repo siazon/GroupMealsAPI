@@ -8,10 +8,19 @@ using Twilio.Rest.Api.V2010.Account;
 
 namespace App.Infrastructure.Utility.Common
 {
-    public static class TwilioUtil
+    public interface ITwilioUtil
     {
-        public static void sendSMS(string phone,string content)
+        void sendSMS(string phone, string content);
+    }
+    public  class TwilioUtil: ITwilioUtil
+    {
+        ILogManager _logger;
+        public TwilioUtil(ILogManager logger) { 
+            _logger = logger;
+        }
+        public  void sendSMS(string phone,string content)
         {
+            try { 
             string accountSid = "AC0d14be935864d72c96a971861b1ef75b"; //Environment.GetEnvironmentVariable("AC0d14be935864d72c96a971861b1ef75b");
             string authToken = "334ac4ae80c6e56a092fbd67bcfa35c9";// Environment.GetEnvironmentVariable("334ac4ae80c6e56a092fbd67bcfa35c9");
 
@@ -22,6 +31,10 @@ namespace App.Infrastructure.Utility.Common
                 from: new Twilio.Types.PhoneNumber("+12296964965"),
                 to: new Twilio.Types.PhoneNumber(phone)
             );
+            }
+            catch (Exception e) {
+                _logger.LogError("sendSMS: "+e.Message + e.StackTrace);
+            }
         }
     }
 }

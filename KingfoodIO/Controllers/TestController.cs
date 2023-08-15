@@ -3,6 +3,9 @@ using System.Net;
 using System.Threading.Tasks;
 using App.Domain.Common.Shop;
 using App.Infrastructure.ServiceHandler.Common;
+using App.Infrastructure.ServiceHandler.Tour;
+using App.Infrastructure.ServiceHandler.TravelMeals;
+using App.Infrastructure.Utility.Common;
 using Microsoft.AspNetCore.Mvc;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -13,17 +16,25 @@ namespace KingfoodIO.Controllers
     public class TestController : Controller
     {
         private readonly IShopServiceHandler _shopServiceHandler;
+        private ITrRestaurantBookingServiceHandler _trRestaurantBookingServiceHandler;
+        ITwilioUtil _twilioUtil;
+        ILogManager _logger;
 
-        public TestController(IShopServiceHandler shopServiceHandler)
+        public TestController(ITwilioUtil twilioUtil, ILogManager logger,ITrRestaurantBookingServiceHandler trRestaurantBookingServiceHandler, IShopServiceHandler shopServiceHandler)
         {
             _shopServiceHandler = shopServiceHandler;
+            _trRestaurantBookingServiceHandler= trRestaurantBookingServiceHandler;
+            _logger = logger;
+            _twilioUtil= twilioUtil;
         }
 
         [HttpGet("ToGet/{id}")]
         [ProducesResponseType(typeof(DbShop), (int) HttpStatusCode.OK)]
-        public async Task<IActionResult> Get2(int id)
+        public async Task<IActionResult> Get2(string id)
         {
-            return Ok(await _shopServiceHandler.GetShopInfo(id));
+            _logger.LogInfo("get2:" + id);
+            _trRestaurantBookingServiceHandler.ResendEmail(id);
+            return Ok();
         }
 
         [HttpGet]

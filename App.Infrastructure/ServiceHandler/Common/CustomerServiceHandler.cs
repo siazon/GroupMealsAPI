@@ -49,10 +49,11 @@ namespace App.Infrastructure.ServiceHandler.Common
         private readonly IDateTimeUtil _dateTimeUtil;
         private readonly IContentBuilder _contentBuilder;
         private readonly IEmailUtil _emailUtil;
+        ILogManager _logger;
 
         IHostingEnvironment _environment;
 
-        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, IEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
+        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, IEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
         {
             _customerRepository = customerRepository;
             _encryptionHelper = encryptionHelper;
@@ -61,6 +62,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             _shopContentRepository = shopContentRepository;
             _contentBuilder = contentBuilder;
             _emailUtil = emailUtil;
+            _logger= logger;
             _settingRepository = settingRepository;
             _environment = environment;
         }
@@ -77,6 +79,8 @@ namespace App.Infrastructure.ServiceHandler.Common
 
         public async Task<DbCustomer> LoginCustomer(string email, string password, int shopId)
         {
+            
+            _logger.LogInfo("+++++LoginCustomer: " + email+" : "+ password);
             Guard.GreaterThanZero(shopId);
             var passwordEncode = _encryptionHelper.EncryptString(password);
             var customer = await _customerRepository.GetOneAsync(r =>

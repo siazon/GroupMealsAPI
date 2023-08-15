@@ -29,7 +29,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<bool> BookingPaid(string bookingId, string customerId = "", string payMethodId = "", string receiptUrl = "");
         Task<bool> UpdateStripeClientKey(string bookingId, string paymentId, string customerId, string secertKey);
         Task<TrDbRestaurantBooking> BindingPayInfoToTourBooking(string bookingId, string PaymentId, string stripeClientSecretKey);
-        Task<bool> ResendEmail(int shopId, string bookingId);
+        Task<bool> ResendEmail(string bookingId);
+        Task<bool> UpdateAccepted(string bookingId,int acceptType);
     }
     public class TrRestaurantBookingServiceHandler : ITrRestaurantBookingServiceHandler
     {
@@ -39,16 +40,18 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private readonly IContentBuilder _contentBuilder;
         private readonly IEmailUtil _emailUtil;
         ILogManager _logger;
+        ITwilioUtil _twilioUtil;
         IHostingEnvironment _environment;
         private readonly IDbCommonRepository<DbShop> _shopRepository;
 
-        public TrRestaurantBookingServiceHandler(IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository, IDbCommonRepository<DbShop> shopRepository, IHostingEnvironment environment, IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, ILogManager logger, IContentBuilder contentBuilder, IEmailUtil emailUtil)
+        public TrRestaurantBookingServiceHandler(ITwilioUtil twilioUtil, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository, IDbCommonRepository<DbShop> shopRepository, IHostingEnvironment environment, IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, ILogManager logger, IContentBuilder contentBuilder, IEmailUtil emailUtil)
         {
             _restaurantBookingRepository = restaurantBookingRepository;
             _stripeCheckoutSeesionRepository = stripeCheckoutSeesionRepository;
             _contentBuilder = contentBuilder;
             _emailUtil = emailUtil;
             _logger = logger;
+            _twilioUtil = twilioUtil;
             _environment = environment;
             _shopRepository = shopRepository;
         }
@@ -69,30 +72,51 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var temp = await _restaurantBookingRepository.UpdateAsync(booking);
             return true;
         }
-
+        public async Task<bool> UpdateAccepted(string billId, int acceptType)
+        {
+            TrDbRestaurantBooking booking = GetBooking(billId).Result;
+            if (booking == null) return false;
+            booking.Accepted = acceptType;
+            var temp = await _restaurantBookingRepository.UpdateAsync(booking);
+            string msg = $"您于{booking.BookingDate} {booking.BookingTime} 提交的订单已被接收，请按时就餐";
+            if (acceptType == 2)
+                msg =  $"您于{booking.BookingDate} {booking.BookingTime} 提交的订单已被拒绝，请登录groupmeals.com查询别的餐厅";
+            _twilioUtil.sendSMS(booking.CustomerPhone, msg);
+            return true;
+        }
 
         public async Task<bool> BookingPaid(Stripe.Checkout.Session session)
         {
-            _logger.LogInfo("BookingPaid");
-            TrDbRestaurantBooking booking = await _restaurantBookingRepository.GetOneAsync(r => r.StripePriceId == session.Metadata["priceId"]);
-            if (booking == null) return false;
-            booking.Paid = true;
+            try
+            {
+                _logger.LogInfo("BookingPaid.session");
+                TrDbRestaurantBooking booking = await _restaurantBookingRepository.GetOneAsync(r => r.StripePriceId == session.Metadata["priceId"]);
+                if (booking == null) return false;
+                booking.Paid = true;
 
-            _logger.LogInfo("BookingPaid" + booking.Id);
-            var temp = await _restaurantBookingRepository.UpdateAsync(booking);
+                _logger.LogInfo("BookingPaid.session.id:" + booking.Id);
+                var temp = await _restaurantBookingRepository.UpdateAsync(booking);
 
-            _logger.LogInfo("BookingPaid.UpdateAsync" + temp.Id);
-            var newItem = await _stripeCheckoutSeesionRepository.CreateAsync(new StripeCheckoutSeesion() { Data = session, BookingId = booking.Id });
-
+                _logger.LogInfo("BookingPaid.UpdateAsync.session" + temp.Id);
+                var newItem = await _stripeCheckoutSeesionRepository.CreateAsync(new StripeCheckoutSeesion() { Data = session, BookingId = booking.Id });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInfo("BookingPaid.session.err" + ex);
+            }
             return true;
         }
         public async Task<bool> BookingPaid(string bookingId, string customerId = "", string payMethodId = "", string receiptUrl = "")
         {
-            _logger.LogInfo("BookingPaid");
+            try
+            {
+
+          
+            _logger.LogInfo("----------------BookingPaid");
             TrDbRestaurantBooking booking = await _restaurantBookingRepository.GetOneAsync(r => r.Id == bookingId);
             if (booking == null)
             {
-                _logger.LogInfo("bookingId: [" + bookingId + "] not found");
+                _logger.LogInfo("----------------bookingId: [" + bookingId + "] not found");
                 return false;
             }
 
@@ -109,20 +133,29 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 booking.Paid = true;
                 booking.Status = Domain.Enum.OrderStatusEnum.Paid;
             }
-            _logger.LogInfo("BookingPaid" + booking.Id);
+            _logger.LogInfo("----------------BookingPaid" + booking.Id);
             var temp = await _restaurantBookingRepository.UpdateAsync(booking);
             var shopInfo =
          await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
             if (shopInfo == null)
+            {
+                _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
                 throw new ServiceException("Cannot find shop info");
+            }
             EmailCustomer(booking, shopInfo);
-            EmailBoss(booking, shopInfo,"New Order");
-            //var newItem = await _stripeCheckoutSeesionRepository.CreateAsync(new StripeCheckoutSeesion() { Data = session, BookingId = booking.Id });
-
+            EmailBoss(booking, shopInfo, "New Order");
+                //var newItem = await _stripeCheckoutSeesionRepository.CreateAsync(new StripeCheckoutSeesion() { Data = session, BookingId = booking.Id });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInfo("----------------BookingPaid.err" + ex.Message+"： "+ex.StackTrace);
+            }
             return true;
         }
+
         private async Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string subject)
         {
+            _logger.LogInfo("----------------EmailBoss");
             string wwwPath = this._environment.WebRootPath;
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "new_meals_restaurant");
             string Detail = "";
@@ -133,13 +166,17 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     Detail += course.MenuItemName + " * " + course.Qty + "人  ";
                 }
             }
-            var emailHtml = await _contentBuilder.BuildRazorContent(new { booking = booking,details= booking.Details[0],Detail }, htmlTemp);
+            _logger.LogInfo("----------------EmailBoss" + Detail);
+            _twilioUtil.sendSMS(booking.Details[0].RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
+            var emailHtml = await _contentBuilder.BuildRazorContent(new { booking = booking, details = booking.Details[0], Detail, Memo=booking.Details[0].Courses[0].Memo }, htmlTemp);
 
             try
             {
                 BackgroundJob.Enqueue<ITourBatchServiceHandler>(
-                    s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, shopInfo.Email, subject,
+                    s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.Details[0].RestaurantEmail, subject,
                         emailHtml));
+
+                _logger.LogInfo("----------------EmailBoss" + shopInfo.Email + ": " + booking.Details[0].RestaurantEmail);
             }
             catch (Exception ex)
             {
@@ -149,38 +186,63 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         private async Task EmailCustomer(TrDbRestaurantBooking booking, DbShop shopInfo)
         {
+            _logger.LogInfo("----------------EmailCustomer" );
             string wwwPath = this._environment.WebRootPath;
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "new_meals");
             string Detail = "";
             foreach (var item in booking.Details)
             {
-                Detail += item.RestaurantName+"       ";
+                Detail += item.RestaurantName + "       ";
                 foreach (var course in item.Courses)
                 {
-                    Detail += course.MenuItemName + " * " + course.Qty+"人  " ;
+                    Detail += course.MenuItemName + " * " + course.Qty + "人  ";
                 }
             }
-            var emailHtml = await _contentBuilder.BuildRazorContent(new { booking = booking.Details[0], Detail }, htmlTemp);
+            _logger.LogInfo("----------------EmailCustomer" + Detail);
+            var emailHtml = "";
+            try
+            {
+                emailHtml = await _contentBuilder.BuildRazorContent(new { booking = booking.Details[0], Detail }, htmlTemp);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInfo("----------------emailHtml---error" + ex.Message);
+            }
+            if (string.IsNullOrWhiteSpace(emailHtml))
+            {
+                return;
+            }
             try
             {
                 BackgroundJob.Enqueue<ITourBatchServiceHandler>(
                     s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, $"Thank you for your Booking",
                         emailHtml));
+
+                _logger.LogInfo("----------------EmailCustomer" + shopInfo.Email+": "+ booking.CustomerEmail);
             }
             catch (Exception ex)
             {
                 _logger.LogError($"EmailCustomer Email Customer Error {ex.Message} -{ex.StackTrace} ");
             }
         }
-        public async Task<bool> ResendEmail(int shopId, string bookingId)
+        public async Task<bool> ResendEmail(string bookingId)
         {
-            TrDbRestaurantBooking booking = await _restaurantBookingRepository.GetOneAsync(r => r.Id == bookingId);
-            if (booking != null)
+            try
             {
-                var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
-                if (shopInfo == null)
-                    throw new ServiceException("Cannot find shop info");
-                EmailCustomer(booking, shopInfo);
+                TrDbRestaurantBooking booking = await _restaurantBookingRepository.GetOneAsync(r => r.Id == bookingId);
+                if (booking != null)
+                {
+                    var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
+                    if (shopInfo == null)
+                    {
+                        throw new ServiceException("Cannot find shop info");
+                    }
+                    EmailBoss(booking, shopInfo,"new Order");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("----------------err" + ex);
             }
             return true;
         }

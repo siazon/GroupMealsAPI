@@ -80,13 +80,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             if (string.IsNullOrWhiteSpace(content))
             {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(r => r.CustomerEmail == email);
-                var list = Bookings.ToList();
+                var Bookings = await _restaurantBookingRepository.GetManyAsync(r => 1==1);
+                var list = Bookings.ToList().Where(a=>a.CustomerEmail==email|| a.Details.Any(b=>b.RestaurantEmail==email)).Select(c=>c).ToList();
                 return list;
             }
             else
             {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(r => r.CustomerEmail == email && r.Details[0].RestaurantName.Contains(content));
+                var Bookings = await _restaurantBookingRepository.GetManyAsync(r =>
+                (r.CustomerEmail == email||r.Details.Any(b=>b.RestaurantEmail==email) )&& r.Details[0].RestaurantName.Contains(content));
                 var list = Bookings.ToList();
               
                 return list;
@@ -94,6 +95,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<TrDbRestaurantBooking> RequestBooking(TrDbRestaurantBooking booking, int shopId )
         {
+            _logger.LogInfo("RequestBooking" + shopId);
             Guard.NotNull(booking);
             Guard.AreEqual(booking.ShopId.Value, shopId);
             //var findRestaurant = await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == booking.RestaurantId);
