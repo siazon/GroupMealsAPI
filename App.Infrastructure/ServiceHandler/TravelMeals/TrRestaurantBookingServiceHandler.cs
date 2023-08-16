@@ -28,7 +28,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<bool> BookingPaid(Stripe.Checkout.Session session);
         Task<bool> BookingPaid(string bookingId, string customerId = "", string payMethodId = "", string receiptUrl = "");
         Task<bool> UpdateStripeClientKey(string bookingId, string paymentId, string customerId, string secertKey);
-        Task<TrDbRestaurantBooking> BindingPayInfoToTourBooking(string bookingId, string PaymentId, string stripeClientSecretKey);
+        Task<TrDbRestaurantBooking> BindingPayInfoToTourBooking(string bookingId, string PaymentId, string stripeClientSecretKey,bool isSetupPay);
         Task<bool> ResendEmail(string bookingId);
         Task<bool> UpdateAccepted(string bookingId,int acceptType);
     }
@@ -268,11 +268,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             return true;
         }
-        public async Task<TrDbRestaurantBooking> BindingPayInfoToTourBooking(string bookingId, string PaymentId, string stripeClientSecretKey)
+        public async Task<TrDbRestaurantBooking> BindingPayInfoToTourBooking(string bookingId, string PaymentId, string stripeClientSecretKey, bool isSetupPay)
         {
             var booking = await _restaurantBookingRepository.GetOneAsync(r => r.Id == bookingId);
             Guard.NotNull(booking);
             booking.StripePaymentId = PaymentId;
+            booking.SetupPay=isSetupPay;
             booking.StripeClientSecretKey = stripeClientSecretKey;
             var res = await _restaurantBookingRepository.UpdateAsync(booking);
             return res;

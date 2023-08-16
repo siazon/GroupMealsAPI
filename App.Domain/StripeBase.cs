@@ -17,5 +17,6 @@ namespace App.Domain
         public bool StripeSetupIntent { get; set; }
         public string StripeClientSecretKey { get; set; }
         public bool Paid { get; set; }
+        public bool SetupPay { get; set; }
     }
 }
