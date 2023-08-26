@@ -274,7 +274,7 @@ namespace KingfoodIO.Controllers.Common
                         return BadRequest("Can't find the booking by Id");
                     }
                     booking = gpBooking;
-                    if (bill.SetupPay == 1) 
+                    if (bill.SetupPay == 1)
                         Amount = 100;
                     else
                         Amount = await CalculateOrderAmount(gpBooking);
@@ -310,7 +310,7 @@ namespace KingfoodIO.Controllers.Common
                 if (bill.BillType == "TOUR")
                     _tourBookingServiceHandler.BindingPayInfoToTourBooking(bill.BillId, paymentIntent.Id, paymentIntent.ClientSecret);
                 else
-                    _trRestaurantBookingServiceHandler.BindingPayInfoToTourBooking(bill.BillId, paymentIntent.Id, paymentIntent.ClientSecret,bill.SetupPay==1);
+                    _trRestaurantBookingServiceHandler.BindingPayInfoToTourBooking(bill.BillId, paymentIntent.Id, paymentIntent.ClientSecret, bill.SetupPay == 1);
                 return Json(new { clientSecret = paymentIntent.ClientSecret, paymentIntentId = paymentIntent.Id });
             }
             catch (Exception ex)
@@ -399,7 +399,35 @@ namespace KingfoodIO.Controllers.Common
                 {
                     foreach (var item in course.Courses)
                     {
-                        amount += item.Price * item.Qty;
+                        if (item.Qty < 4)
+                        {
+                            _logger.LogInfo("StripeCheckoutController.CalculateOrderAmount:people Qty too small");
+                            throw new Exception("people Qty too small");
+                        }
+                        if (item.CourseType == 0)
+                        {
+                            amount += item.Price * item.Qty;
+                            continue;
+                        }
+                        decimal discount = 0;
+                        if (item.Qty == 4 || item.Qty == 5)
+                        {
+                            discount += 10 * item.Price * 0.8m;
+                        }
+                        else if (item.Qty == 6 || item.Qty == 7)
+                        {
+                            discount += 10 * item.Price * 0.85m;
+                        }
+                        else if (item.Qty == 8)
+                        {
+                            discount += 10 * item.Price * 0.9m;
+                        }
+                        else if (item.Qty == 9)
+                        {
+                            discount += 10 * item.Price * 0.95m;
+                        }
+                        else
+                            amount += item.Price * item.Qty;
                     }
                 }
 

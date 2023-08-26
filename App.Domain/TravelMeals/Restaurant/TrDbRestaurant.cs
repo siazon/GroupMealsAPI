@@ -43,7 +43,8 @@ namespace App.Domain.TravelMeals.Restaurant
         public List<string> Comments { get; set; }
         public List<string> Tags { get; set; }
         public int? BookingHourLength { get; set; }
-        
+
+
         public List<TrDbRestaurantMenuCourse> Categories { get; set; }
 
         public TrDbRestaurant Clone()

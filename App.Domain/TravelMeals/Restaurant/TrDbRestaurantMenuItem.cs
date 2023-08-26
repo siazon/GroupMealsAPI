@@ -9,6 +9,7 @@ namespace App.Domain.TravelMeals.Restaurant
         public string MenuItemDescription { get; set; }
         public string MenuItemDescriptionCn { get; set; }
         public int? CategoryId { get; set; }
+        public int CourseType { get; set; }
         public string Cuisine { get; set; }
         public string Ingredieent { get; set; }
         public decimal Price { get; set; }

@@ -17,6 +17,9 @@ namespace App.Domain.TravelMeals.Restaurant
         public string CourseDescriptionCn { get; set; }
         public int? RestaurantId { get; set; }
         public bool IsChildCourse { get; set; }
+        /// <summary>
+        /// 0:普通，1:  4-5 ： 0.8优惠, 6-7 ： 0.85优惠，8：0.9优惠, 9: 0.95优惠
+        /// </summary>
         public int CourseType { get; set; }
 
         public List<TrDbRestaurantMenuItem> MenuItems { get; set; }
