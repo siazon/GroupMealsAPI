@@ -26,11 +26,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<TrDbRestaurantBooking> GetBooking(string id);
         Task<bool> UpdateBooking(string billId, string productId, string priceId);
         Task<bool> BookingPaid(Stripe.Checkout.Session session);
-        Task<bool> BookingPaid(string bookingId, string customerId = "", string payMethodId = "", string receiptUrl = "");
+        Task<bool> BookingPaid(string bookingId, string customerId = "", string chargeId = "", string payMethodId = "", string receiptUrl = "");
         Task<bool> UpdateStripeClientKey(string bookingId, string paymentId, string customerId, string secertKey);
-        Task<TrDbRestaurantBooking> BindingPayInfoToTourBooking(string bookingId, string PaymentId, string stripeClientSecretKey,bool isSetupPay);
+        Task<TrDbRestaurantBooking> BindingPayInfoToTourBooking(TrDbRestaurantBooking gpBooking, string PaymentId, string stripeClientSecretKey,bool isSetupPay);
         Task<bool> ResendEmail(string bookingId);
         Task<bool> UpdateAccepted(string bookingId,int acceptType);
+        Task<bool> UpdateAcceptedReason(string bookingId, string reason);
     }
     public class TrRestaurantBookingServiceHandler : ITrRestaurantBookingServiceHandler
     {
@@ -41,10 +42,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private readonly IEmailUtil _emailUtil;
         ILogManager _logger;
         ITwilioUtil _twilioUtil;
+        IStripeUtil _stripeUtil;
         IHostingEnvironment _environment;
         private readonly IDbCommonRepository<DbShop> _shopRepository;
 
-        public TrRestaurantBookingServiceHandler(ITwilioUtil twilioUtil, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository, IDbCommonRepository<DbShop> shopRepository, IHostingEnvironment environment, IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, ILogManager logger, IContentBuilder contentBuilder, IEmailUtil emailUtil)
+        public TrRestaurantBookingServiceHandler(ITwilioUtil twilioUtil, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository, 
+            IDbCommonRepository<DbShop> shopRepository, IHostingEnvironment environment, IStripeUtil stripeUtil,
+            IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, 
+            ILogManager logger, IContentBuilder contentBuilder, IEmailUtil emailUtil)
         {
             _restaurantBookingRepository = restaurantBookingRepository;
             _stripeCheckoutSeesionRepository = stripeCheckoutSeesionRepository;
@@ -54,6 +59,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _twilioUtil = twilioUtil;
             _environment = environment;
             _shopRepository = shopRepository;
+            _stripeUtil = stripeUtil;
         }
 
 
@@ -77,11 +83,34 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             TrDbRestaurantBooking booking = GetBooking(billId).Result;
             if (booking == null) return false;
             booking.Accepted = acceptType;
-            var temp = await _restaurantBookingRepository.UpdateAsync(booking);
+            if (acceptType == 2) {
+                _stripeUtil.RefundGroupMeals(booking);
+            }
+                var temp = await _restaurantBookingRepository.UpdateAsync(booking);
             string msg = $"您于{booking.BookingDate} {booking.BookingTime} 提交的订单已被接收，请按时就餐";
             if (acceptType == 2)
                 msg =  $"您于{booking.BookingDate} {booking.BookingTime} 提交的订单已被拒绝，请登录groupmeals.com查询别的餐厅";
-            _twilioUtil.sendSMS(booking.CustomerPhone, msg);
+            //_twilioUtil.sendSMS(booking.CustomerPhone, msg);
+            var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
+            if (shopInfo == null)
+            {
+                _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
+                throw new ServiceException("Cannot find shop info");
+            }
+            if (acceptType == 1)
+                EmailCustomer(booking, shopInfo, "new_meals_confirm");
+            else if (acceptType == 2)
+            {
+                EmailCustomer(booking, shopInfo, "new_meals_decline");
+            }
+            return true;
+        }
+        public async Task<bool> UpdateAcceptedReason(string billId, string reason)
+        {
+            TrDbRestaurantBooking booking = GetBooking(billId).Result;
+            if (booking == null) return false;
+            booking.AcceptReason = reason;
+            var temp = await _restaurantBookingRepository.UpdateAsync(booking);
             return true;
         }
 
@@ -106,7 +135,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             return true;
         }
-        public async Task<bool> BookingPaid(string bookingId, string customerId = "", string payMethodId = "", string receiptUrl = "")
+        public async Task<bool> BookingPaid(string bookingId, string customerId = "",string chargeId="",string payMethodId = "", string receiptUrl = "")
         {
             try
             {
@@ -129,7 +158,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             if (!string.IsNullOrWhiteSpace(receiptUrl))
             {
-                booking.StripeReceiptUrl = receiptUrl;
+
+                    booking.StripeChargeId = chargeId;
+                    booking.StripeReceiptUrl = receiptUrl;
                 booking.Paid = true;
                 booking.Status = Domain.Enum.OrderStatusEnum.Paid;
             }
@@ -142,7 +173,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
                 throw new ServiceException("Cannot find shop info");
             }
-            EmailCustomer(booking, shopInfo);
+            EmailCustomer(booking, shopInfo, "new_meals");
             EmailBoss(booking, shopInfo, "New Order");
                 //var newItem = await _stripeCheckoutSeesionRepository.CreateAsync(new StripeCheckoutSeesion() { Data = session, BookingId = booking.Id });
             }
@@ -155,7 +186,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         private async Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string subject)
         {
-            _logger.LogInfo("----------------EmailBoss");
             string wwwPath = this._environment.WebRootPath;
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "new_meals_restaurant");
             string Detail = "";
@@ -163,10 +193,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 foreach (var course in item.Courses)
                 {
-                    Detail += course.MenuItemName + " * " + course.Qty + "人  ";
+                    Detail += course.MenuItemName + " * " + course.Qty + "人  €" + course.Amount;
                 }
             }
-            _logger.LogInfo("----------------EmailBoss" + Detail);
             _twilioUtil.sendSMS(booking.Details[0].RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
             var emailHtml = await _contentBuilder.BuildRazorContent(new { booking = booking, details = booking.Details[0], Detail, Memo=booking.Details[0].Courses[0].Memo }, htmlTemp);
 
@@ -176,7 +205,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.Details[0].RestaurantEmail, subject,
                         emailHtml));
 
-                _logger.LogInfo("----------------EmailBoss" + shopInfo.Email + ": " + booking.Details[0].RestaurantEmail);
             }
             catch (Exception ex)
             {
@@ -184,21 +212,19 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
         }
 
-        private async Task EmailCustomer(TrDbRestaurantBooking booking, DbShop shopInfo)
+        private async Task EmailCustomer(TrDbRestaurantBooking booking, DbShop shopInfo,string tempName)
         {
-            _logger.LogInfo("----------------EmailCustomer" );
             string wwwPath = this._environment.WebRootPath;
-            string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "new_meals");
+            string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";
             foreach (var item in booking.Details)
             {
                 Detail += item.RestaurantName + "       ";
                 foreach (var course in item.Courses)
                 {
-                    Detail += course.MenuItemName + " * " + course.Qty + "人  ";
+                    Detail += course.MenuItemName + " * " + course.Qty + "人  €" + course.Amount;
                 }
             }
-            _logger.LogInfo("----------------EmailCustomer" + Detail);
             var emailHtml = "";
             try
             {
@@ -206,7 +232,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             catch (Exception ex)
             {
-                _logger.LogInfo("----------------emailHtml---error" + ex.Message);
+                _logger.LogError("----------------emailHtml---error" + ex.Message);
             }
             if (string.IsNullOrWhiteSpace(emailHtml))
             {
@@ -218,7 +244,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, $"Thank you for your Booking",
                         emailHtml));
 
-                _logger.LogInfo("----------------EmailCustomer" + shopInfo.Email+": "+ booking.CustomerEmail);
             }
             catch (Exception ex)
             {
@@ -268,9 +293,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             return true;
         }
-        public async Task<TrDbRestaurantBooking> BindingPayInfoToTourBooking(string bookingId, string PaymentId, string stripeClientSecretKey, bool isSetupPay)
+        public async Task<TrDbRestaurantBooking> BindingPayInfoToTourBooking(TrDbRestaurantBooking booking, string PaymentId, string stripeClientSecretKey, bool isSetupPay)
         {
-            var booking = await _restaurantBookingRepository.GetOneAsync(r => r.Id == bookingId);
             Guard.NotNull(booking);
             booking.StripePaymentId = PaymentId;
             booking.SetupPay=isSetupPay;

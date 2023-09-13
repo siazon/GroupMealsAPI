@@ -32,10 +32,11 @@ namespace KingfoodIO.Controllers.Common
         private IStripeServiceHandler _stripeServiceHandler;
         ILogManager _logger;
         private readonly AppSettingConfig _appsettingConfig;
+        IStripeUtil _stripeUtil;
         private string secret = "";
         public StripeCheckoutController(
-          IOptions<CacheSettingConfig> cachesettingConfig, IOptions<AppSettingConfig> appsettingConfig, IRedisCache redisCache,
-          ITourBookingServiceHandler tourBookingServiceHandler, ITourServiceHandler tourServiceHandler, IStripeServiceHandler stripeServiceHandler,
+          IOptions<CacheSettingConfig> cachesettingConfig, IOptions<AppSettingConfig> appsettingConfig, IRedisCache redisCache, IStripeUtil stripeUtil,
+        ITourBookingServiceHandler tourBookingServiceHandler, ITourServiceHandler tourServiceHandler, IStripeServiceHandler stripeServiceHandler,
           ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
         {
             _trRestaurantBookingServiceHandler = restaurantBookingServiceHandler;
@@ -45,6 +46,7 @@ namespace KingfoodIO.Controllers.Common
             _logger = logger;
             _appsettingConfig = appsettingConfig.Value;
             secret = _appsettingConfig.StripeWebhookKey;
+            _stripeUtil= stripeUtil;
         }
 
         [HttpPost]
@@ -56,18 +58,18 @@ namespace KingfoodIO.Controllers.Common
                 checkoutParam.Amount *= 100;
                 _logger.LogDebug("Create");
                 Console.WriteLine("Create");
-                string productId = StripeUtil.GetProductId(checkoutParam.PayName, checkoutParam.PayDesc);
+                string productId = _stripeUtil.GetProductId(checkoutParam.PayName, checkoutParam.PayDesc);
 
                 _logger.LogDebug("productId:" + productId);
                 Console.WriteLine("productId:" + productId);
-                string priceId = StripeUtil.GetPriceId(productId, checkoutParam.Amount, checkoutParam.Payment);
+                string priceId = _stripeUtil.GetPriceId(productId, checkoutParam.Amount, checkoutParam.Payment);
                 _logger.LogDebug("priceId:" + priceId);
                 Console.WriteLine("priceId:" + priceId);
                 string sessionUrl = "";
                 var res = _trRestaurantBookingServiceHandler.UpdateBooking(checkoutParam.BillId, productId, priceId);
                 if (res.Result)
                 {
-                    sessionUrl = StripeUtil.Pay(priceId, checkoutParam.Amount);
+                    sessionUrl = _stripeUtil.Pay(priceId, checkoutParam.Amount);
                 }
                 _logger.LogDebug("sessionUrl:" + sessionUrl);
                 Console.WriteLine("sessionUrl:" + sessionUrl);
@@ -105,7 +107,7 @@ namespace KingfoodIO.Controllers.Common
                         }
                         else
                         {
-                            _trRestaurantBookingServiceHandler.BookingPaid(bookingId, paymentIntent.CustomerId, paymentIntent.PaymentMethod, paymentIntent.ReceiptUrl);
+                            _trRestaurantBookingServiceHandler.BookingPaid(bookingId, paymentIntent.CustomerId, paymentIntent.Id, paymentIntent.PaymentMethod, paymentIntent.ReceiptUrl);
                         }
                         break;
                     case Events.CheckoutSessionCompleted:
@@ -133,7 +135,7 @@ namespace KingfoodIO.Controllers.Common
                             _logger.LogInfo("SetupIntentSucceeded:" + stripeEvent.Type);
                             var setupIntent = stripeEvent.Data.Object as SetupIntent;
                             bookingId = setupIntent.Metadata["bookingId"];
-                            _trRestaurantBookingServiceHandler.BookingPaid(bookingId, setupIntent.CustomerId, setupIntent.PaymentMethodId);
+                            _trRestaurantBookingServiceHandler.BookingPaid(bookingId, setupIntent.CustomerId,"", setupIntent.PaymentMethodId);
                         }
                         break;
                     default:
@@ -256,6 +258,7 @@ namespace KingfoodIO.Controllers.Common
                     { "bookingId", bill.BillId}
                 };
                 StripeBase booking = null;
+                TrDbRestaurantBooking gpBooking=null;
                 long Amount = 0;
                 if (bill.BillType == "TOUR")
                 {
@@ -268,7 +271,7 @@ namespace KingfoodIO.Controllers.Common
                 {
                     meta["billType"] = "GROUPMEALS";
 
-                    TrDbRestaurantBooking gpBooking = await _trRestaurantBookingServiceHandler.GetBooking(bill.BillId);
+                     gpBooking = await _trRestaurantBookingServiceHandler.GetBooking(bill.BillId);
                     if (gpBooking == null)
                     {
                         return BadRequest("Can't find the booking by Id");
@@ -310,7 +313,7 @@ namespace KingfoodIO.Controllers.Common
                 if (bill.BillType == "TOUR")
                     _tourBookingServiceHandler.BindingPayInfoToTourBooking(bill.BillId, paymentIntent.Id, paymentIntent.ClientSecret);
                 else
-                    _trRestaurantBookingServiceHandler.BindingPayInfoToTourBooking(bill.BillId, paymentIntent.Id, paymentIntent.ClientSecret, bill.SetupPay == 1);
+                    _trRestaurantBookingServiceHandler.BindingPayInfoToTourBooking(gpBooking, paymentIntent.Id, paymentIntent.ClientSecret, bill.SetupPay == 1);
                 return Json(new { clientSecret = paymentIntent.ClientSecret, paymentIntentId = paymentIntent.Id });
             }
             catch (Exception ex)
@@ -335,6 +338,8 @@ namespace KingfoodIO.Controllers.Common
         [HttpPost]
         public async Task<ActionResult> RefundPay([FromBody] PayIntentParam bill, int shopId)
         {
+            //_stripeUtil.Refund(bill);
+            //return Json(new { msg = "Date Invalid" });
             try
             {
                 Dictionary<string, string> meta = new Dictionary<string, string>
@@ -386,7 +391,7 @@ namespace KingfoodIO.Controllers.Common
             {
                 amount += (booking.NumberOfPeople ?? 0) * (booking.Tour.Price ?? 0) + (booking.NumberOfAgedOrStudent ?? 0) * (booking.Tour.ConcessionPrice ?? 0) + (booking.NumberOfChild ?? 0) * (booking.Tour.ChildPrice ?? 0);
             }
-            return (long)Math.Round(amount, 2) * 100;
+            return (long)(Math.Round(amount, 2) * 100);
         }
         private async Task<long> CalculateOrderAmount(TrDbRestaurantBooking booking)
         {
@@ -406,33 +411,41 @@ namespace KingfoodIO.Controllers.Common
                         }
                         if (item.CourseType == 0)
                         {
-                            amount += item.Price * item.Qty;
+                            item.Amount = item.Price * item.Qty;
+                            amount += item.Amount;
                             continue;
                         }
-                        decimal discount = 0;
                         if (item.Qty == 4 || item.Qty == 5)
                         {
-                            discount += 10 * item.Price * 0.8m;
+                            item.Amount = 10 * item.Price * 0.8m;
+                            amount += item.Amount;
                         }
                         else if (item.Qty == 6 || item.Qty == 7)
                         {
-                            discount += 10 * item.Price * 0.85m;
+                            item.Amount = 10 * item.Price * 0.85m;
+                            amount += item.Amount;
                         }
                         else if (item.Qty == 8)
                         {
-                            discount += 10 * item.Price * 0.9m;
+                            item.Amount = 10 * item.Price * 0.9m;
+                            amount += item.Amount;
                         }
                         else if (item.Qty == 9)
                         {
-                            discount += 10 * item.Price * 0.95m;
+                            item.Amount = 10 * item.Price * 0.95m;
+                            amount += item.Amount;
                         }
                         else
-                            amount += item.Price * item.Qty;
+                        {
+                            item.Amount = item.Price * item.Qty;
+                            amount += item.Amount;
+                        }
                     }
                 }
 
             }
-            return (long)Math.Round(amount, 2) * 100;
+            decimal temp = Math.Round(amount, 2);
+            return (long)(temp * 100);
         }
     }
 

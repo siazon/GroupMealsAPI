@@ -10,8 +10,7 @@ namespace App.Domain.TravelMeals
        
         public OrderStatusEnum Status { get; set; } = OrderStatusEnum.None;
         public int Accepted { get; set; }
-
-
+        public string AcceptReason { get; set; }
         public string CustomerName { get; set; }
         public string CustomerEmail { get; set; }
         public string CustomerPhone { get; set; }
@@ -39,5 +38,6 @@ namespace App.Domain.TravelMeals
         public int Qty { get; set; }
         public int TableQty { get; set; }
         public string Memo { get; set; }
+        public decimal Amount { get; set; }
     }
 }

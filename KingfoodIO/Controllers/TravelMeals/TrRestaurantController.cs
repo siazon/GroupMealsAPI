@@ -83,5 +83,13 @@ namespace KingfoodIO.Controllers.TravelMeals
             return await ExecuteAsync(shopId, cache,
                 async () => await _restaurantBookingServiceHandler.UpdateAccepted(bookingId, acceptType));
         }
+        [HttpPost]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(bool), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> UpdateAcceptedReason([FromBody] string reason, int shopId, string bookingId, bool cache = true)
+        {
+            return await ExecuteAsync(shopId, cache,
+                async () => await _restaurantBookingServiceHandler.UpdateAcceptedReason(bookingId, reason));
+        }
     }
 }

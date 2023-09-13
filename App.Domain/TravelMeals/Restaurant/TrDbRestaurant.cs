@@ -38,10 +38,12 @@ namespace App.Domain.TravelMeals.Restaurant
         public string Features { get; set; }
         public string SpecialDiets { get; set; }
         public string ParkingLot { get; set; }
+        public string CancelCondition { get; set; }
         public int ParkingCapacity { get; set; }
         public List<string> Images { get; set; }
         public List<string> Comments { get; set; }
         public List<string> Tags { get; set; }
+        public List<string> Attractions { get; set; }
         public int? BookingHourLength { get; set; }
 
 
