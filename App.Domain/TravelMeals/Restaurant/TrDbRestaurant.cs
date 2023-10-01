@@ -35,6 +35,7 @@ namespace App.Domain.TravelMeals.Restaurant
         public string ContactEmail { get; set; }
         public string ShopOpenHours { get; set; }
         public string GoogleMap { get; set; }
+        public MapPosition MapPosition { get; set; }
         public string Features { get; set; }
         public string SpecialDiets { get; set; }
         public string ParkingLot { get; set; }
@@ -81,6 +82,10 @@ namespace App.Domain.TravelMeals.Restaurant
         }
     }
 
+    public class MapPosition {
+        public double lat { get; set; }
+        public double lng { get; set; }
+    }
     public static class TrDbRestaurantExt
     {
         public static List<TrDbRestaurant> ClearForOutPut(this IEnumerable<TrDbRestaurant> source)
