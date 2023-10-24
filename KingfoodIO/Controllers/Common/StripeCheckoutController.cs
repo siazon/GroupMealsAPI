@@ -301,6 +301,7 @@ namespace KingfoodIO.Controllers.Common
                 {
                     Amount = Amount,
                     Currency = "eur",
+                    //PaymentMethodTypes = new List<string> { "alipay", "wechat_pay" },
                     AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
                     {
                         Enabled = true,

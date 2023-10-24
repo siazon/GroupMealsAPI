@@ -143,8 +143,8 @@ namespace App.Infrastructure.ServiceHandler.Common
         {
             Guard.NotNull(customer);
             var existingCustomer =
-               await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Email == customer.Email && r.IsVerity);
-            if (existingCustomer != null)
+               await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Email == customer.Email);
+            if (existingCustomer != null&&existingCustomer.IsVerity)
                 return new { msg = "Customer Already Exists" };
 
             var newItem = customer.Clone();
@@ -157,14 +157,18 @@ namespace App.Infrastructure.ServiceHandler.Common
             newItem.Password = passwordEncode;
             newItem.ResetCode = null;
             newItem.PinCode = GuidHashUtil.Get6DigitNumber();
-
-            var savedCustomer = await _customerRepository.CreateAsync(newItem);
-            if (savedCustomer != null)
+            if (existingCustomer != null)
+            {
+                newItem.Id= existingCustomer.Id;
+                await _customerRepository.UpdateAsync(newItem); }
+            else
+                newItem = await _customerRepository.CreateAsync(newItem);
+            if (newItem != null)
             {
                 var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
-                EmailVerifySender(savedCustomer, shopInfo, "Email Verify");
+                EmailVerifySender(newItem, shopInfo, "Email Verify");
             }
-            return new { msg = "ok", data = savedCustomer.ClearForOutPut() };
+            return new { msg = "ok", data = newItem.ClearForOutPut() };
         }
 
         public async Task<object> VerityEmail(string email, string id, int shopId) {
@@ -182,12 +186,15 @@ namespace App.Infrastructure.ServiceHandler.Common
         {
             string wwwPath = this._environment.WebRootPath;
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "email_verify");
-            var emailHtml = await _contentBuilder.BuildRazorContent(user, htmlTemp);
+
+
+            //var emailHtml = await _contentBuilder.BuildRazorContent(user, htmlTemp);
+
             try
             {
-                BackgroundJob.Enqueue<ITourBatchServiceHandler>(
-                    s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, shopInfo.Email, subject,
-                        emailHtml));
+                BackgroundJob.Enqueue<IContentBuilder>(
+                    s => s.SendEmail(user, htmlTemp,shopInfo.ShopSettings, shopInfo.Email, user.Email, subject
+                        ));
             }
             catch (Exception ex)
             {

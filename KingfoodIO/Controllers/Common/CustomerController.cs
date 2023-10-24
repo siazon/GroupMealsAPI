@@ -61,6 +61,7 @@ namespace KingfoodIO.Controllers.Common
             catch (Exception ex)
             {
                 logger.LogError(ex.Message);
+                return new { msg = "User name or Password is incorrect!(用户名密码错误)", data = customer, token };
 
             }
             return new { msg = "ok", data = customer,  token };

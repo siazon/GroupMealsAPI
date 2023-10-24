@@ -55,7 +55,11 @@ namespace App.Domain.Common.Customer
                 Eircode = source.Eircode,
                 IsActive = source.IsActive,
                 PinCode = source.PinCode,
-                Area = source.Area
+                Area = source.Area,
+                 IsVerity = source.IsVerity,
+                  AuthValue = source.AuthValue,
+                   IsBoss = source.IsBoss,
+                    
             };
             return customer;
         }
