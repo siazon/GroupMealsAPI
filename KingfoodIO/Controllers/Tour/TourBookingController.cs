@@ -7,6 +7,7 @@ using KingfoodIO.Controllers.Common;
 using KingfoodIO.Filters;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using System.Collections.Generic;
 using System.Net;
@@ -19,9 +20,12 @@ namespace KingfoodIO.Controllers.Tour
     {
         private readonly ITourBookingServiceHandler _tourBookingServiceHandler;
 
+        IMemoryCache _memoryCache;
         public TourBookingController(
-            IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache, ILogManager logger, ITourBookingServiceHandler tourBookingServiceHandler) : base(cachesettingConfig, redisCache, logger)
+            IOptions<CacheSettingConfig> cachesettingConfig, IMemoryCache memoryCache, IRedisCache redisCache, ILogManager logger, ITourBookingServiceHandler tourBookingServiceHandler) 
+            : base(cachesettingConfig, memoryCache,redisCache, logger)
         {
+            _memoryCache = memoryCache;
             _tourBookingServiceHandler = tourBookingServiceHandler;
         }
 

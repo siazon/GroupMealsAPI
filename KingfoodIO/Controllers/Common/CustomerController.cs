@@ -10,6 +10,7 @@ using App.Infrastructure.Utility.Common;
 using KingfoodIO.Application.Filter;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Documents;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 
@@ -21,10 +22,12 @@ namespace KingfoodIO.Controllers.Common
         private readonly ICustomerServiceHandler _customerServiceHandler;
         JwtTokenConfig _jwtConfig;
         ILogManager logger;
-        public CustomerController(IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache, JwtTokenConfig jwtConfig,
-        ICustomerServiceHandler customerServiceHandler, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
+        IMemoryCache _memoryCache;
+        public CustomerController(IOptions<CacheSettingConfig> cachesettingConfig, IMemoryCache memoryCache, IRedisCache redisCache, JwtTokenConfig jwtConfig,
+        ICustomerServiceHandler customerServiceHandler, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
         {
             this.logger = logger;
+            _memoryCache= memoryCache;
             _customerServiceHandler = customerServiceHandler;
             _jwtConfig = jwtConfig;
         }
@@ -47,8 +50,7 @@ namespace KingfoodIO.Controllers.Common
             try
             {
 
-           
-             customer = await _customerServiceHandler.LoginCustomer(email, password, shopId);
+                customer = await _customerServiceHandler.LoginCustomer(email, password, shopId);
             var claims = new[]
             {
                    new Claim("userName", customer.ContactName??""),

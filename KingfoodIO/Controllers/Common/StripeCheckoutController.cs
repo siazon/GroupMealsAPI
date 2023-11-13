@@ -11,6 +11,7 @@ using App.Infrastructure.Utility.Common;
 using Azure.Core;
 using KingfoodIO.Application.Filter;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Stripe;
@@ -33,11 +34,13 @@ namespace KingfoodIO.Controllers.Common
         ILogManager _logger;
         private readonly AppSettingConfig _appsettingConfig;
         IStripeUtil _stripeUtil;
+
+        IMemoryCache _memoryCache;
         private string secret = "";
         public StripeCheckoutController(
-          IOptions<CacheSettingConfig> cachesettingConfig, IOptions<AppSettingConfig> appsettingConfig, IRedisCache redisCache, IStripeUtil stripeUtil,
+          IOptions<CacheSettingConfig> cachesettingConfig, IOptions<AppSettingConfig> appsettingConfig, IMemoryCache memoryCache, IRedisCache redisCache, IStripeUtil stripeUtil,
         ITourBookingServiceHandler tourBookingServiceHandler, ITourServiceHandler tourServiceHandler, IStripeServiceHandler stripeServiceHandler,
-          ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
+          ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler, ILogManager logger) : base(cachesettingConfig,memoryCache, redisCache, logger)
         {
             _trRestaurantBookingServiceHandler = restaurantBookingServiceHandler;
             _tourServiceHandler = tourServiceHandler;
@@ -46,7 +49,7 @@ namespace KingfoodIO.Controllers.Common
             _logger = logger;
             _appsettingConfig = appsettingConfig.Value;
             secret = _appsettingConfig.StripeWebhookKey;
-            _stripeUtil= stripeUtil;
+            _stripeUtil= stripeUtil;_memoryCache = memoryCache;
         }
 
         [HttpPost]

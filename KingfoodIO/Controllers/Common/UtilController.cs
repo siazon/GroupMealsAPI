@@ -13,6 +13,7 @@ using System.Net.Http;
 using System.Net;
 using App.Domain.Common.Shop;
 using KingfoodIO.Application.Filter;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace KingfoodIO.Controllers.Common
 {
@@ -22,11 +23,14 @@ namespace KingfoodIO.Controllers.Common
     {
 
 
+        IMemoryCache _memoryCache;
         private readonly AzureStorageConfig storageConfig;
         ILogManager logger;
-        public UtilController(IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache, IOptions<AzureStorageConfig> _storageConfig, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
+        public UtilController(IOptions<CacheSettingConfig> cachesettingConfig, IMemoryCache memoryCache, IRedisCache redisCache,
+            IOptions<AzureStorageConfig> _storageConfig, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
         {
             this.logger = logger;
+            _memoryCache = memoryCache;
             storageConfig = _storageConfig.Value;
         }
 

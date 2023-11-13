@@ -10,6 +10,7 @@ using App.Infrastructure.Utility.Common;
 using KingfoodIO.Application.Filter;
 using KingfoodIO.Controllers.Common;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
 namespace KingfoodIO.Controllers.TravelMeals
@@ -19,12 +20,17 @@ namespace KingfoodIO.Controllers.TravelMeals
     {
         private readonly ITrRestaurantServiceHandler _restaurantServiceHandler;
         private readonly ITrRestaurantBookingServiceHandler _restaurantBookingServiceHandler;
+
+        IMemoryCache _memoryCache;
         ILogManager _logger;
         public TrRestaurantController(
-            IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache, ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler, ITrRestaurantServiceHandler restaurantServiceHandler, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
+            IOptions<CacheSettingConfig> cachesettingConfig, IMemoryCache memoryCache, IRedisCache redisCache, ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler,
+            ITrRestaurantServiceHandler restaurantServiceHandler, ILogManager logger) : 
+            base(cachesettingConfig, memoryCache, redisCache, logger)
         {
             _restaurantServiceHandler = restaurantServiceHandler;
             _logger = logger;
+            _memoryCache = memoryCache;
             _restaurantBookingServiceHandler= restaurantBookingServiceHandler;
         }
 

@@ -8,6 +8,7 @@ using App.Infrastructure.ServiceHandler.Common;
 using App.Infrastructure.Utility.Common;
 using KingfoodIO.Application.Filter;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
 namespace KingfoodIO.Controllers.Common
@@ -17,10 +18,12 @@ namespace KingfoodIO.Controllers.Common
     {
         private readonly IAuthServiceHandler _authServiceHandler;
         ILogManager logger;
-        public AuthController(IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache,
-            IAuthServiceHandler authServiceHandler, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
+        IMemoryCache _memoryCache;
+        public AuthController(IOptions<CacheSettingConfig> cachesettingConfig, IMemoryCache memoryCache, IRedisCache redisCache,
+            IAuthServiceHandler authServiceHandler, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
         {
             this.logger= logger;
+            _memoryCache= memoryCache;
             _authServiceHandler = authServiceHandler;
         }
 

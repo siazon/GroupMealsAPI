@@ -3,6 +3,7 @@ using App.Domain.Config;
 using App.Infrastructure.Exceptions;
 using App.Infrastructure.Utility.Common;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using System;
 using System.Threading.Tasks;
@@ -13,12 +14,14 @@ namespace KingfoodIO.Controllers.Common
     {
         private readonly CacheSettingConfig _cachesettingConfig;
         private readonly IRedisCache _redisCache;
+        private readonly IMemoryCache _memoryCache;
         private readonly ILogManager _logger;
 
-        public BaseController(IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache, ILogManager logger)
+        public BaseController(IOptions<CacheSettingConfig> cachesettingConfig, IMemoryCache memoryCache, IRedisCache redisCache, ILogManager logger)
         {
             _cachesettingConfig = cachesettingConfig.Value;
             _redisCache = redisCache;
+            _memoryCache = memoryCache;
             _logger = logger;
         }
 
@@ -39,7 +42,7 @@ namespace KingfoodIO.Controllers.Common
 
             if (cacheOn && cache)
             {
-                var cacheResult = await _redisCache.Get<T>(cacheKey);
+                var cacheResult = _memoryCache == null ? await _redisCache.Get<T>(cacheKey) : _memoryCache.Get<T>(cacheKey);
                 if (cacheResult != null)
                     return Ok(cacheResult);
             }
@@ -48,7 +51,12 @@ namespace KingfoodIO.Controllers.Common
             var content = await action();
 
             //Save Cache
-            if (cacheOn && cache && content != null) await _redisCache.Set(cacheKey, content);
+            if (cacheOn && cache && content != null)
+            {
+                if (_memoryCache == null)
+                    await _redisCache.Set(cacheKey, content);
+                else _memoryCache.Set(cacheKey, content);
+            }
 
             return Ok(content);
         }

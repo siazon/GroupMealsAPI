@@ -6,6 +6,7 @@ using App.Infrastructure.ServiceHandler.TravelMeals;
 using App.Infrastructure.Utility.Common;
 using KingfoodIO.Application.Filter;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using System.Net;
 using System.Threading.Tasks;
@@ -17,10 +18,12 @@ namespace KingfoodIO.Controllers.Common
     {
         private readonly IShopServiceHandler _shopServiceHandler;
 
+        IMemoryCache _memoryCache;
         public ShopController(IShopServiceHandler shopServiceHandler, IOptions<CacheSettingConfig> cachesettingConfig,
-            IRedisCache redisCache, ILogManager logger) : base(cachesettingConfig, redisCache, logger)
+         IMemoryCache memoryCache, IRedisCache redisCache, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
         {
             _shopServiceHandler = shopServiceHandler;
+            _memoryCache = memoryCache;
         }
 
         [ServiceFilter(typeof(AuthActionFilter))]

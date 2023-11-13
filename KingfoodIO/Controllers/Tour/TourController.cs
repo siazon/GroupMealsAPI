@@ -6,6 +6,7 @@ using KingfoodIO.Application.Filter;
 using KingfoodIO.Controllers.Common;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using System.Collections.Generic;
 using System.Net;
@@ -19,10 +20,14 @@ namespace KingfoodIO.Controllers.Tour
         private readonly ITourServiceHandler _tourServiceHandler;
         private IHostingEnvironment _environment;
 
-        public TourController(
-            IOptions<CacheSettingConfig> cachesettingConfig, IRedisCache redisCache, IHostingEnvironment environment,ILogManager logger, ITourServiceHandler tourServiceHandler) : base(cachesettingConfig, redisCache, logger)
+        IMemoryCache _memoryCache;
+
+        public TourController(IOptions<CacheSettingConfig> cachesettingConfig, IMemoryCache memoryCache, IRedisCache redisCache,
+            IHostingEnvironment environment, ILogManager logger, ITourServiceHandler tourServiceHandler) :
+            base(cachesettingConfig, memoryCache, redisCache, logger)
         {
             _tourServiceHandler = tourServiceHandler;
+            _memoryCache = memoryCache;
             _environment = environment;
         }
 
@@ -31,7 +36,7 @@ namespace KingfoodIO.Controllers.Tour
         [ProducesResponseType(typeof(List<App.Domain.Holiday.DbTour>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> ListTours(int shopId, bool cache = true)
         {
-         
+
             return await ExecuteAsync(shopId, cache,
                 async () => await _tourServiceHandler.ListTours(shopId));
         }
@@ -49,7 +54,7 @@ namespace KingfoodIO.Controllers.Tour
         public async Task<IActionResult> CreateTour([FromBody] DbTour tour, int shopId)
         {
             return await ExecuteAsync(shopId, false,
-                async () => await _tourServiceHandler.CreateTour( shopId));
+                async () => await _tourServiceHandler.CreateTour(shopId));
         }
         [HttpPost]
         [ProducesResponseType(typeof(DbTour), (int)HttpStatusCode.OK)]
