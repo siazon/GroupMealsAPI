@@ -5,6 +5,7 @@ using App.Domain.Enum;
 using App.Infrastructure.Exceptions;
 using App.Infrastructure.Repository;
 using App.Infrastructure.Utility.Common;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -34,7 +35,7 @@ namespace KingfoodIO.Application.Filter
             context.HttpContext.Request.Headers.TryGetValue("WAuthToken", out StringValues token);
 
             if (StringValues.IsNullOrEmpty(token))
-                throw new AuthException("Unauthorized User");
+            { context.Result = new ContentResult { StatusCode = 401, Content = "error" }; return; }
 
             if (!ValidateToken(token[0]))
                 throw new AuthException("Unauthorized User");
@@ -49,7 +50,6 @@ namespace KingfoodIO.Application.Filter
                 return false;
 
             //Validate token against super key
-
             var masterToken = _appsettingConfig.ShopAuthKey;
             if (masterToken == accesstoken.ServerKey)
                 return true;

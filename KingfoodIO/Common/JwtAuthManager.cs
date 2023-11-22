@@ -8,6 +8,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System;
+using Microsoft.AspNetCore.Http;
 
 namespace KingfoodIO.Common
 {
@@ -46,7 +47,12 @@ namespace KingfoodIO.Common
             string returnToken = new JwtSecurityTokenHandler().WriteToken(token);
             return returnToken;
         }
-
+        public string GetValueFromToken(string jwt,string propertyName)
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var tokens = handler.ReadToken(jwt) as JwtSecurityToken;
+            return tokens.Claims.FirstOrDefault(claim => claim.Type == propertyName).Value;
+        }
         private static string GenerateRefreshTokenString()
         {
             var randomNumber = new byte[32];

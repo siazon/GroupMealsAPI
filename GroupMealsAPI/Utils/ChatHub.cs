@@ -1,15 +1,11 @@
 ﻿using Microsoft.AspNetCore.SignalR;
-using SendGrid.Helpers.Mail;
-using System;
-using System.Linq;
 using System.Security.Claims;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 
-namespace KingfoodIO.Common
+namespace GroupMealsAPI.Utils
 {
 
-    public interface IClock
+    public interface IChat
     {
         Task ShowTime(DateTime currentTime);
         Task SendMessage(string name, string content);
@@ -30,7 +26,7 @@ namespace KingfoodIO.Common
 
         Task ReceiveUpdate(object message);
     }
-    public class ClockHub : Hub<IClock>
+    public class ChatHub : Hub<IChat>
     {
         //private readonly IMemoryCache _memoryCache;
         //ClockHub(IMemoryCache memoryCache) { _memoryCache = memoryCache; }
@@ -121,27 +117,12 @@ namespace KingfoodIO.Common
         }
         public async Task CreateConnection(string name)
         {
-
-
-               await base.OnConnectedAsync();
-            if (Context.User?.Identity?.IsAuthenticated == true)
+            await base.OnConnectedAsync();
             {
                 //按用户分组
                 //是有必要的 例如多个浏览器、多个标签页使用同个用户登录 应当归属于一组
-                await AddToGroup(Context.User.Identity.Name);
-
-                //加入角色组
-                //根据角色分组 例如管理员分组发送管理员的消息
-                var roles = Context.User.Claims.Where(s => s.Type == ClaimTypes.Role).ToList();
-                foreach (var role in roles)
-                {
-                    await AddToGroup(role.Value);
-                }
-            }
-
-                //按用户分组
-                //是有必要的 例如多个浏览器、多个标签页使用同个用户登录 应当归属于一组
                 await AddToGroup(name);
+            }
         }
         //定于一个通讯管道，用来管理我们和客户端的连接
         //1、客户端调用 GetLatestCount，就像订阅

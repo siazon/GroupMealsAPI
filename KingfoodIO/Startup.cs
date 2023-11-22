@@ -27,6 +27,12 @@ using Stripe;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using KingfoodIO.Common;
+using System.Threading.Tasks;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using App.Domain.Common.Customer;
+using App.Domain.Common.Auth;
 
 namespace KingfoodIO
 {
@@ -44,7 +50,6 @@ namespace KingfoodIO
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMemoryCache();
-            services.AddCors();
             services.AddControllersWithViews();
             services.AddRazorPages();
             services.AddDistributedMemoryCache();
@@ -99,10 +104,37 @@ namespace KingfoodIO
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.FromMinutes(1)//对token过期时间验证的允许时间
                 };
+                x.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["Wauthtoken"];
+
+                        // If the request is for our hub...
+                        var path = context.HttpContext.Request.Path;
+                        if (!string.IsNullOrEmpty(accessToken) &&
+                            (path.StartsWithSegments("/Chat")))
+                        {
+                            // Read the token out of the query string
+                            context.Token = accessToken;
+                        }
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
-
-
+            services.AddSignalR();
+            services.AddCors(options =>
+            {
+                options.AddPolicy(name: "allowCors",
+                                  policy =>
+                                  {
+                                      policy.WithOrigins("http://127.0.0.1:2712/profile");
+                                      policy.AllowAnyHeader();
+                                      policy.WithMethods("GET", "POST");
+                                      policy.AllowCredentials();
+                                  });
+            });
 
             Hangfire.Azure.DocumentDbStorageOptions options = new Hangfire.Azure.DocumentDbStorageOptions
             {
@@ -116,7 +148,6 @@ namespace KingfoodIO
 
             };
 
-
             services.AddHangfire(configuration => configuration
                 .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
                 .UseSimpleAssemblyNameTypeSerializer()
@@ -129,13 +160,11 @@ namespace KingfoodIO
             // Add the processing server as IHostedService
             services.AddHangfireServer();
 
-
             services.Configure<AppSettingConfig>(Configuration.GetSection("AppSetting"));
 
             services.Configure<CacheSettingConfig>(Configuration.GetSection("CacheSetting"));
 
             services.Configure<DocumentDbConfig>(Configuration.GetSection("DocumentDb"));
-
 
             services.Configure<AzureStorageConfig>(Configuration.GetSection("AzureStorageConfig"));
 
@@ -200,12 +229,14 @@ namespace KingfoodIO
 
             app.UseAuthorization();
 
+            app.UseCors("allowCors");
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
                 endpoints.MapRazorPages();
+                endpoints.MapHub<ClockHub>("/Chat").RequireCors(t => t.SetIsOriginAllowed((host) => true).AllowAnyMethod().AllowAnyHeader().AllowCredentials());
             });
-
+          
             app.UseSwagger(c =>
             {
                 c.RouteTemplate = "/apis/{documentName}/swagger.json";

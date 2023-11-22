@@ -16,6 +16,7 @@
   <ItemGroup>
     <Compile Remove="Class1.cs" />
     <Compile Remove="InfrastructureModule.cs" />
+    <Compile Remove="Utility\Common\GoogleMapUtil.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Builders\IreHoliday\" />
@@ -26,7 +27,6 @@
     <ProjectReference Include="..\App.Domain\App.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="GoogleMapsApi" Version="0.80.0" />
     <PackageReference Include="Hangfire.AzureDocumentDB" Version="3.1.2" />
     <PackageReference Include="Microsoft.AspNet.WebApi.Client" Version="5.2.6" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.2.0" />

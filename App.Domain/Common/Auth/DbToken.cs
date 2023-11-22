@@ -6,7 +6,7 @@ namespace App.Domain.Common.Auth
     {
         public DateTime? ExpiredTime { get; set; }
         public int? RoleLevel { get; set; }
-        public int? UserId { get; set; }
+        public string UserId { get; set; }
         public string UserName { get; set; }
         public string ServerKey { get; set; }
         public string ShopKey { get; set; }

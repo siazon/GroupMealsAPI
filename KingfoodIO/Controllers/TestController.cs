@@ -6,6 +6,7 @@ using App.Infrastructure.ServiceHandler.Common;
 using App.Infrastructure.ServiceHandler.Tour;
 using App.Infrastructure.ServiceHandler.TravelMeals;
 using App.Infrastructure.Utility.Common;
+using KingfoodIO.Application.Filter;
 using Microsoft.AspNetCore.Mvc;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
@@ -36,7 +37,7 @@ namespace KingfoodIO.Controllers
             _trRestaurantBookingServiceHandler.ResendEmail(id);
             return Ok();
         }
-
+        [ServiceFilter(typeof(AuthActionFilter))]
         [HttpGet]
         public IEnumerable<string> Get()
         {

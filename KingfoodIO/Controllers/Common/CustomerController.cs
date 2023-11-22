@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using App.Domain.Common.Auth;
 using App.Domain.Common.Customer;
 using App.Domain.Config;
 using App.Infrastructure.ServiceHandler.Common;
@@ -20,21 +21,22 @@ namespace KingfoodIO.Controllers.Common
     public class CustomerController : BaseController
     {
         private readonly ICustomerServiceHandler _customerServiceHandler;
-        JwtTokenConfig _jwtConfig;
+        AppSettingConfig _appsettingConfig;
         ILogManager logger;
         IMemoryCache _memoryCache;
-        public CustomerController(IOptions<CacheSettingConfig> cachesettingConfig, IMemoryCache memoryCache, IRedisCache redisCache, JwtTokenConfig jwtConfig,
+        public CustomerController(IOptions<CacheSettingConfig> cachesettingConfig, IOptions<AppSettingConfig> appsettingConfig,
+            IMemoryCache memoryCache, IRedisCache redisCache,
         ICustomerServiceHandler customerServiceHandler, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
         {
             this.logger = logger;
-            _memoryCache= memoryCache;
+            _memoryCache = memoryCache;
             _customerServiceHandler = customerServiceHandler;
-            _jwtConfig = jwtConfig;
+            _appsettingConfig = appsettingConfig.Value;
         }
 
         [HttpGet]
         [ProducesResponseType(typeof(List<DbCustomer>), (int)HttpStatusCode.OK)]
-        [ServiceFilter(typeof(AuthActionFilter))]
+        //[ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> ListCustomers(int shopId)
         {
             return await ExecuteAsync(shopId, false,
@@ -42,7 +44,7 @@ namespace KingfoodIO.Controllers.Common
         }
         [HttpGet]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
-        [ServiceFilter(typeof(AuthActionFilter))]
+        //[ServiceFilter(typeof(AuthActionFilter))]
         public async Task<object> LoginCustomer(string email, string password, int shopId)
         {
             DbCustomer customer = null;
@@ -51,14 +53,27 @@ namespace KingfoodIO.Controllers.Common
             {
 
                 customer = await _customerServiceHandler.LoginCustomer(email, password, shopId);
-            var claims = new[]
-            {
-                   new Claim("userName", customer.ContactName??""),
-                   new Claim("account", customer.Email??""),
-                   new Claim("age", customer.Phone??""),
-            };
-            token = new KingfoodIO.Common.JwtAuthManager(_jwtConfig).GenerateTokens(email, claims);
-            Response.Cookies.Append("token", token);
+                DbToken dbToken = new DbToken()
+                {
+                    ShopId = shopId,
+                    ExpiredTime = DateTime.Now.AddYears(1),
+                    ServerKey = _appsettingConfig.ShopAuthKey,
+                    UserId = customer.Id,
+                    UserName = customer.UserName,
+                    IsActive = customer.IsActive,
+                    RoleLevel = customer.AuthValue
+                };
+                token = new TokenEncryptorHelper().Encrypt(dbToken);// new KingfoodIO.Common.JwtAuthManager(_jwtConfig).GenerateTokens(email, claims);
+                var claims = new[]
+                {
+                   new Claim("ServerKey",_appsettingConfig.ShopAuthKey),
+                   new Claim("UserId", customer.Id),
+                   new Claim("UserName", customer.UserName),
+                   new Claim("RoleLevel", customer.AuthValue+""),
+                };
+                var userIdentity = new ClaimsIdentity(claims, ClaimTypes.Name);
+                Request.HttpContext.User = new ClaimsPrincipal(userIdentity);
+                Response.Cookies.Append("token", token);
             }
             catch (Exception ex)
             {
@@ -66,7 +81,7 @@ namespace KingfoodIO.Controllers.Common
                 return new { msg = "User name or Password is incorrect!(用户名密码错误)", data = customer, token };
 
             }
-            return new { msg = "ok", data = customer,  token };
+            return new { msg = "ok", data = customer, token };
         }
 
         [HttpGet]

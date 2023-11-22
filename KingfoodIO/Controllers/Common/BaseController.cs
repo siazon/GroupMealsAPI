@@ -25,8 +25,7 @@ namespace KingfoodIO.Controllers.Common
             _logger = logger;
         }
 
-        protected async Task<IActionResult> ExecuteAsync<T>(int shopId, bool cache,
-            Func<Task<T>> action, bool validateShopId = true)
+        protected async Task<IActionResult> ExecuteAsync<T>(int shopId, bool cache,Func<Task<T>> action, bool validateShopId = true)
         {
             if (validateShopId)
                 ValidateKeyWithShopId(shopId);
@@ -63,7 +62,7 @@ namespace KingfoodIO.Controllers.Common
 
         private void ValidateKeyWithShopId(int shopId)
         {
-            var authHeader = Request.Headers["WAuthToken"];
+            var authHeader = Request.Headers["Wauthtoken"];
             if (authHeader.Count != 1)
                 throw new AuthException("Unauthorized API User");
             var accesstoken = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader[0]);
