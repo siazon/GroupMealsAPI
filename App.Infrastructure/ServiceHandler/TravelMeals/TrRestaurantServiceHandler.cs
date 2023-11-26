@@ -26,6 +26,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
     public interface ITrRestaurantServiceHandler
     {
         Task<List<TrDbRestaurant>> GetRestaurantInfo(int shopId);
+        Task<KeyValuePair<string, List<TrDbRestaurant>>> GetRestaurantInfo(int shopId,  int pageSize = -1, string continuationToke = null);
         Task<List<TrDbRestaurant>> SearchRestaurantInfo(int shopId, string searchContent);
 
         Task<TrDbRestaurantBooking> RequestBooking(TrDbRestaurantBooking booking, int shopId );
@@ -58,12 +59,23 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _trRestaurantBookingServiceHandler = trRestaurantBookingServiceHandler;
             _logger= logger;
         }
+        public async Task<KeyValuePair<string, List<TrDbRestaurant>>> GetRestaurantInfo(int shopId,  int pageSize = -1, string continuationToke = null)
+        {
 
+                DateTime stime = DateTime.Now;
+                KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage = await _restaurantRepository
+                    .GetManyAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value, pageSize, continuationToke);
+                var temp = currentPage.Value.ClearForOutPut().OrderBy(a => a.SortOrder).ToList();
+                continuationToke = currentPage.Key;
+                _logger.LogInfo("_restaurantRepository.GetManyAsync:" + (DateTime.Now - stime).ToString());
+
+                return new KeyValuePair<string, List<TrDbRestaurant>>(currentPage.Key, temp);
+        }
         public async Task<List<TrDbRestaurant>> GetRestaurantInfo(int shopId)
         {
             DateTime stime = DateTime.Now;
             var restaurants = await _restaurantRepository.GetManyAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
-            var temp = restaurants.ClearForOutPut().OrderBy(a=>a.SortOrder).ToList();
+            var temp = restaurants.ClearForOutPut().OrderBy(a => a.SortOrder).ToList();
             _logger.LogInfo("_restaurantRepository.GetManyAsync:" + (DateTime.Now - stime).ToString());
             Console.WriteLine("_restaurantRepository.GetManyAsync:" + (DateTime.Now - stime).ToString());
             return temp;

@@ -45,13 +45,12 @@ namespace KingfoodIO.Controllers.Common
         [HttpGet]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         //[ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<object> LoginCustomer(string email, string password, int shopId)
+        public async Task<object> Login(string email, string password, int shopId)
         {
             DbCustomer customer = null;
             string token = "";
             try
             {
-
                 customer = await _customerServiceHandler.LoginCustomer(email, password, shopId);
                 DbToken dbToken = new DbToken()
                 {
@@ -104,11 +103,11 @@ namespace KingfoodIO.Controllers.Common
 
         [HttpGet]
         [ProducesResponseType(typeof(object), (int)HttpStatusCode.OK)]
-        [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> VerityEmail(string email, string id, int shopId)
+        //[ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> VerityEmail(string email, string customerId, int shopId)
         {
             return await ExecuteAsync(shopId, false,
-                async () => await _customerServiceHandler.VerityEmail(email, id, shopId));
+                async () => await _customerServiceHandler.VerityEmail(email, customerId, shopId));
         }
 
         [HttpPost]

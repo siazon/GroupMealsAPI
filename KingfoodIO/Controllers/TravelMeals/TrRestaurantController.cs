@@ -37,10 +37,12 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpGet]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> GetRestaurants(int shopId, bool cache = true)
+        public async Task<IActionResult> GetRestaurants(int shopId,int pageSize=-1,string continuationToken=null, bool cache = true)
         {
-            return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantServiceHandler.GetRestaurantInfo(shopId));
+            //return await ExecuteAsync(shopId, cache,
+            //    async () => await _restaurantServiceHandler.GetRestaurantInfo(shopId));
+
+            return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetRestaurantInfo(shopId,pageSize,continuationToken));
         }
         [HttpGet]
         [ServiceFilter(typeof(AuthActionFilter))]

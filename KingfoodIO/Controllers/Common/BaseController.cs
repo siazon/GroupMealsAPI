@@ -27,8 +27,8 @@ namespace KingfoodIO.Controllers.Common
 
         protected async Task<IActionResult> ExecuteAsync<T>(int shopId, bool cache,Func<Task<T>> action, bool validateShopId = true)
         {
-            if (validateShopId)
-                ValidateKeyWithShopId(shopId);
+            //if (validateShopId)
+            //    ValidateKeyWithShopId(shopId);
 
             var actionName = ControllerContext.RouteData.Values["action"].ToString();
             var controllerName = ControllerContext.RouteData.Values["controller"].ToString();

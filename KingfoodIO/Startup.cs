@@ -109,7 +109,6 @@ namespace KingfoodIO
                     OnMessageReceived = context =>
                     {
                         var accessToken = context.Request.Query["Wauthtoken"];
-
                         // If the request is for our hub...
                         var path = context.HttpContext.Request.Path;
                         if (!string.IsNullOrEmpty(accessToken) &&
@@ -211,9 +210,7 @@ namespace KingfoodIO
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-
                 app.UseCors(builder => builder.WithOrigins("*").AllowAnyMethod().AllowAnyHeader());
-
             }
             else
             {

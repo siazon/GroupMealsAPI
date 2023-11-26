@@ -95,48 +95,20 @@ namespace App.Infrastructure.ServiceHandler.Common
         public async Task<DbCustomer> ForgetPassword(string email, int shopId)
         {
 
-            throw new NotImplementedException();
-            //Guard.NotNull(email);
-            //Guard.GreaterThanZero(shopId);
-            //var customer = await _customerRepository.GetOneAsync(r =>
-            //    r.Email == email && r.IsActive.HasValue && r.IsActive.Value && r.ShopId == shopId);
-            //if (customer == null)
-            //    throw new ServiceException("User not exist");
+            Guard.NotNull(email);
+            Guard.GreaterThanZero(shopId);
+            var customer = await _customerRepository.GetOneAsync(r =>
+                r.Email == email && r.IsActive.HasValue && r.IsActive.Value && r.ShopId == shopId);
+            if (customer == null)
+                throw new ServiceException("User not exist");
 
-            ////Email customer ResetCode
-            //customer.ResetCode = GuidHashUtil.Get6DigitNumber();
-            //var updatedCustomer = await _customerRepository.UpdateAsync(customer);
+            //Email customer ResetCode
+            customer.ResetCode = GuidHashUtil.Get6DigitNumber();
+            var updatedCustomer = await _customerRepository.UpdateAsync(customer);
+            var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
+            EmailForgetPWDSender(updatedCustomer, shopInfo, "Fotget password");
 
-            //var shopInfo =
-            //    await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
-            //if (shopInfo == null)
-            //    throw new ServiceException("Cannot find shop info");
-
-            //var content = await _shopContentRepository.GetOneAsync(r =>
-            //    r.ShopId == shopId && r.Key == EmailTemplateEnum.ForgetPassword.ToString());
-            //if (content == null)
-            //    throw new ServiceException("Cannot find email content");
-
-            //dynamic objectContent = new
-            //{
-            //    ShopName = shopInfo.ShopName,
-            //    PhoneNumber = shopInfo.ShopNumber,
-            //    Address = shopInfo.ShopAddressInfo.Address1 + ',' + shopInfo.ShopAddressInfo.Address2,
-            //    ShopWebSite = shopInfo.Website,
-            //    ResetCode = customer.ResetCode
-            //};
-
-            //var emailContent = await _contentBuilder.BuildRazorContent(objectContent, content.Content);
-
-            //var settings = await _settingRepository.GetManyAsync(r => r.ShopId == shopId);
-
-            //var result = await _emailUtil.SendEmail(settings.ToList(), shopInfo.Email, "",
-            //    email, "", content.Subject, null, emailContent, null);
-
-            //if (!result)
-            //    throw new ServiceException("Failed to send reset code");
-
-            //return updatedCustomer.ClearForOutPut();
+            return updatedCustomer.ClearForOutPut();
         }
 
         public async Task<object> RegisterAccount(DbCustomer customer, int shopId)
@@ -187,9 +159,6 @@ namespace App.Infrastructure.ServiceHandler.Common
             string wwwPath = this._environment.WebRootPath;
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "email_verify");
 
-
-            //var emailHtml = await _contentBuilder.BuildRazorContent(user, htmlTemp);
-
             try
             {
                 BackgroundJob.Enqueue<IContentBuilder>(
@@ -200,7 +169,21 @@ namespace App.Infrastructure.ServiceHandler.Common
             {
             }
         }
+        private async Task EmailForgetPWDSender(DbCustomer user, DbShop shopInfo, string subject)
+        {
+            string wwwPath = this._environment.WebRootPath;
+            string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "reset_password");
 
+            try
+            {
+                BackgroundJob.Enqueue<IContentBuilder>(
+                    s => s.SendEmail(user, htmlTemp, shopInfo.ShopSettings, shopInfo.Email, user.Email, subject
+                        ));
+            }
+            catch (Exception ex)
+            {
+            }
+        }
         public async Task<DbCustomer> ResetPassword(string email, string resetCode, string password, int shopId)
         {
             Guard.NotNull(email);

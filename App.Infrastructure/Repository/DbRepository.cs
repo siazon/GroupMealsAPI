@@ -1,8 +1,10 @@
 ﻿using App.Domain;
 using App.Domain.Config;
 using App.Infrastructure.Exceptions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
+using Microsoft.Azure.Documents.Linq;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -16,6 +18,7 @@ namespace App.Infrastructure.Repository
     public interface IDbRepository<T> where T : DbEntity
     {
         Task<IEnumerable<T>> GetManyAsync(Expression<Func<T, bool>> predicate);
+        Task<KeyValuePair<string,IEnumerable<T>>> GetManyAsync( Expression<Func<T, bool>> predicate, int pageSize=-1, string continueToken=null);
 
         Task<T> GetOneAsync(Expression<Func<T, bool>> predicate);
 
@@ -51,8 +54,6 @@ namespace App.Infrastructure.Repository
 
         }
 
-        
-
         public async Task<IEnumerable<T>> GetManyAsync(Expression<Func<T, bool>> predicate)
         {
             try
@@ -62,6 +63,37 @@ namespace App.Infrastructure.Repository
                         new FeedOptions { MaxItemCount = -1, EnableCrossPartitionQuery = true })
                     .Where(predicate).AsEnumerable();
                 return query;
+            }
+            catch (Exception e)
+            {
+                throw new DataRepositoryException(e);
+            }
+        }
+
+        public async Task<KeyValuePair<string,IEnumerable<T>>> GetManyAsync(Expression<Func<T, bool>> predicate,  int pageSize = -1, string continueToken = null)
+        {
+            try
+            {
+                FeedResponse<T> feedRespose=null;// = await query.ExecuteNextAsync<T>();
+                IDocumentQuery<T> query = null;
+                List<T> documents = new List<T>();
+                    var options = new FeedOptions
+                    {
+                        MaxItemCount = pageSize,
+                        EnableCrossPartitionQuery = true,
+                        RequestContinuation = continueToken,
+                        EnableScanInQuery = true
+                    };
+                    query = Client.CreateDocumentQuery<T>(UriFactory.CreateDocumentCollectionUri(DatabaseId, CollectionId), options).Where(predicate).AsDocumentQuery();
+                    while (query.HasMoreResults)
+                    {
+                        feedRespose =await query.ExecuteNextAsync<T>();
+                        documents.AddRange(feedRespose);
+                        return new KeyValuePair<string, IEnumerable<T>>(feedRespose.ResponseContinuation, documents);
+                    }
+                string continuation = null;
+                if(feedRespose != null) { continuation = feedRespose.ResponseContinuation; }
+                return new KeyValuePair<string, IEnumerable<T>>(continuation, documents);
             }
             catch (Exception e)
             {
