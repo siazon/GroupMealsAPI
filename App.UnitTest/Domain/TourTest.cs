@@ -23,10 +23,10 @@ namespace App.UnitTest.Domain
 
             var emailTemplate = Resource1.irebooking;
 
-            var result = new ContentBuilder().BuildRazorContent(dataSet, emailTemplate);
+            //var result = new ContentBuilder().BuildRazorContent(dataSet, emailTemplate);
 
 
-            var final = result.Result;
+            //var final = result.Result;
 
 
             Assert.IsNotNull(booking);

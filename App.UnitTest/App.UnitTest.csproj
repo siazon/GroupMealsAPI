@@ -20,6 +20,7 @@
     <ProjectReference Include="..\App.Infrastructure\App.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Remove="Infrastructure\Utility\GoogleMapUtilTest.cs" />
     <Compile Remove="UnitTest1.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -34,15 +34,15 @@ namespace KingfoodIO.Controllers.TravelMeals
             _restaurantBookingServiceHandler= restaurantBookingServiceHandler;
         }
 
-        [HttpGet]
+        [HttpPost]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> GetRestaurants(int shopId,int pageSize=-1,string continuationToken=null, bool cache = true)
+        public async Task<IActionResult> GetRestaurants([FromBody]string pageToken, int shopId,int pageSize=-1,bool cache = true)
         {
             //return await ExecuteAsync(shopId, cache,
             //    async () => await _restaurantServiceHandler.GetRestaurantInfo(shopId));
 
-            return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetRestaurantInfo(shopId,pageSize,continuationToken));
+            return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetRestaurantInfo(shopId,pageSize, pageToken));
         }
         [HttpGet]
         [ServiceFilter(typeof(AuthActionFilter))]
@@ -67,13 +67,13 @@ namespace KingfoodIO.Controllers.TravelMeals
             return await ExecuteAsync(shopId, false,
                 async () => await _restaurantServiceHandler.AddRestaurant(restaurant, shopId));
         }
-        [HttpGet]
+        [HttpPost]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> SearchBookings(int shopId, string email,string content, bool cache = true)
+        public async Task<IActionResult> SearchBookings([FromBody] string pageToken, int shopId, string email,string content, int pageSize = -1, bool cache = true)
         {
             return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantServiceHandler.SearchBookings(shopId, email, content));
+                async () => await _restaurantServiceHandler.SearchBookings(shopId, email, content,pageSize,pageToken));
         }
         [HttpGet]
         [ServiceFilter(typeof(AuthActionFilter))]

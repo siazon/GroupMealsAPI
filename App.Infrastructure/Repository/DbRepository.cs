@@ -1,5 +1,7 @@
 ﻿using App.Domain;
+using App.Domain.Common.Customer;
 using App.Domain.Config;
+using App.Domain.TravelMeals.Restaurant;
 using App.Infrastructure.Exceptions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Documents;
@@ -72,6 +74,18 @@ namespace App.Infrastructure.Repository
 
         public async Task<KeyValuePair<string,IEnumerable<T>>> GetManyAsync(Expression<Func<T, bool>> predicate,  int pageSize = -1, string continueToken = null)
         {
+
+            //IDbRepository_new<TrDbRestaurant> dbRepository_New = new Repository.DbRepository_new<TrDbRestaurant>();
+            //dbRepository_New.SetUpConnection("https://wiiyadevelop.documents.azure.com:443/", "X8SlC0zDFDE91DguIZ8XVSytAoburu2mZczsnKVgVYKHj4I7fnC9JdE7lLb6TeRcUU7OKxDXinW0KNzvEDMKfA==", "wiiya");
+
+            //KeyValuePair<string, IEnumerable<TrDbRestaurant>> data ;
+            //string token = continueToken;
+            //for (int i = 0; i < 5; i++)
+            //{
+            //    data = await dbRepository_New.GetManyAsync(r => r.IsActive == true, pageSize, token);
+
+            //    token=data.Key;
+            //}
             try
             {
                 FeedResponse<T> feedRespose=null;// = await query.ExecuteNextAsync<T>();

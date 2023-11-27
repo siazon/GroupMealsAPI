@@ -26,12 +26,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
     public interface ITrRestaurantServiceHandler
     {
         Task<List<TrDbRestaurant>> GetRestaurantInfo(int shopId);
-        Task<KeyValuePair<string, List<TrDbRestaurant>>> GetRestaurantInfo(int shopId,  int pageSize = -1, string continuationToke = null);
+        Task<ResponseModel> GetRestaurantInfo(int shopId,  int pageSize = -1, string continuationToke = null);
         Task<List<TrDbRestaurant>> SearchRestaurantInfo(int shopId, string searchContent);
 
         Task<TrDbRestaurantBooking> RequestBooking(TrDbRestaurantBooking booking, int shopId );
         Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId);
-        Task<List<TrDbRestaurantBooking>> SearchBookings(int shopId, string email, string content);
+        Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
       
     }
 
@@ -59,17 +59,19 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _trRestaurantBookingServiceHandler = trRestaurantBookingServiceHandler;
             _logger= logger;
         }
-        public async Task<KeyValuePair<string, List<TrDbRestaurant>>> GetRestaurantInfo(int shopId,  int pageSize = -1, string continuationToke = null)
+        public async Task<ResponseModel> GetRestaurantInfo(int shopId,  int pageSize = -1, string continuationToke = null)
         {
-
                 DateTime stime = DateTime.Now;
-                KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage = await _restaurantRepository
+            KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage;
+            //for (int i = 0; i < 5; i++)
+            
+                currentPage = await _restaurantRepository
                     .GetManyAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value, pageSize, continuationToke);
                 var temp = currentPage.Value.ClearForOutPut().OrderBy(a => a.SortOrder).ToList();
-                continuationToke = currentPage.Key;
+                    continuationToke = currentPage.Key;
                 _logger.LogInfo("_restaurantRepository.GetManyAsync:" + (DateTime.Now - stime).ToString());
-
-                return new KeyValuePair<string, List<TrDbRestaurant>>(currentPage.Key, temp);
+            
+                return new ResponseModel { msg="ok",code=200, token= continuationToke, data=temp};
         }
         public async Task<List<TrDbRestaurant>> GetRestaurantInfo(int shopId)
         {
@@ -77,7 +79,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var restaurants = await _restaurantRepository.GetManyAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
             var temp = restaurants.ClearForOutPut().OrderBy(a => a.SortOrder).ToList();
             _logger.LogInfo("_restaurantRepository.GetManyAsync:" + (DateTime.Now - stime).ToString());
-            Console.WriteLine("_restaurantRepository.GetManyAsync:" + (DateTime.Now - stime).ToString());
             return temp;
         }
         public async Task<List<TrDbRestaurant>> SearchRestaurantInfo(int shopId, string searchContent)
@@ -88,21 +89,21 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var temp = restaurants.ClearForOutPut();
             return temp;//TrDbRestaurant
         }
-        public async Task<List<TrDbRestaurantBooking>> SearchBookings(int shopId, string email, string content)
+        public async Task<ResponseModel> SearchBookings(int shopId, string email, string content,int pageSize=-1,string continuationToken=null)
         {
             if (string.IsNullOrWhiteSpace(content))
             {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(r => 1==1);
-                var list = Bookings.ToList().Where(a=>a.CustomerEmail==email|| a.Details.Any(b=>b.RestaurantEmail==email)).Select(c=>c).ToList();
-                return list;
+                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => a.CustomerEmail == email || a.Details.Any(b => b.RestaurantEmail == email),pageSize,continuationToken);
+                var list = Bookings.Value.ToList();
+                return new ResponseModel { msg = "ok", code = 200, token = Bookings.Key, data = list };
             }
             else
             {
                 var Bookings = await _restaurantBookingRepository.GetManyAsync(r =>
-                (r.CustomerEmail == email||r.Details.Any(b=>b.RestaurantEmail==email) )&& r.Details[0].RestaurantName.Contains(content));
-                var list = Bookings.ToList();
-              
-                return list;
+                (r.CustomerEmail == email||r.Details.Any(b=>b.RestaurantEmail==email) )&& r.Details[0].RestaurantName.Contains(content), pageSize, continuationToken);
+                var list = Bookings.Value.ToList();
+
+                return new ResponseModel { msg = "ok", code = 200, token = Bookings.Key, data = list };
             }
         }
         public async Task<TrDbRestaurantBooking> RequestBooking(TrDbRestaurantBooking booking, int shopId )
