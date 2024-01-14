@@ -85,7 +85,7 @@ namespace KingfoodIO.Controllers.Common
 
         [HttpGet]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
-        [ServiceFilter(typeof(AuthActionFilter))]
+        //[ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> ForgetPassword(string email, int shopId)
         {
             return await ExecuteAsync(shopId, false,
@@ -94,7 +94,7 @@ namespace KingfoodIO.Controllers.Common
 
         [HttpGet]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
-        [ServiceFilter(typeof(AuthActionFilter))]
+        //[ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> ResetPassword(string email, string resetCode, string password, int shopId)
         {
             return await ExecuteAsync(shopId, false,
@@ -112,7 +112,7 @@ namespace KingfoodIO.Controllers.Common
 
         [HttpPost]
         [ProducesResponseType(typeof(object), (int)HttpStatusCode.OK)]
-        [ServiceFilter(typeof(AuthActionFilter))]
+        //[ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> RegisterAccount([FromBody] DbCustomer customer, int shopId)
         {
             return await ExecuteAsync(shopId, false,
@@ -121,7 +121,7 @@ namespace KingfoodIO.Controllers.Common
 
         [HttpPost]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
-        [ServiceFilter(typeof(AuthActionFilter))]
+        //[ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> UpdateAccount([FromBody] DbCustomer customer, int shopId)
         {
             return await ExecuteAsync(shopId, false,
@@ -130,7 +130,7 @@ namespace KingfoodIO.Controllers.Common
 
         [HttpPost]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
-        [ServiceFilter(typeof(AuthActionFilter))]
+        //[ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> UpdatePassword([FromBody] DbCustomer customer, int shopId)
         {
             return await ExecuteAsync(shopId, false,

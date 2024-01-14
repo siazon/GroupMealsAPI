@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace App.Domain.TravelMeals
 {
-    public class TrDbRestaurantBooking : StripeBase
+    public class TrDbRestaurantBooking : DbEntity
     {
        
         public OrderStatusEnum Status { get; set; } = OrderStatusEnum.None;
@@ -19,9 +19,13 @@ namespace App.Domain.TravelMeals
         public int NumberOfAdults { get; set; }
         public int NumberOfChildren { get; set; }
         public string BookingNotes { get; set; }
-        public List<BookingDetail> Details { get; set; }
+        public List<BookingDetail> Details { get; set; }= new List<BookingDetail>();
 
-
+    }
+    public class PaymentInfo: StripeBase
+    {
+        public decimal Amount { get; set; }
+        public decimal PaidAmount { get; set; }
     }
     public class BookingDetail
     {
@@ -31,7 +35,10 @@ namespace App.Domain.TravelMeals
         public string RestaurantEmail { get; set; }
         public string RestaurantAddress { get; set; }
         public DateTime? SelectDateTime { get; set; }
+
+        public RestaurantBillInfo BillInfo { get; set; } = new RestaurantBillInfo();
         public List<BookingCourses> Courses { get; set; } = new List<BookingCourses>();
+        public List<PaymentInfo> PaymentInfos { get; set; } = new List<PaymentInfo>();
     }
     public class BookingCourses : TrDbRestaurantMenuItem
     {

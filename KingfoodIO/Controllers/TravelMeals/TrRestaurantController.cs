@@ -35,7 +35,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         }
 
         [HttpPost]
-        [ServiceFilter(typeof(AuthActionFilter))]
+        //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> GetRestaurants([FromBody]string pageToken, int shopId,int pageSize=-1,bool cache = true)
         {
@@ -59,6 +59,16 @@ namespace KingfoodIO.Controllers.TravelMeals
         {
             return await  _restaurantServiceHandler.RequestBooking(booking, shopId);
         }
+
+        [HttpGet]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> DeleteBooking(int shopId, string bookingId, bool cache = false)
+        {
+            return await ExecuteAsync(shopId, cache,
+                async () => await _restaurantServiceHandler.DeleteBooking( bookingId, shopId));
+        }
+
         [HttpPost]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
@@ -67,8 +77,18 @@ namespace KingfoodIO.Controllers.TravelMeals
             return await ExecuteAsync(shopId, false,
                 async () => await _restaurantServiceHandler.AddRestaurant(restaurant, shopId));
         }
+
         [HttpPost]
+        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> UpdateRestaurant([FromBody] TrDbRestaurant restaurant, int shopId)
+        {
+            return await ExecuteAsync(shopId, false,
+                async () => await _restaurantServiceHandler.UpdateRestaurant(restaurant, shopId));
+        }
+
+        [HttpPost]
+        //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> SearchBookings([FromBody] string pageToken, int shopId, string email,string content, int pageSize = -1, bool cache = true)
         {

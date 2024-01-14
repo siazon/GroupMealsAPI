@@ -114,12 +114,22 @@ namespace App.Infrastructure.ServiceHandler.Common
         public async Task<object> RegisterAccount(DbCustomer customer, int shopId)
         {
             Guard.NotNull(customer);
+            if(customer.Email.Length<3)
+                return new { msg = "Email invalid" };
+            var newItem = customer.Clone();
             var existingCustomer =
                await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Email == customer.Email);
-            if (existingCustomer != null&&existingCustomer.IsVerity)
+            if (existingCustomer != null && existingCustomer.IsVerity)
                 return new { msg = "Customer Already Exists" };
-
-            var newItem = customer.Clone();
+            else if (existingCustomer != null && !existingCustomer.IsVerity) {
+                newItem = existingCustomer;
+                if (newItem != null)
+                {
+                    var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
+                    EmailVerifySender(newItem, shopInfo, "Email Verify");
+                    return new { msg = "ok", data = newItem.ClearForOutPut() };
+                }
+            }
 
             newItem.ShopId = shopId;
             newItem.Created = _dateTimeUtil.GetCurrentTime();

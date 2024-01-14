@@ -12,6 +12,8 @@ namespace App.Domain.Enum
         Paid=1,
         ApplyRefund=2,
         Refunded=3,
-        Disable=4
+        Disable=4,
+        PayAtProperty=5,
+        PaidDeposit=6
     }
 }

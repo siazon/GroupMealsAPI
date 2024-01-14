@@ -47,6 +47,7 @@ namespace App.Domain.TravelMeals.Restaurant
         public List<string> Attractions { get; set; }
         public int? BookingHourLength { get; set; }
 
+        public RestaurantBillInfo BillInfo { get; set; }
 
         public List<TrDbRestaurantMenuCourse> Categories { get; set; }
 
@@ -81,8 +82,16 @@ namespace App.Domain.TravelMeals.Restaurant
             };
         }
     }
+    public class RestaurantBillInfo
+    {
+        public int Payment { get; set; }//1全额，2全额+到店支付，3全额+到店支付+百分比支付
+        public int PaymentType { get; set; }//支付方式
+        public double PayRate { get; set; }//百分比
 
-    public class MapPosition {
+
+    }
+    public class MapPosition
+    {
         public double lat { get; set; }
         public double lng { get; set; }
     }
@@ -98,7 +107,7 @@ namespace App.Domain.TravelMeals.Restaurant
             return source.ToList();
         }
 
-      
+
     }
 
 }

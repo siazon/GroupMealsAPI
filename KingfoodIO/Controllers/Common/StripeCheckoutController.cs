@@ -216,8 +216,8 @@ namespace KingfoodIO.Controllers.Common
                     {
                         Enabled = true,
                     },
-                    Customer = booking.StripeCustomerId,
-                    PaymentMethod = booking.StripePaymentId,
+                    Customer = booking.Details[0].PaymentInfos[0].StripeCustomerId,
+                    PaymentMethod = booking.Details[0].PaymentInfos[0].StripePaymentId,
                     Confirm = true,
                     OffSession = true,
                     ReturnUrl = "https://www.groupmeals.com",
@@ -260,17 +260,17 @@ namespace KingfoodIO.Controllers.Common
                 {
                     { "bookingId", bill.BillId}
                 };
-                StripeBase booking = null;
+                TrDbRestaurantBooking booking = null;
                 TrDbRestaurantBooking gpBooking=null;
                 long Amount = 0;
-                if (bill.BillType == "TOUR")
-                {
-                    meta["billType"] = "TOUR";
-                    var tourBooking = await _tourBookingServiceHandler.GetTourBooking(bill.BillId);
-                    booking = tourBooking;
-                    Amount = CalculateTourOrderAmount(tourBooking);
-                }
-                else
+                //if (bill.BillType == "TOUR")
+                //{
+                //    meta["billType"] = "TOUR";
+                //    var tourBooking = await _tourBookingServiceHandler.GetTourBooking(bill.BillId);
+                //    booking = tourBooking;
+                //    Amount = CalculateTourOrderAmount(tourBooking);
+                //}
+                //else
                 {
                     meta["billType"] = "GROUPMEALS";
 
@@ -286,13 +286,13 @@ namespace KingfoodIO.Controllers.Common
                         Amount = await CalculateOrderAmount(gpBooking);
                 }
 
-                if (booking != null && !string.IsNullOrWhiteSpace(booking.StripePaymentId))//upload exist payment
+                if (booking != null && !string.IsNullOrWhiteSpace(booking.Details[0].PaymentInfos[0].StripePaymentId))//upload exist payment
                 {
                     var service = new PaymentIntentService();
-                    var existpaymentIntent = service.Get(booking.StripePaymentId);
+                    var existpaymentIntent = service.Get(booking.Details[0].PaymentInfos[0].StripePaymentId);
                     if (existpaymentIntent != null && existpaymentIntent.Status == "requires_payment_method")
                     {
-                        var payment = UpdatePaymentIntent(booking.StripePaymentId, Amount, meta);
+                        var payment = UpdatePaymentIntent(booking.Details[0].PaymentInfos[0].StripePaymentId, Amount, meta);
                         _logger.LogInfo("UpdatePaymentIntent:" + booking.ToString() + bill.ToString());
                         return Json(new { clientSecret = payment.ClientSecret, paymentIntentId = payment.Id });
                     }
@@ -366,7 +366,7 @@ namespace KingfoodIO.Controllers.Common
                 else
                 {
                     TrDbRestaurantBooking booking = await _trRestaurantBookingServiceHandler.GetBooking(bill.BillId);
-                    chargeId = booking.StripeChargeId;
+                    chargeId = booking.Details[0].PaymentInfos[0].StripeChargeId;
                 }
                 var options = new RefundCreateOptions
                 {

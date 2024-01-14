@@ -26,13 +26,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
     public interface ITrRestaurantServiceHandler
     {
         Task<List<TrDbRestaurant>> GetRestaurantInfo(int shopId);
-        Task<ResponseModel> GetRestaurantInfo(int shopId,  int pageSize = -1, string continuationToke = null);
+        Task<ResponseModel> GetRestaurantInfo(int shopId, int pageSize = -1, string continuationToke = null);
         Task<List<TrDbRestaurant>> SearchRestaurantInfo(int shopId, string searchContent);
 
-        Task<TrDbRestaurantBooking> RequestBooking(TrDbRestaurantBooking booking, int shopId );
+        Task<TrDbRestaurantBooking> RequestBooking(TrDbRestaurantBooking booking, int shopId);
+        Task<bool> DeleteBooking(string bookingId, int shopId);
         Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId);
+        Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId);
         Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
-      
+
     }
 
     public class TrRestaurantServiceHandler : ITrRestaurantServiceHandler
@@ -57,21 +59,21 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _contentBuilder = contentBuilder;
             _emailUtil = emailUtil;
             _trRestaurantBookingServiceHandler = trRestaurantBookingServiceHandler;
-            _logger= logger;
+            _logger = logger;
         }
-        public async Task<ResponseModel> GetRestaurantInfo(int shopId,  int pageSize = -1, string continuationToke = null)
+        public async Task<ResponseModel> GetRestaurantInfo(int shopId, int pageSize = -1, string continuationToke = null)
         {
-                DateTime stime = DateTime.Now;
+            DateTime stime = DateTime.Now;
             KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage;
             //for (int i = 0; i < 5; i++)
-            
-                currentPage = await _restaurantRepository
-                    .GetManyAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value, pageSize, continuationToke);
-                var temp = currentPage.Value.ClearForOutPut().OrderBy(a => a.SortOrder).ToList();
-                    continuationToke = currentPage.Key;
-                _logger.LogInfo("_restaurantRepository.GetManyAsync:" + (DateTime.Now - stime).ToString());
-            
-                return new ResponseModel { msg="ok",code=200, token= continuationToke, data=temp};
+
+            currentPage = await _restaurantRepository
+                .GetManyAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value, pageSize, continuationToke);
+            var temp = currentPage.Value.ClearForOutPut().OrderBy(a => a.SortOrder).ToList();
+            continuationToke = currentPage.Key;
+            _logger.LogInfo("_restaurantRepository.GetManyAsync:" + (DateTime.Now - stime).ToString());
+
+            return new ResponseModel { msg = "ok", code = 200, token = continuationToke, data = temp };
         }
         public async Task<List<TrDbRestaurant>> GetRestaurantInfo(int shopId)
         {
@@ -89,24 +91,24 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var temp = restaurants.ClearForOutPut();
             return temp;//TrDbRestaurant
         }
-        public async Task<ResponseModel> SearchBookings(int shopId, string email, string content,int pageSize=-1,string continuationToken=null)
+        public async Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToken = null)
         {
             if (string.IsNullOrWhiteSpace(content))
             {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => a.CustomerEmail == email || a.Details.Any(b => b.RestaurantEmail == email),pageSize,continuationToken);
+                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => a.CustomerEmail == email && !a.IsDeleted || a.Details.Any(b => b.RestaurantEmail == email), pageSize, continuationToken);
                 var list = Bookings.Value.ToList();
                 return new ResponseModel { msg = "ok", code = 200, token = Bookings.Key, data = list };
             }
             else
             {
                 var Bookings = await _restaurantBookingRepository.GetManyAsync(r =>
-                (r.CustomerEmail == email||r.Details.Any(b=>b.RestaurantEmail==email) )&& r.Details[0].RestaurantName.Contains(content), pageSize, continuationToken);
+                (r.CustomerEmail == email || r.Details.Any(b => b.RestaurantEmail == email)) && r.Details[0].RestaurantName.Contains(content), pageSize, continuationToken);
                 var list = Bookings.Value.ToList();
 
                 return new ResponseModel { msg = "ok", code = 200, token = Bookings.Key, data = list };
             }
         }
-        public async Task<TrDbRestaurantBooking> RequestBooking(TrDbRestaurantBooking booking, int shopId )
+        public async Task<TrDbRestaurantBooking> RequestBooking(TrDbRestaurantBooking booking, int shopId)
         {
             _logger.LogInfo("RequestBooking" + shopId);
             Guard.NotNull(booking);
@@ -123,13 +125,21 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 exsitBooking.Created = _dateTimeUtil.GetCurrentTime();
                 exsitBooking.Details = booking.Details;
                 exsitBooking.CustomerName = booking.CustomerName;
-                exsitBooking.CustomerPhone= booking.CustomerPhone;
+                exsitBooking.CustomerPhone = booking.CustomerPhone;
                 var savedBooking = await _restaurantBookingRepository.UpdateAsync(exsitBooking);
 
                 return savedBooking;
             }
             else
             {
+                bool noPay = true; ;
+                foreach (var item in booking.Details)
+                {
+                    if (item.BillInfo.PaymentType != 2)
+                        noPay = false;
+                }
+                if (noPay)
+                    booking.Status = OrderStatusEnum.PayAtProperty;
                 booking.Id = Guid.NewGuid().ToString();
                 booking.Created = _dateTimeUtil.GetCurrentTime();
                 var newItem = await _restaurantBookingRepository.CreateAsync(booking);
@@ -142,7 +152,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var existingRestaurant =
                await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.StoreName == restaurant.StoreName && r.ShopAddress == restaurant.ShopAddress);
             if (existingRestaurant != null)
-                throw new ServiceException("Customer Already Exists");
+                throw new ServiceException("Restaurant Already Exists");
             var newItem = restaurant.Clone();
 
             newItem.ShopId = shopId;
@@ -152,6 +162,25 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             var savedRestaurant = await _restaurantRepository.CreateAsync(newItem);
             return savedRestaurant;
+        }
+        public async Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId)
+        {
+            Guard.NotNull(restaurant);
+            var existingRestaurant =
+               await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.StoreName == restaurant.StoreName && r.ShopAddress == restaurant.ShopAddress);
+            if (existingRestaurant == null)
+                throw new ServiceException("Restaurant Not Exists");
+            restaurant.Updated = _dateTimeUtil.GetCurrentTime();
+
+            var savedRestaurant = await _restaurantRepository.UpdateAsync(restaurant);
+            return savedRestaurant;
+        }
+        public async Task<bool> DeleteBooking(string bookingId, int shopId)
+        {
+            var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
+            booking.IsDeleted = true; booking.Updated = _dateTimeUtil.GetCurrentTime();
+            var savedRestaurant = await _restaurantBookingRepository.UpdateAsync(booking);
+            return savedRestaurant != null;
         }
     }
 }
