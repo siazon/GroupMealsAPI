@@ -33,6 +33,7 @@ namespace App.Domain.TravelMeals.Restaurant
         public string Country { get; set; }
         public string Email { get; set; }
         public string ContactEmail { get; set; }
+        public string SupportEmail { get; set; }
         public string ShopOpenHours { get; set; }
         public string GoogleMap { get; set; }
         public MapPosition MapPosition { get; set; }

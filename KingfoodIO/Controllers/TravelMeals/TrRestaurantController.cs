@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
+using App.Domain.Common.Auth;
 using App.Domain.Common.Customer;
 using App.Domain.Config;
 using App.Domain.TravelMeals;
@@ -12,6 +14,7 @@ using KingfoodIO.Controllers.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 
 namespace KingfoodIO.Controllers.TravelMeals
 {
@@ -57,7 +60,9 @@ namespace KingfoodIO.Controllers.TravelMeals
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<TrDbRestaurantBooking> RequestTravelMealsBooking([FromBody] TrDbRestaurantBooking booking, int shopId)
         {
-            return await  _restaurantServiceHandler.RequestBooking(booking, shopId);
+            var authHeader = Request.Headers["Wauthtoken"];
+            var temp = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            return await  _restaurantServiceHandler.RequestBooking(booking, shopId,temp.UserEmail);
         }
 
         [HttpGet]
@@ -88,36 +93,41 @@ namespace KingfoodIO.Controllers.TravelMeals
         }
 
         [HttpPost]
-        //[ServiceFilter(typeof(AuthActionFilter))]
+        [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> SearchBookings([FromBody] string pageToken, int shopId, string email,string content, int pageSize = -1, bool cache = true)
         {
+           
             return await ExecuteAsync(shopId, cache,
                 async () => await _restaurantServiceHandler.SearchBookings(shopId, email, content,pageSize,pageToken));
         }
         [HttpGet]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> ResendEmail(int shopId, string bookingId,  bool cache = true)
+        public async Task<IActionResult> ResendEmail(int shopId, string bookingId,  bool cache = false)
         {
             return await ExecuteAsync(shopId, cache,
                 async () => await _restaurantBookingServiceHandler.ResendEmail(bookingId));
         }
         [HttpGet]
-        [ServiceFilter(typeof(AuthActionFilter))]
+        //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> UpdateAccepted(int shopId, string bookingId,int acceptType, bool cache = true)
+        public async Task<IActionResult> UpdateAccepted(int shopId, string bookingId,string subId,string e, int acceptType, bool cache = false)
         {
+            //var authHeader = Request.Headers["Wauthtoken"];
+            //var temp = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantBookingServiceHandler.UpdateAccepted(bookingId, acceptType));
+                async () => await _restaurantBookingServiceHandler.UpdateAccepted(bookingId,subId, acceptType,e));
         }
         [HttpPost]
-        [ServiceFilter(typeof(AuthActionFilter))]
+        //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(bool), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> UpdateAcceptedReason([FromBody] string reason, int shopId, string bookingId, bool cache = true)
+        public async Task<IActionResult> UpdateAcceptedReason([FromBody] string reason, int shopId, string bookingId,string subId,string e, bool cache = false)
         {
+            //var authHeader = Request.Headers["Wauthtoken"];
+            //var temp = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantBookingServiceHandler.UpdateAcceptedReason(bookingId, reason));
+                async () => await _restaurantBookingServiceHandler.UpdateAcceptedReason(bookingId,subId, reason,e));
         }
     }
 }

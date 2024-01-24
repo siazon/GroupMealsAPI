@@ -59,6 +59,7 @@ namespace KingfoodIO.Controllers.Common
                     ServerKey = _appsettingConfig.ShopAuthKey,
                     UserId = customer.Id,
                     UserName = customer.UserName,
+                    UserEmail = customer.Email,
                     IsActive = customer.IsActive,
                     RoleLevel = customer.AuthValue
                 };
@@ -128,6 +129,7 @@ namespace KingfoodIO.Controllers.Common
                 async () => await _customerServiceHandler.UpdateAccount(customer, shopId));
         }
 
+
         [HttpPost]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         //[ServiceFilter(typeof(AuthActionFilter))]
@@ -146,5 +148,24 @@ namespace KingfoodIO.Controllers.Common
             return await ExecuteAsync(shopId, false,
                 async () => await _customerServiceHandler.Delete(item, shopId));
         }
+
+        [HttpPost]
+        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> UpdateFavorite([FromBody] DbCustomer customer, int shopId)
+        {
+            return await ExecuteAsync(shopId, false,
+                async () => await _customerServiceHandler.UpdateFavorite(customer, shopId));
+        }
+
+        [HttpPost]
+        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> UpdateCart([FromBody] DbCustomer customer, int shopId)
+        {
+            return await ExecuteAsync(shopId, false,
+                async () => await _customerServiceHandler.UpdateCart(customer, shopId));
+        }
+
     }
 }

@@ -1,4 +1,5 @@
 ﻿using App.Domain.Common.Auth;
+using App.Domain.TravelMeals.Restaurant;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -30,6 +31,9 @@ namespace App.Domain.Common.Customer
         public bool IsVerity { get; set; }
         public bool IsBoss { get; set; }
         public int AuthValue { get; set; }
+        public string PayCurrency { get; set; }
+        public List<CommonParam> Favorites { get; set; }
+        public List<CartInfo> CartInfos { get; set; }=new List<CartInfo>();
 
     }
 

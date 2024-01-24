@@ -25,6 +25,7 @@ namespace App.Domain.Common.Shop
         public string TokenKey { get; set; }
 
         public string AdminTokenKey { get; set; }
+        public double ExchangeRate { get; set; }
 
         //CountryIdEnum
         public int? CountryId { get; set; }

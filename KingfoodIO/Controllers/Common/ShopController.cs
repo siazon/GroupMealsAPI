@@ -26,7 +26,7 @@ namespace KingfoodIO.Controllers.Common
             _memoryCache = memoryCache;
         }
 
-        [ServiceFilter(typeof(AuthActionFilter))]
+        //[ServiceFilter(typeof(AuthActionFilter))]
         [HttpGet]
         [ProducesResponseType(typeof(DbShop), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> GetShopInfo(int shopId, bool cache = true)

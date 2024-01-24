@@ -32,7 +32,7 @@ namespace KingfoodIO.Controllers.Common
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> ListCustomers( int shopId)
         {
-            return await ExecuteAsync(shopId, false,
+            return await ExecuteAsync(shopId, true,
                 async () => await _authServiceHandler.List( shopId));
         }
         [HttpGet]
@@ -40,7 +40,7 @@ namespace KingfoodIO.Controllers.Common
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> ListMenus(int shopId)
         {
-            return await ExecuteAsync(shopId, false,
+            return await ExecuteAsync(shopId, true,
                 async () => await _authServiceHandler.ListMenus(shopId));
         }
 
@@ -50,7 +50,7 @@ namespace KingfoodIO.Controllers.Common
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> ListRoles(int shopId)
         {
-            return await ExecuteAsync(shopId, false,
+            return await ExecuteAsync(shopId, true,
                 async () => await _authServiceHandler.ListRoles(shopId));
         }
 

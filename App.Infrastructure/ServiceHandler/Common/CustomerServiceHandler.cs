@@ -35,6 +35,8 @@ namespace App.Infrastructure.ServiceHandler.Common
         Task<DbCustomer> UpdateAccount(DbCustomer customer, int shopId);
 
         Task<DbCustomer> UpdatePassword(DbCustomer customer, int shopId);
+        Task<DbCustomer> UpdateFavorite(DbCustomer customer, int shopId);
+        Task<DbCustomer> UpdateCart(DbCustomer customer, int shopId);
 
         Task<DbCustomer> Delete(DbCustomer item, int shopId);
     }
@@ -135,6 +137,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             newItem.Created = _dateTimeUtil.GetCurrentTime();
             newItem.Updated = _dateTimeUtil.GetCurrentTime();
             newItem.IsActive = true;
+            newItem.AuthValue = 159;
             var passwordEncode = _encryptionHelper.EncryptString(customer.Password);
             newItem.Password = passwordEncode;
             newItem.ResetCode = null;
@@ -241,6 +244,34 @@ namespace App.Infrastructure.ServiceHandler.Common
             return savedCustomer.ClearForOutPut();
         }
 
+        public async Task<DbCustomer> UpdateFavorite(DbCustomer customer, int shopId)
+            {
+            Guard.NotNull(customer);
+            var existingCustomer =
+                await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == customer.Id);
+            if (existingCustomer == null)
+                throw new ServiceException("Customer Not Exists");
+
+            existingCustomer.Updated = _dateTimeUtil.GetCurrentTime();
+            existingCustomer.Favorites = customer.Favorites;
+
+            var savedCustomer = await _customerRepository.UpdateAsync(existingCustomer);
+
+            return savedCustomer.ClearForOutPut();
+        }
+        public async Task<DbCustomer> UpdateCart(DbCustomer customer, int shopId)
+        {
+            Guard.NotNull(customer);
+            var existingCustomer =
+                await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == customer.Id);
+            if (existingCustomer == null)
+                throw new ServiceException("Customer Not Exists");
+
+            existingCustomer.CartInfos = customer.CartInfos;
+            var savedCustomer = await _customerRepository.UpdateAsync(existingCustomer);
+
+            return savedCustomer.ClearForOutPut();
+        }
         public async Task<DbCustomer> Delete(DbCustomer item, int shopId)
         {
             Guard.NotNull(item);
