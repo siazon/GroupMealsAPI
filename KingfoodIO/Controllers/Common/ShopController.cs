@@ -1,6 +1,8 @@
-﻿using App.Domain.Common.Shop;
+﻿using App.Domain.Common.Customer;
+using App.Domain.Common.Shop;
 using App.Domain.Config;
 using App.Domain.TravelMeals;
+using App.Domain.TravelMeals.Restaurant;
 using App.Infrastructure.ServiceHandler.Common;
 using App.Infrastructure.ServiceHandler.TravelMeals;
 using App.Infrastructure.Utility.Common;
@@ -34,6 +36,15 @@ namespace KingfoodIO.Controllers.Common
             return await ExecuteAsync(shopId, cache,
                 async () => await _shopServiceHandler.GetShopInfo(shopId));
         }
-       
+
+        [HttpGet]
+        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> UpdateExchangeRate(double exRate, int shopId)
+        {
+            return await ExecuteAsync(shopId, false,
+                async () => await _shopServiceHandler.UpdateExchangeRate(exRate, shopId));
+        }
+
     }
 }

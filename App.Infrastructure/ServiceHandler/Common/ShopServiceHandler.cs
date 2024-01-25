@@ -1,4 +1,5 @@
 ﻿using App.Domain.Common.Shop;
+using App.Domain.TravelMeals.Restaurant;
 using App.Infrastructure.Exceptions;
 using App.Infrastructure.Repository;
 using App.Infrastructure.Validation;
@@ -9,6 +10,7 @@ namespace App.Infrastructure.ServiceHandler.Common
     public interface IShopServiceHandler
     {
         Task<DbShop> GetShopInfo(int shopId);
+        Task<DbShop> UpdateExchangeRate(double exRate, int shopId);
     }
 
     public class BookingBatchServiceHandler : IShopServiceHandler
@@ -37,6 +39,16 @@ namespace App.Infrastructure.ServiceHandler.Common
                 throw new ServiceException("Cannot find shop info");
             return shopInfo;
         }
-       
+        public async Task<DbShop> UpdateExchangeRate(double exRate, int shopId)
+        {
+            var existShop =
+               await _shopRepository.GetOneAsync(r => r.ShopId==shopId);
+            if (existShop == null)
+                throw new ServiceException("shop Not Exists");
+            existShop.ExchangeRate = exRate;
+             var savedShop= await _shopRepository.UpdateAsync(existShop);
+            return savedShop;
+        }
+
     }
 }
