@@ -58,11 +58,12 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpPost]
         [ProducesResponseType(typeof(TrDbRestaurantBooking), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<TrDbRestaurantBooking> RequestTravelMealsBooking([FromBody] TrDbRestaurantBooking booking, int shopId)
+        public async Task<IActionResult> RequestTravelMealsBooking([FromBody] TrDbRestaurantBooking booking, int shopId)
         {
             var authHeader = Request.Headers["Wauthtoken"];
             var temp = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
-            return await  _restaurantServiceHandler.RequestBooking(booking, shopId,temp.UserEmail);
+            return await ExecuteAsync(shopId, false,
+                async () => await _restaurantServiceHandler.RequestBooking(booking, shopId, temp.UserEmail)); 
         }
 
         [HttpGet]

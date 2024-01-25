@@ -36,7 +36,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<ResponseModel> GetRestaurantInfo(int shopId, int pageSize = -1, string continuationToke = null);
         Task<List<TrDbRestaurant>> SearchRestaurantInfo(int shopId, string searchContent);
 
-        Task<TrDbRestaurantBooking> RequestBooking(TrDbRestaurantBooking booking, int shopId, string email);
+        Task<ResponseModel> RequestBooking(TrDbRestaurantBooking booking, int shopId, string email);
         Task<bool> DeleteBooking(string bookingId, int shopId);
         Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId);
         Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId);
@@ -128,11 +128,19 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
 
 
-        public async Task<TrDbRestaurantBooking> RequestBooking(TrDbRestaurantBooking booking, int shopId, string email)
+        public async Task<ResponseModel> RequestBooking(TrDbRestaurantBooking booking, int shopId, string email)
         {
             _logger.LogInfo("RequestBooking" + shopId);
             Guard.NotNull(booking);
             Guard.AreEqual(booking.ShopId.Value, shopId);
+            foreach (var item in booking.Details)
+            {
+                if ((item.SelectDateTime- DateTime.Now).Value.TotalHours < 12) {
+                    return new ResponseModel { msg = "用餐时间少于12个小时", code = 200, data = null };
+                }
+            }
+
+
             //var findRestaurant = await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == booking.RestaurantId);
             //if (findRestaurant == null)
             //    throw new ServiceException("Cannot Find tour");
@@ -166,7 +174,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     SendEmail(savedBooking);
                 }
-                return savedBooking;
+                return new ResponseModel { msg = "", code = 200,  data = savedBooking };
             }
             else
             {
@@ -193,7 +201,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     SendEmail(newItem);
                 }
-                return newItem;
+
+                return new ResponseModel { msg = "", code = 200, data = newItem };
             }
         }
         private async void SendEmail(TrDbRestaurantBooking booking)
