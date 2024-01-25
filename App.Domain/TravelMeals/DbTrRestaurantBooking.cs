@@ -9,6 +9,7 @@ namespace App.Domain.TravelMeals
     {
        
         public OrderStatusEnum Status { get; set; } = OrderStatusEnum.None;
+        public string BookingRef { get; set; }
         public string CustomerName { get; set; }
         public string CustomerEmail { get; set; }
         public string CustomerPhone { get; set; }
@@ -21,12 +22,18 @@ namespace App.Domain.TravelMeals
         public string Creater { get; set; }
         public List<BookingDetail> Details { get; set; }= new List<BookingDetail>();
         public List<OperationInfo> Operations { get; set; } = new List<OperationInfo>();
+        public List<PaymentInfo> PaymentInfos { get; set; } = new List<PaymentInfo>();
 
     }
     public class OperationInfo {
         public string Operation { get; set; }
         public string Operater { get; set; }
         public DateTime UpdateTime { get; set; }
+    }
+    public class AmountInfo {
+        public decimal Amount { get; set; }
+        public decimal PaidAmount { get; set; }
+        public decimal UnpaidAmount { get; set; }
     }
     public class PaymentInfo: StripeBase
     {
@@ -42,6 +49,7 @@ namespace App.Domain.TravelMeals
         public string RestaurantEmail { get; set; }
         public string SupporterEmail { get; set; }
         public string RestaurantAddress { get; set; }
+        public string Memo { get; set; }
         public string Currency { get; set; }
         public DateTime? SelectDateTime { get; set; }
         public int AcceptStatus { get; set; }//0:Defult, 1:Accept, 2:Decline
@@ -49,7 +57,7 @@ namespace App.Domain.TravelMeals
 
         public RestaurantBillInfo BillInfo { get; set; } = new RestaurantBillInfo();
         public List<BookingCourses> Courses { get; set; } = new List<BookingCourses>();
-        public List<PaymentInfo> PaymentInfos { get; set; } = new List<PaymentInfo>();
+        public List<AmountInfo> AmountInfos { get; set; } = new List<AmountInfo>();
     }
     public class BookingCourses : TrDbRestaurantMenuItem
     {

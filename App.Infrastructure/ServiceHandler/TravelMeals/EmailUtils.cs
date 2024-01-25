@@ -23,8 +23,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string Detail = "";
             foreach (var item in booking.Details)
             {
-                decimal amount = item.PaymentInfos.Sum(x => x.Amount);
-                decimal paidAmount = item.PaymentInfos.Sum(x => x.PaidAmount);
+                decimal amount = item.AmountInfos.Sum(x => x.Amount);
+                decimal paidAmount = item.AmountInfos.Sum(x => x.PaidAmount);
+                
                 Detail = "";
                 foreach (var course in item.Courses)
                 {
@@ -51,8 +52,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string currencyStr = booking.PayCurrency == "UK" ? "￡" : "€";
             foreach (var item in booking.Details)
             {
-                decimal amount = item.PaymentInfos.Sum(x => x.Amount);
-                decimal paidAmount = item.PaymentInfos.Sum(x => x.PaidAmount);
+                decimal amount = item.AmountInfos.Sum(x => x.Amount);
+                decimal paidAmount = item.AmountInfos.Sum(x => x.PaidAmount);
                 string Detail = "";
                 foreach (var course in item.Courses)
                 {
@@ -81,22 +82,28 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string currencyStr = booking.PayCurrency == "UK" ? "￡" : "€";
             foreach (var item in booking.Details)
             {
-                Detail += item.RestaurantName + "<br>";
-                decimal amount = item.PaymentInfos.Sum(x => x.Amount);
+                Detail += item.RestaurantName + " <br> ";
+                Detail += item.RestaurantPhone+"  "+item.RestaurantEmail + " <br> ";
+                Detail += item.SelectDateTime + " <br> ";
+                decimal amount = item.AmountInfos.Sum(x => x.Amount);
                 totalAmount += amount;
-                decimal paidAmount = item.PaymentInfos.Sum(x => x.PaidAmount);
+                decimal paidAmount = item.AmountInfos.Sum(x => x.PaidAmount);
                 totalPaidAmount += paidAmount;
                 foreach (var course in item.Courses)
                 {
-                    Detail += $"{course.MenuItemName} * {course.Qty}  人<br>  {currencyStr}{paidAmount}/{amount}<br>";
+                    Detail += $"{course.MenuItemName} * {course.Qty}  人 <br>  {currencyStr}{Math.Round(paidAmount,2)}/{Math.Round(amount,2)} <br> ";
                 }
+                Detail += " <br> ";
             }
-            Detail += $"Amount(金额)：<b>{currencyStr}{totalAmount}</b> Paid(已付)：<b>{currencyStr}{totalPaidAmount}</b> UnPaid(待支付)：<b style=\"color: red;\">{currencyStr}{totalAmount - totalPaidAmount}</b>";
+            string AmountStr= currencyStr+Math.Round(totalAmount, 2);
+            string PaidAmountStr= currencyStr+Math.Round(totalPaidAmount, 2);
+            string UnpaidAmountStr = currencyStr+ Math.Round((totalAmount - totalPaidAmount),2);
+            //Detail += $"Amount(金额)：<b>{currencyStr}{totalAmount}</b> Paid(已付)：<b>{currencyStr}{totalPaidAmount}</b> UnPaid(待支付)：<b style=\"color: red;\">{currencyStr}{totalAmount - totalPaidAmount}</b>";
             var detailstr = new HtmlString(Detail);
             var emailHtml = "";
             try
             {
-                emailHtml = await _contentBuilder.BuildRazorContent(new { booking, bookingDetail = booking.Details[0], Detail = detailstr }, htmlTemp);
+                emailHtml = await _contentBuilder.BuildRazorContent(new { booking, bookingDetail = booking.Details[0], AmountStr, PaidAmountStr, UnpaidAmountStr, Detail = detailstr }, htmlTemp);
             }
             catch (Exception ex)
             {
@@ -126,9 +133,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             foreach (var item in booking.Details)
             {
                 Detail += item.RestaurantName + "       ";
-                decimal amount=item.PaymentInfos.Sum(x => x.Amount);
+                decimal amount=item.AmountInfos.Sum(x => x.Amount);
                 totalAmount+= amount;
-                decimal paidAmount=item.PaymentInfos.Sum(x=>x.PaidAmount);
+                decimal paidAmount=item.AmountInfos.Sum(x=>x.PaidAmount);
                 totalPaidAmount+= paidAmount;
                 foreach (var course in item.Courses)
                 {

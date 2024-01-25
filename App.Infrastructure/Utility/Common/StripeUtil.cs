@@ -167,7 +167,7 @@ namespace App.Infrastructure.Utility.Common
         {
             try
             {
-                string chargeId = booking.Details[0].PaymentInfos[0].StripeChargeId;
+                string chargeId = booking.PaymentInfos[0].StripeChargeId;
                 var options = new RefundCreateOptions
                 {
                     Charge = chargeId,

@@ -35,12 +35,13 @@ namespace KingfoodIO.Controllers.Common
         ILogManager _logger;
         private readonly AppSettingConfig _appsettingConfig;
         IStripeUtil _stripeUtil;
+        private readonly IShopServiceHandler _shopServiceHandler;
 
         IMemoryCache _memoryCache;
         private string secret = "";
         public StripeCheckoutController(
           IOptions<CacheSettingConfig> cachesettingConfig, IOptions<AppSettingConfig> appsettingConfig, IMemoryCache memoryCache, IRedisCache redisCache, IStripeUtil stripeUtil,
-        ITourBookingServiceHandler tourBookingServiceHandler, ITourServiceHandler tourServiceHandler, IStripeServiceHandler stripeServiceHandler,
+        ITourBookingServiceHandler tourBookingServiceHandler, ITourServiceHandler tourServiceHandler, IStripeServiceHandler stripeServiceHandler, IShopServiceHandler shopServiceHandler,
           ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
         {
             _trRestaurantBookingServiceHandler = restaurantBookingServiceHandler;
@@ -48,6 +49,7 @@ namespace KingfoodIO.Controllers.Common
             _stripeServiceHandler = stripeServiceHandler;
             _tourBookingServiceHandler = tourBookingServiceHandler;
             _logger = logger;
+            _shopServiceHandler = shopServiceHandler;
             _appsettingConfig = appsettingConfig.Value;
             secret = _appsettingConfig.StripeWebhookKey;
             _stripeUtil = stripeUtil; _memoryCache = memoryCache;
@@ -109,7 +111,7 @@ namespace KingfoodIO.Controllers.Common
                         try
                         {
                             _logger.LogInfo("ChargeSucceeded:" + stripeEvent.Type);
-                            var paymentIntent = stripeEvent.Data.Object  as Charge;
+                            var paymentIntent = stripeEvent.Data.Object as Charge;
                             string bookingId = paymentIntent.Metadata["bookingId"];
                             string billType = paymentIntent.Metadata["billType"];
                             if (billType == "TOUR")
@@ -130,7 +132,7 @@ namespace KingfoodIO.Controllers.Common
                         try
                         {
                             _logger.LogInfo("ChargeSucceeded:" + stripeEvent.Type);
-                            var paymentIntent = stripeEvent.Data.Object as PaymentIntent; 
+                            var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
                             string bookingId = paymentIntent.Metadata["bookingId"];
                             string billType = paymentIntent.Metadata["billType"];
                             if (billType == "TOUR")
@@ -243,16 +245,17 @@ namespace KingfoodIO.Controllers.Common
                 //var setupService = new SetupIntentService();
                 //var temp = setupService.Get(booking.StripePaymentId);
 
+                var shop = await _shopServiceHandler.GetShopInfo(11);
                 var options = new PaymentIntentCreateOptions
                 {
-                    Amount = await CalculateOrderAmount(booking),
+                    Amount =  CalculateOrderAmount(booking, shop.ExchangeRate),
                     Currency = "eur",
                     AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
                     {
                         Enabled = true,
                     },
-                    Customer = booking.Details[0].PaymentInfos[0].StripeCustomerId,
-                    PaymentMethod = booking.Details[0].PaymentInfos[0].StripePaymentId,
+                    Customer = booking.PaymentInfos[0].StripeCustomerId,
+                    PaymentMethod = booking.PaymentInfos[0].StripePaymentId,
                     Confirm = true,
                     OffSession = true,
                     ReturnUrl = "https://www.groupmeals.com",
@@ -315,19 +318,20 @@ namespace KingfoodIO.Controllers.Common
                         return BadRequest("Can't find the booking by Id");
                     }
                     booking = gpBooking;
+                  var shop=  await _shopServiceHandler.GetShopInfo(shopId);
                     if (bill.SetupPay == 1)
                         Amount = 100;
                     else
-                        Amount = await CalculateOrderAmount(gpBooking);
+                        Amount =  CalculateOrderAmount(gpBooking, shop.ExchangeRate);
                 }
 
-                if (booking != null && !string.IsNullOrWhiteSpace(booking.Details[0].PaymentInfos[0].StripePaymentId))//upload exist payment
+                if (booking != null && !string.IsNullOrWhiteSpace(booking.PaymentInfos[0].StripePaymentId))//upload exist payment
                 {
                     var service = new PaymentIntentService();
-                    var existpaymentIntent = service.Get(booking.Details[0].PaymentInfos[0].StripePaymentId);
+                    var existpaymentIntent = service.Get(booking.PaymentInfos[0].StripePaymentId);
                     if (existpaymentIntent != null && existpaymentIntent.Status == "requires_payment_method")
                     {
-                        var payment = UpdatePaymentIntent(booking.Details[0].PaymentInfos[0].StripePaymentId, Amount, meta);
+                        var payment = UpdatePaymentIntent(booking.PaymentInfos[0].StripePaymentId, Amount, meta);
                         _logger.LogInfo("UpdatePaymentIntent:" + booking.ToString() + bill.ToString());
                         return Json(new { clientSecret = payment.ClientSecret, paymentIntentId = payment.Id });
                     }
@@ -400,7 +404,7 @@ namespace KingfoodIO.Controllers.Common
                 else
                 {
                     TrDbRestaurantBooking booking = await _trRestaurantBookingServiceHandler.GetBooking(bill.BillId);
-                    chargeId = booking.Details[0].PaymentInfos[0].StripeChargeId;
+                    chargeId = booking.PaymentInfos[0].StripeChargeId;
                 }
                 var options = new RefundCreateOptions
                 {
@@ -420,18 +424,8 @@ namespace KingfoodIO.Controllers.Common
             }
         }
 
-        private long CalculateTourOrderAmount(TourBooking booking)
-        {
-            // Calculate the order total on the server to prevent
-            // people from directly manipulating the amount on the client
-            decimal amount = 0;
-            if (booking != null)
-            {
-                amount += (booking.NumberOfPeople ?? 0) * (booking.Tour.Price ?? 0) + (booking.NumberOfAgedOrStudent ?? 0) * (booking.Tour.ConcessionPrice ?? 0) + (booking.NumberOfChild ?? 0) * (booking.Tour.ChildPrice ?? 0);
-            }
-            return (long)(Math.Round(amount, 2) * 100);
-        }
-        private async Task<long> CalculateOrderAmount(TrDbRestaurantBooking booking)
+      
+        private long CalculateOrderAmount(TrDbRestaurantBooking booking,double ExRate)
         {
             // Calculate the order total on the server to prevent
             // people from directly manipulating the amount on the client
@@ -440,50 +434,76 @@ namespace KingfoodIO.Controllers.Common
             {
                 foreach (var course in booking.Details)
                 {
-                    foreach (var item in course.Courses)
+                    if (course.Currency == booking.PayCurrency)
                     {
-                        if (item.Qty < 4)
+                        amount += getItemPayAmount(course);
+                    }
+                    else
+                    {
+                        if (booking.PayCurrency == "UK")
                         {
-                            _logger.LogInfo("StripeCheckoutController.CalculateOrderAmount:people Qty too small");
-                            throw new Exception("people Qty too small");
-                        }
-                        if (item.CourseType == 0)
-                        {
-                            item.Amount = item.Price * item.Qty;
-                            amount += item.Amount;
-                            continue;
-                        }
-                        if (item.Qty == 4 || item.Qty == 5)
-                        {
-                            item.Amount = 10 * item.Price * 0.8m;
-                            amount += item.Amount;
-                        }
-                        else if (item.Qty == 6 || item.Qty == 7)
-                        {
-                            item.Amount = 10 * item.Price * 0.85m;
-                            amount += item.Amount;
-                        }
-                        else if (item.Qty == 8)
-                        {
-                            item.Amount = 10 * item.Price * 0.9m;
-                            amount += item.Amount;
-                        }
-                        else if (item.Qty == 9)
-                        {
-                            item.Amount = 10 * item.Price * 0.95m;
-                            amount += item.Amount;
+                            amount += getItemPayAmount(course) * (decimal)ExRate;
                         }
                         else
-                        {
-                            item.Amount = item.Price * item.Qty;
-                            amount += item.Amount;
-                        }
+                            amount += getItemPayAmount(course) / (decimal)ExRate;
                     }
                 }
-
             }
             decimal temp = Math.Round(amount, 2);
             return (long)(temp * 100);
+        }
+        private decimal getItemAmount(BookingDetail bookingDetail)
+        {
+            decimal amount = 0;
+            foreach (var item in bookingDetail.Courses)
+            {
+                if (item.Qty < 10)
+                    amount += item.Price * 10;
+                else
+                    amount += item.Price * item.Qty;
+            }
+            return amount;
+        }
+        private decimal getItemPayAmount(BookingDetail bookingDetail)
+        {
+            decimal amount = getItemAmount(bookingDetail) - getDiscount(bookingDetail);
+            if (bookingDetail.BillInfo.PaymentType == 1)//付押金
+            {
+                amount = amount * (decimal)bookingDetail.BillInfo.PayRate;
+            }
+            else if (bookingDetail.BillInfo.PaymentType == 2)//到店付
+            {
+                amount = 0;
+            }
+            return amount;
+        }
+        private decimal getDiscount(BookingDetail bookingDetail)
+        {
+            decimal discount = 0;
+            foreach (var item in bookingDetail.Courses)
+            {
+                if (item.Qty == 4 || item.Qty == 5)
+                {
+                    discount += 10 * item.Price * 0.2m;
+                }
+                else if (item.Qty == 6 || item.Qty == 7)
+                {
+                    discount += 10 * item.Price * 0.15m;
+                }
+                else if (item.Qty == 8)
+                {
+                    discount += 10 * item.Price * 0.1m;
+                }
+                else if (item.Qty == 9)
+                {
+                    discount += 10 * item.Price * 0.05m;
+                }
+                else
+                {
+                    discount += item.Price * item.Qty;
+                }
+            }
+            return discount;
         }
     }
 

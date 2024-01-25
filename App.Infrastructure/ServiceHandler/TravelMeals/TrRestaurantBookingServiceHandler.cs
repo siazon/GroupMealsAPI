@@ -75,8 +75,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             TrDbRestaurantBooking booking = GetBooking(billId).Result;
             if (booking == null) return false;
-            booking.Details[0].PaymentInfos[0].StripeProductId = productId;
-            booking.Details[0].PaymentInfos[0].StripePriceId = priceId;
+            booking.PaymentInfos[0].StripeProductId = productId;
+            booking.PaymentInfos[0].StripePriceId = priceId;
             var temp = await _restaurantBookingRepository.UpdateAsync(booking);
             return true;
         }
@@ -164,9 +164,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             try
             {
                 _logger.LogInfo("BookingPaid.session");
-                TrDbRestaurantBooking booking = await _restaurantBookingRepository.GetOneAsync(r => r.Details[0].PaymentInfos[0].StripePriceId == session.Metadata["priceId"]);
+                TrDbRestaurantBooking booking = await _restaurantBookingRepository.GetOneAsync(r => r.PaymentInfos[0].StripePriceId == session.Metadata["priceId"]);
                 if (booking == null) return false;
-                booking.Details[0].PaymentInfos[0].Paid = true;
+                booking.PaymentInfos[0].Paid = true;
 
                 _logger.LogInfo("BookingPaid.session.id:" + booking.Id);
                 var temp = await _restaurantBookingRepository.UpdateAsync(booking);
@@ -195,18 +195,18 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
 
                 if (!string.IsNullOrWhiteSpace(payMethodId))
-                    booking.Details[0].PaymentInfos[0].StripePaymentId = payMethodId;
+                    booking.PaymentInfos[0].StripePaymentId = payMethodId;
                 if (!string.IsNullOrWhiteSpace(customerId))
                 {
-                    booking.Details[0].PaymentInfos[0].StripeCustomerId = customerId;
-                    booking.Details[0].PaymentInfos[0].StripeSetupIntent = true;
+                    booking.PaymentInfos[0].StripeCustomerId = customerId;
+                    booking.PaymentInfos[0].StripeSetupIntent = true;
                 }
                 if (!string.IsNullOrWhiteSpace(receiptUrl))
                 {
 
-                    booking.Details[0].PaymentInfos[0].StripeChargeId = chargeId;
-                    booking.Details[0].PaymentInfos[0].StripeReceiptUrl = receiptUrl;
-                    booking.Details[0].PaymentInfos[0].Paid = true;
+                    booking.PaymentInfos[0].StripeChargeId = chargeId;
+                    booking.PaymentInfos[0].StripeReceiptUrl = receiptUrl;
+                    booking.PaymentInfos[0].Paid = true;
                     booking.Status = Domain.Enum.OrderStatusEnum.Paid;
                 }
                 _logger.LogInfo("----------------BookingPaid" + booking.Id);
@@ -217,7 +217,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
                     throw new ServiceException("Cannot find shop info");
                 }
-                EmailUtils.EmailCustomer(booking, shopInfo, "new_meals", this._environment.WebRootPath, _contentBuilder, _logger);
+                EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, _contentBuilder, _logger);
                 EmailUtils.EmailBoss(booking, shopInfo, "New Order", this._environment.WebRootPath, _twilioUtil, _contentBuilder, _logger);
                 //var newItem = await _stripeCheckoutSeesionRepository.CreateAsync(new StripeCheckoutSeesion() { Data = session, BookingId = booking.Id });
             }
@@ -327,10 +327,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             if (!string.IsNullOrWhiteSpace(secertKey))
             {
-                booking.Details[0].PaymentInfos[0].StripeCustomerId = customerId;
-                booking.Details[0].PaymentInfos[0].StripeClientSecretKey = secertKey;
-                booking.Details[0].PaymentInfos[0].StripeSetupIntent = true;
-                booking.Details[0].PaymentInfos[0].StripePaymentId = paymentId;
+                booking.PaymentInfos[0].StripeCustomerId = customerId;
+                booking.PaymentInfos[0].StripeClientSecretKey = secertKey;
+                booking.PaymentInfos[0].StripeSetupIntent = true;
+                booking.PaymentInfos[0].StripePaymentId = paymentId;
             }
             var temp = await _restaurantBookingRepository.UpdateAsync(booking);
 
@@ -341,9 +341,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<TrDbRestaurantBooking> BindingPayInfoToTourBooking(TrDbRestaurantBooking booking, string PaymentId, string stripeClientSecretKey, bool isSetupPay)
         {
             Guard.NotNull(booking);
-            booking.Details[0].PaymentInfos[0].StripePaymentId = PaymentId;
-            booking.Details[0].PaymentInfos[0].SetupPay = isSetupPay;
-            booking.Details[0].PaymentInfos[0].StripeClientSecretKey = stripeClientSecretKey;
+            booking.PaymentInfos[0].StripePaymentId = PaymentId;
+            booking.PaymentInfos[0].SetupPay = isSetupPay;
+            booking.PaymentInfos[0].StripeClientSecretKey = stripeClientSecretKey;
             var res = await _restaurantBookingRepository.UpdateAsync(booking);
             return res;
         }
