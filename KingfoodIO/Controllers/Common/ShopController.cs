@@ -38,7 +38,7 @@ namespace KingfoodIO.Controllers.Common
         }
 
         [HttpGet]
-        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)] 
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> UpdateExchangeRate(double exRate, int shopId)
         {

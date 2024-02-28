@@ -101,6 +101,14 @@ namespace KingfoodIO.Controllers.Common
             return await ExecuteAsync(shopId, false,
                 async () => await _customerServiceHandler.ResetPassword(email, resetCode, password, shopId));
         }
+        [HttpGet]
+        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
+        //[ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> UpdatePassword(string email, string oldPassword, string password, int shopId)
+        {
+            return await ExecuteAsync(shopId, false,
+                async () => await _customerServiceHandler.UpdatePassword(email, oldPassword, password, shopId));
+        }
 
         [HttpGet]
         [ProducesResponseType(typeof(object), (int)HttpStatusCode.OK)]

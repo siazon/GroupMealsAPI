@@ -31,6 +31,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         Task<object> VerityEmail(string email, string id, int shopId);
 
         Task<DbCustomer> ResetPassword(string email, string resetCode, string password, int shopId);
+        Task<object> UpdatePassword(string email, string oldPassword, string password, int shopId);
 
         Task<DbCustomer> UpdateAccount(DbCustomer customer, int shopId);
 
@@ -187,15 +188,26 @@ namespace App.Infrastructure.ServiceHandler.Common
             string wwwPath = this._environment.WebRootPath;
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "reset_password");
 
+         var   emailHtml = await _contentBuilder.BuildRazorContent(new { code = user.ResetCode }, htmlTemp);
             try
             {
-                BackgroundJob.Enqueue<IContentBuilder>(
-                    s => s.SendEmail(user, htmlTemp, shopInfo.ShopSettings, shopInfo.Email, user.Email, subject
-                        ));
+                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, user.Email, subject, emailHtml));
+
             }
             catch (Exception ex)
             {
+                _logger.LogError($"EmailCustomer Email Customer Error {ex.Message} -{ex.StackTrace} ");
             }
+
+            //try
+            //{
+            //    BackgroundJob.Enqueue<IContentBuilder>(
+            //        s => s.SendEmail(new {code= user.ResetCode}, htmlTemp, shopInfo.ShopSettings, shopInfo.Email, user.Email, subject
+            //            ));
+            //}
+            //catch (Exception ex)
+            //{
+            //}
         }
         public async Task<DbCustomer> ResetPassword(string email, string resetCode, string password, int shopId)
         {
@@ -208,8 +220,22 @@ namespace App.Infrastructure.ServiceHandler.Common
 
             customer.Password = _encryptionHelper.EncryptString(password);
             var updatedCustomer = await _customerRepository.UpdateAsync(customer);
-
             return updatedCustomer.ClearForOutPut();
+        }
+        public async Task<object> UpdatePassword(string email, string oldPassword, string password, int shopId)
+        {
+            Guard.NotNull(email);
+            Guard.GreaterThanZero(shopId);
+            var passwordEncode = _encryptionHelper.EncryptString(oldPassword);
+            var customer = await _customerRepository.GetOneAsync(r =>
+                r.Email == email && r.Password == passwordEncode && r.IsActive.HasValue && r.IsActive.Value && r.ShopId == shopId);
+            if (customer == null)
+                return new { msg = "用户不存在，或原密码错误",  };
+
+            customer.Password = _encryptionHelper.EncryptString(password);
+            var updatedCustomer = await _customerRepository.UpdateAsync(customer);
+
+            return new { msg = "ok", data = updatedCustomer.ClearForOutPut() };
         }
 
         public async Task<DbCustomer> UpdateAccount(DbCustomer customer, int shopId)
