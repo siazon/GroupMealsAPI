@@ -107,27 +107,27 @@ namespace KingfoodIO.Controllers.Common
                 _logger.LogInfo("webhook:stripeEvent.Type:" + stripeEvent.Type);
                 switch (stripeEvent.Type)
                 {
-                    case Events.ChargeSucceeded:
-                        try
-                        {
-                            _logger.LogInfo("ChargeSucceeded:" + stripeEvent.Type);
-                            var paymentIntent = stripeEvent.Data.Object as Charge;
-                            string bookingId = paymentIntent.Metadata["bookingId"];
-                            string billType = paymentIntent.Metadata["billType"];
-                            if (billType == "TOUR")
-                            {
-                                _tourBookingServiceHandler.BookingPaid(bookingId, paymentIntent.CustomerId, paymentIntent.Id, paymentIntent.PaymentMethod, paymentIntent.ReceiptUrl);
-                            }
-                            else
-                            {
-                                _trRestaurantBookingServiceHandler.BookingPaid(bookingId, paymentIntent.CustomerId, paymentIntent.Id, paymentIntent.PaymentMethod, paymentIntent.ReceiptUrl);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogInfo("ChargeSucceeded&PaymentIntentSucceeded.Error:" + ex.Message);
-                        }
-                        break;
+                    //case Events.ChargeSucceeded:
+                    //    try
+                    //    {
+                    //        _logger.LogInfo("ChargeSucceeded:" + stripeEvent.Type);
+                    //        var paymentIntent = stripeEvent.Data.Object as Charge;
+                    //        string bookingId = paymentIntent.Metadata["bookingId"];
+                    //        string billType = paymentIntent.Metadata["billType"];
+                    //        if (billType == "TOUR")
+                    //        {
+                    //            _tourBookingServiceHandler.BookingPaid(bookingId, paymentIntent.CustomerId, paymentIntent.Id, paymentIntent.PaymentMethod, paymentIntent.ReceiptUrl);
+                    //        }
+                    //        else
+                    //        {
+                    //            _trRestaurantBookingServiceHandler.BookingPaid(bookingId, paymentIntent.CustomerId, paymentIntent.Id, paymentIntent.PaymentMethod, paymentIntent.ReceiptUrl);
+                    //        }
+                    //    }
+                    //    catch (Exception ex)
+                    //    {
+                    //        _logger.LogInfo("ChargeSucceeded&PaymentIntentSucceeded.Error:" + ex.Message);
+                    //    }
+                    //    break;
                     case Events.PaymentIntentSucceeded:
                         try
                         {

@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.Hosting;
 using App.Infrastructure.Exceptions;
 using Quartz.Impl;
 using Quartz;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -47,9 +48,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         IStripeUtil _stripeUtil;
         IHostingEnvironment _environment;
         private readonly IDbCommonRepository<DbShop> _shopRepository;
+        IMemoryCache _memoryCache;
 
         public TrRestaurantBookingServiceHandler(ITwilioUtil twilioUtil, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository,
-            IDbCommonRepository<DbShop> shopRepository, IHostingEnvironment environment, IStripeUtil stripeUtil,
+            IDbCommonRepository<DbShop> shopRepository, IHostingEnvironment environment, IStripeUtil stripeUtil, IMemoryCache memoryCache,
             IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository,
             ILogManager logger, IContentBuilder contentBuilder, IEmailUtil emailUtil)
         {
@@ -62,6 +64,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _environment = environment;
             _shopRepository = shopRepository;
             _stripeUtil = stripeUtil;
+            _memoryCache = memoryCache;
         }
 
 
@@ -217,8 +220,20 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
                     throw new ServiceException("Cannot find shop info");
                 }
-                EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, _contentBuilder, _logger);
-                EmailUtils.EmailBoss(booking, shopInfo, "New Order", this._environment.WebRootPath, _twilioUtil, _contentBuilder, _logger);
+
+                decimal exchange = 1;
+                try
+                {
+                    exchange=(decimal)((double)_memoryCache.Get("ExchangeRate"));
+                }
+                catch (Exception ex)
+                {
+
+                    _logger.LogError("----------------_memoryCache.get.excahngeRate.err" + ex.Message + "： " + ex.StackTrace);
+                }
+                
+                EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, _contentBuilder, exchange, _logger);
+                EmailUtils.EmailBoss(booking, shopInfo, "New Order", this._environment.WebRootPath, _twilioUtil, _contentBuilder, exchange, _logger);
                 //var newItem = await _stripeCheckoutSeesionRepository.CreateAsync(new StripeCheckoutSeesion() { Data = session, BookingId = booking.Id });
             }
             catch (Exception ex)
@@ -306,7 +321,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     {
                         throw new ServiceException("Cannot find shop info");
                     }
-                    EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, _contentBuilder, _logger);
+                    EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, _contentBuilder,1, _logger);
                     //EmailUtils.EmailBoss(booking, shopInfo, "new Order", this._environment.WebRootPath, _twilioUtil, _contentBuilder, _logger);
                 }
             }

@@ -86,7 +86,7 @@ namespace App.Domain.TravelMeals.Restaurant
     public class RestaurantBillInfo
     {
         public int Payment { get; set; }//1全额，2全额+到店支付，3全额+到店支付+百分比支付
-        public int PaymentType { get; set; }//支付方式
+        public int PaymentType { get; set; }//支付方式 0:全额,1:支付押金,2:到店支付
         public double PayRate { get; set; }//百分比
 
 

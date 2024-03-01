@@ -27,6 +27,7 @@ using Quartz;
 using App.Domain.Common.Auth;
 using Newtonsoft.Json.Linq;
 using Microsoft.Azure.Cosmos.Serialization.HybridRow.Schemas;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -54,12 +55,16 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private readonly IContentBuilder _contentBuilder;
         private readonly IEmailUtil _emailUtil;
         ITwilioUtil _twilioUtil;
+        IMemoryCache _memoryCache;
 
         Microsoft.AspNetCore.Hosting.IHostingEnvironment _environment;
         private ITrRestaurantBookingServiceHandler _trRestaurantBookingServiceHandler;
         ILogManager _logger;
 
-        public TrRestaurantServiceHandler(IDbCommonRepository<TrDbRestaurant> restaurantRepository, IDateTimeUtil dateTimeUtil, ILogManager logger, ITwilioUtil twilioUtil, Microsoft.AspNetCore.Hosting.IHostingEnvironment environment, IDbCommonRepository<DbShop> shopRepository, ITrBookingDataSetBuilder bookingDataSetBuilder, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository, ITrRestaurantBookingServiceHandler trRestaurantBookingServiceHandler, IContentBuilder contentBuilder, IEmailUtil emailUtil)
+        public TrRestaurantServiceHandler(IDbCommonRepository<TrDbRestaurant> restaurantRepository, IDateTimeUtil dateTimeUtil, ILogManager logger, ITwilioUtil twilioUtil,
+            Microsoft.AspNetCore.Hosting.IHostingEnvironment environment, IDbCommonRepository<DbShop> shopRepository, ITrBookingDataSetBuilder bookingDataSetBuilder,
+            IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository, ITrRestaurantBookingServiceHandler trRestaurantBookingServiceHandler, IMemoryCache memoryCache,
+            IContentBuilder contentBuilder, IEmailUtil emailUtil)
         {
             _restaurantRepository = restaurantRepository;
             _dateTimeUtil = dateTimeUtil;
@@ -72,6 +77,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _twilioUtil = twilioUtil;
             _trRestaurantBookingServiceHandler = trRestaurantBookingServiceHandler;
             _logger = logger;
+            _memoryCache= memoryCache;
         }
         public async Task<ResponseModel> GetRestaurantInfo(int shopId, int pageSize = -1, string continuationToke = null)
         {
@@ -213,9 +219,20 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
                 throw new ServiceException("Cannot find shop info");
             }
-            EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, _contentBuilder, _logger);
-            EmailUtils.EmailBoss(booking, shopInfo, "New Order", this._environment.WebRootPath, _twilioUtil, _contentBuilder, _logger);
-            EmailUtils.EmailSupport(booking, shopInfo, "New Order", this._environment.WebRootPath, _twilioUtil, _contentBuilder, _logger);
+
+            decimal exchange = 1;
+            try
+            {
+                exchange = (decimal)((double)_memoryCache.Get("ExchangeRate"));
+            }
+            catch (Exception ex)
+            {
+
+                _logger.LogError("----------------_memoryCache.get.excahngeRate.err" + ex.Message + "£º " + ex.StackTrace);
+            }
+            EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, _contentBuilder, exchange, _logger);
+            EmailUtils.EmailBoss(booking, shopInfo, "New Order", this._environment.WebRootPath, _twilioUtil, _contentBuilder, exchange, _logger);
+            EmailUtils.EmailSupport(booking, shopInfo, "New Order", this._environment.WebRootPath, _twilioUtil, _contentBuilder, exchange, _logger);
 
         }
         public async Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId)

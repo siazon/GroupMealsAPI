@@ -10,6 +10,7 @@ using KingfoodIO.Application.Filter;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+using Stripe;
 using System.Net;
 using System.Threading.Tasks;
 
@@ -33,8 +34,10 @@ namespace KingfoodIO.Controllers.Common
         [ProducesResponseType(typeof(DbShop), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> GetShopInfo(int shopId, bool cache = true)
         {
-            return await ExecuteAsync(shopId, cache,
+            var shopInfo= await ExecuteAsync(shopId, cache,
                 async () => await _shopServiceHandler.GetShopInfo(shopId));
+    
+            return shopInfo;
         }
 
         [HttpGet]
@@ -42,6 +45,7 @@ namespace KingfoodIO.Controllers.Common
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> UpdateExchangeRate(double exRate, int shopId)
         {
+            _memoryCache.Set("ExchangeRate", exRate);
             return await ExecuteAsync(shopId, false,
                 async () => await _shopServiceHandler.UpdateExchangeRate(exRate, shopId));
         }
