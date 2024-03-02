@@ -52,6 +52,7 @@ namespace App.Domain.TravelMeals
         public string Memo { get; set; }
         public string Currency { get; set; }
         public DateTime? SelectDateTime { get; set; }
+        public int Status { get; set; }//0:defult,1:canceled
         public int AcceptStatus { get; set; }//0:Defult, 1:Accept, 2:Decline
         public string AcceptReason { get; set; }
 

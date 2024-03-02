@@ -65,7 +65,14 @@ namespace KingfoodIO.Controllers.TravelMeals
             return await ExecuteAsync(shopId, false,
                 async () => await _restaurantServiceHandler.RequestBooking(booking, shopId, temp.UserEmail)); 
         }
-
+        [HttpGet]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> CancelBooking(int shopId, string bookingId,string detailId, bool cache = false)
+        {
+            return await ExecuteAsync(shopId, cache,
+                async () => await _restaurantBookingServiceHandler.CancelBooking(bookingId, detailId, shopId));
+        }
         [HttpGet]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]

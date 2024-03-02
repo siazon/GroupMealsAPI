@@ -15,7 +15,9 @@ namespace App.Domain.Enum
         Refunded=3,
         Disable=4,
         PayAtProperty=5,
-        PaidDeposit=6
+        PaidDeposit=6,
+        PartialCanceled=7
+
     }
     public enum PayTypeEnum
     {

@@ -21,6 +21,10 @@ using App.Infrastructure.Exceptions;
 using Quartz.Impl;
 using Quartz;
 using Microsoft.Extensions.Caching.Memory;
+using App.Domain.Enum;
+using Microsoft.AspNetCore.Html;
+using Stripe.FinancialConnections;
+using Microsoft.CodeAnalysis.Text;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -33,8 +37,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<bool> UpdateStripeClientKey(string bookingId, string paymentId, string customerId, string secertKey);
         Task<TrDbRestaurantBooking> BindingPayInfoToTourBooking(TrDbRestaurantBooking gpBooking, string PaymentId, string stripeClientSecretKey, bool isSetupPay);
         Task<bool> ResendEmail(string bookingId);
-        Task<bool> UpdateAccepted(string bookingId, string subBillId, int acceptType,string operater);
+        Task<bool> UpdateAccepted(string bookingId, string subBillId, int acceptType, string operater);
         Task<bool> UpdateAcceptedReason(string bookingId, string subBillId, string reason, string operater);
+        Task<bool> CancelBooking(string bookingId, string detailId, int shopId);
     }
     public class TrRestaurantBookingServiceHandler : ITrRestaurantBookingServiceHandler
     {
@@ -49,10 +54,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         IHostingEnvironment _environment;
         private readonly IDbCommonRepository<DbShop> _shopRepository;
         IMemoryCache _memoryCache;
+        private readonly IDateTimeUtil _dateTimeUtil;
 
         public TrRestaurantBookingServiceHandler(ITwilioUtil twilioUtil, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository,
             IDbCommonRepository<DbShop> shopRepository, IHostingEnvironment environment, IStripeUtil stripeUtil, IMemoryCache memoryCache,
-            IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository,
+            IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, IDateTimeUtil dateTimeUtil,
             ILogManager logger, IContentBuilder contentBuilder, IEmailUtil emailUtil)
         {
             _restaurantBookingRepository = restaurantBookingRepository;
@@ -65,6 +71,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _shopRepository = shopRepository;
             _stripeUtil = stripeUtil;
             _memoryCache = memoryCache;
+            _dateTimeUtil = dateTimeUtil;
         }
 
 
@@ -74,6 +81,68 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return Booking;
         }
 
+        public async Task<bool> CancelBooking(string bookingId, string detailId, int shopId)
+        {
+            var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
+            foreach (var item in booking.Details)
+            {
+                if (item.Id == detailId)
+                {
+                    item.Status = 1;
+                    SendCancelEmail(booking, item);
+                }
+            }
+            booking.Status = OrderStatusEnum.PartialCanceled;
+            booking.Updated = _dateTimeUtil.GetCurrentTime();
+            var savedRestaurant = await _restaurantBookingRepository.UpdateAsync(booking);
+
+            return savedRestaurant != null;
+        }
+        private async void SendCancelEmail(TrDbRestaurantBooking booking, BookingDetail detail)
+        {
+            var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
+            if (shopInfo == null)
+            {
+                _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
+                throw new ServiceException("Cannot find shop info");
+            }
+            string currencyStr = booking.PayCurrency == "UK" ? "￡" : "€";
+            decimal exRate = (decimal)((double)_memoryCache.Get("ExchangeRate"));
+            decimal amount = 0;
+            decimal paidAmount = 0; detail.AmountInfos.Sum(x => x.PaidAmount);
+
+            paidAmount = detail.AmountInfos.Sum(x => x.PaidAmount);
+            if (booking.PayCurrency == detail.Currency)
+            {
+                amount = detail.AmountInfos.Sum(x => x.Amount);
+            }
+            else if (booking.PayCurrency == "UK")
+                amount = detail.AmountInfos.Sum(x => x.Amount) * exRate;
+            else
+                amount = detail.AmountInfos.Sum(x => x.Amount) / exRate;
+            paidAmount = Math.Round(paidAmount, 2);
+            amount = Math.Round(amount, 2);
+            string Detail = "";
+            foreach (var course in detail.Courses)
+            {
+                Detail += $"{course.MenuItemName} * {course.Qty} 人 {currencyStr}{paidAmount}/{amount}<br>";
+            }
+            _twilioUtil.sendSMS(detail.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
+            Detail += $"Amount(金额)：<b>{currencyStr}{amount}</b>, Paid(已付)：<b>{currencyStr}{paidAmount}</b>, UnPaid(待支付)：<b style=\"color: red;\">{currencyStr}{amount - paidAmount}</b>";
+            var detailstr = new HtmlString(Detail);
+            string htmlTemp = EmailTemplateUtil.ReadTemplate(this._environment.WebRootPath, "cancel_meals_restaurant");
+            var emailHtml = await _contentBuilder.BuildRazorContent(new { booking, detail, Detail = detailstr, Memo = detail.Courses[0].Memo }, htmlTemp);
+            try
+            {
+                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, detail.RestaurantEmail, "Order canceled", emailHtml));
+                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, "Order canceled", emailHtml));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"SendCancelEmail {ex.Message} -{ex.StackTrace} ");
+            }
+
+        }
         public async Task<bool> UpdateBooking(string billId, string productId, string priceId)
         {
             TrDbRestaurantBooking booking = GetBooking(billId).Result;
@@ -83,12 +152,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var temp = await _restaurantBookingRepository.UpdateAsync(booking);
             return true;
         }
-        public async Task<bool> UpdateAccepted(string billId,string subBillId, int acceptType, string operater)
+        public async Task<bool> UpdateAccepted(string billId, string subBillId, int acceptType, string operater)
         {
             TrDbRestaurantBooking booking = GetBooking(billId).Result;
             foreach (var item in booking.Details)
             {
-                if (item.Id == subBillId) {
+                if (item.Id == subBillId)
+                {
                     item.AcceptStatus = acceptType;
                 }
             }
@@ -97,7 +167,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //{
             //    _stripeUtil.RefundGroupMeals(booking);
             //}
-            var opt = new OperationInfo() { Operater = operater, Operation =acceptType==1? "接收预订":"拒绝预订", UpdateTime = DateTime.Now };
+            var opt = new OperationInfo() { Operater = operater, Operation = acceptType == 1 ? "接收预订" : "拒绝预订", UpdateTime = DateTime.Now };
             booking.Operations.Add(opt);
             var temp = await _restaurantBookingRepository.UpdateAsync(booking);
             string msg = $"您于{booking.BookingDate} {booking.BookingTime} 提交的订单已被接收，请按时就餐";
@@ -152,7 +222,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (booking == null) return false;
             foreach (var item in booking.Details)
             {
-                if (item.Id == subBillId) {
+                if (item.Id == subBillId)
+                {
                     item.AcceptReason = reason;
                 }
             }
@@ -224,14 +295,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 decimal exchange = 1;
                 try
                 {
-                    exchange=(decimal)((double)_memoryCache.Get("ExchangeRate"));
+                    exchange = (decimal)((double)_memoryCache.Get("ExchangeRate"));
                 }
                 catch (Exception ex)
                 {
 
                     _logger.LogError("----------------_memoryCache.get.excahngeRate.err" + ex.Message + "： " + ex.StackTrace);
                 }
-                
+
                 EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, _contentBuilder, exchange, _logger);
                 EmailUtils.EmailBoss(booking, shopInfo, "New Order", this._environment.WebRootPath, _twilioUtil, _contentBuilder, exchange, _logger);
                 //var newItem = await _stripeCheckoutSeesionRepository.CreateAsync(new StripeCheckoutSeesion() { Data = session, BookingId = booking.Id });
@@ -321,7 +392,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     {
                         throw new ServiceException("Cannot find shop info");
                     }
-                    EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, _contentBuilder,1, _logger);
+                    EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, _contentBuilder, 1, _logger);
                     //EmailUtils.EmailBoss(booking, shopInfo, "new Order", this._environment.WebRootPath, _twilioUtil, _contentBuilder, _logger);
                 }
             }
