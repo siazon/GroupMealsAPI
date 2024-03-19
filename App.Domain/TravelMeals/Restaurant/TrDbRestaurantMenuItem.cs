@@ -2,7 +2,7 @@ using App.Domain.Enum;
 
 namespace App.Domain.TravelMeals.Restaurant
 {
-    public class TrDbRestaurantMenuItem : DbEntity
+    public class TrDbRestaurantMenuItem 
     {
         public string MenuItemName { get; set; }
         public string MenuItemNameCn { get; set; }

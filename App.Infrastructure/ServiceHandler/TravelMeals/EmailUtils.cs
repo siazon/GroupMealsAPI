@@ -17,15 +17,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
     public class EmailUtils
     {
-        public static async Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string subject, string wwwPath, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger)
+        public static async Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath,string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger)
         {
-            string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "new_meals_restaurant");
+            string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string currencyStr = booking.PayCurrency == "UK" ? "￡" : "€";
             string Detail = "";
             foreach (var item in booking.Details)
             {
                 decimal amount = 0;
-                decimal paidAmount = 0; item.AmountInfos.Sum(x => x.PaidAmount);
+                decimal paidAmount = 0; //item.AmountInfos.Sum(x => x.PaidAmount);
 
                
                 paidAmount = item.AmountInfos.Sum(x => x.PaidAmount);
@@ -36,7 +36,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 else if (booking.PayCurrency == "UK")
                 {
                     amount = item.AmountInfos.Sum(x => x.Amount)* exRate;
-
                 }
                 else
                 {
@@ -49,10 +48,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     Detail += $"{course.MenuItemName} * {course.Qty} 人 {currencyStr}{paidAmount}/{amount}<br>";
                 }
-                _twilioUtil.sendSMS(item.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
+                //_twilioUtil.sendSMS(item.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
                 Detail += $"Amount(金额)：<b>{currencyStr}{amount}</b>, Paid(已付)：<b>{currencyStr}{paidAmount}</b>, UnPaid(待支付)：<b style=\"color: red;\">{currencyStr}{amount - paidAmount}</b>";
                 var detailstr = new HtmlString(Detail);
-                var emailHtml = await _contentBuilder.BuildRazorContent(new { booking = booking, details = item, Detail = detailstr, Memo = item.Courses[0].Memo }, htmlTemp);
+                var emailHtml = await _contentBuilder.BuildRazorContent(new { booking = booking, bookingDetail = item, AmountStr= amount, PaidAmountStr= paidAmount, UnpaidAmountStr= amount - paidAmount, Detail = detailstr, Memo = item.Courses[0].Memo }, htmlTemp);
                 try
                 {
                     BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, item.RestaurantEmail, subject, emailHtml));
@@ -64,9 +63,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
         }
 
-        public static async Task EmailSupport(TrDbRestaurantBooking booking, DbShop shopInfo, string subject, string wwwPath, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder,decimal exRate, ILogManager _logger)
+        public static async Task EmailSupport(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder,decimal exRate, ILogManager _logger)
         {
-            string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "new_meals_support");
+            string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string currencyStr = booking.PayCurrency == "UK" ? "￡" : "€";
             foreach (var item in booking.Details)
             {
@@ -77,7 +76,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 paidAmount = item.AmountInfos.Sum(x => x.PaidAmount);
                 if (booking.PayCurrency == item.Currency)
                 {
-                    paidAmount = item.AmountInfos.Sum(x => x.PaidAmount);
+                    amount = item.AmountInfos.Sum(x => x.Amount);
                 }
                 else if (booking.PayCurrency == "UK")
                 {
@@ -95,13 +94,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     Detail += $"{course.MenuItemName} * {course.Qty} 人 {currencyStr}{paidAmount}/{amount}<br>";
                 }
-                _twilioUtil.sendSMS(booking.Details[0].RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
+                //_twilioUtil.sendSMS(booking.Details[0].RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
                 Detail += $"Amount(金额)：<b>{currencyStr}{amount}</b> Paid(已付)：<b>{currencyStr}{paidAmount}</b> UnPaid(待支付)：<b style=\"color: red;\">{currencyStr}{amount - paidAmount}</b>";
                 var detailstr = new HtmlString(Detail);
-                var emailHtml = await _contentBuilder.BuildRazorContent(new { booking = booking, details = item, Detail = detailstr, Memo = item.Courses[0].Memo }, htmlTemp);
+                var emailHtml = await _contentBuilder.BuildRazorContent(new { booking = booking, bookingDetail = item, AmountStr = amount, PaidAmountStr = paidAmount, UnpaidAmountStr = amount - paidAmount, Detail = detailstr, Memo = item.Courses[0].Memo }, htmlTemp);
                 try
                 {
-                    BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, item.SupporterEmail, subject, emailHtml));
+                    BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, item.SupporterEmail, "New Booking", emailHtml));
                 }
                 catch (Exception ex)
                 {
@@ -110,7 +109,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
         }
 
-        public static async Task EmailCustomerTotal(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger)
+        public static async Task EmailCustomerTotal(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger)
         {
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";
@@ -167,7 +166,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             try
             {
-                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, $"Thank you for your Booking", emailHtml));
+                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, subject, emailHtml));
 
             }
             catch (Exception ex)
@@ -176,7 +175,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
 
         }
-        public static async Task EmailCustomer(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, IContentBuilder _contentBuilder, ILogManager _logger)
+        public static async Task EmailCustomer(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, IContentBuilder _contentBuilder, ILogManager _logger)
         {
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";

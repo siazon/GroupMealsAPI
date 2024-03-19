@@ -37,7 +37,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<ResponseModel> GetRestaurantInfo(int shopId, int pageSize = -1, string continuationToke = null);
         Task<List<TrDbRestaurant>> SearchRestaurantInfo(int shopId, string searchContent);
 
-        Task<ResponseModel> RequestBooking(TrDbRestaurantBooking booking, int shopId, string email);
         Task<bool> DeleteBooking(string bookingId, int shopId);
         Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId);
         Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId);
@@ -114,127 +113,26 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(content))
             {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => !a.IsDeleted || a.Details.Any(b => b.RestaurantEmail == email), pageSize, continuationToken);
+                var Bookings = await _restaurantBookingRepository.GetManyAsync(a =>(a.Status != OrderStatusEnum.None&&!a.IsDeleted) || a.Details.Any(b => b.RestaurantEmail == email), pageSize, continuationToken);
                 var list = Bookings.Value.ToList();
                 return new ResponseModel { msg = "ok", code = 200, token = Bookings.Key, data = list };
             }
             if (string.IsNullOrWhiteSpace(content))
             {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => !a.IsDeleted || a.Details.Any(b => b.RestaurantEmail == email), pageSize, continuationToken);
+                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted) || a.Details.Any(b => b.RestaurantEmail == email), pageSize, continuationToken);
                 var list = Bookings.Value.ToList().FindAll(a => a.CustomerEmail == email).ToList();
                 return new ResponseModel { msg = "ok", code = 200, token = Bookings.Key, data = list };
             }
 
             else
             {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => !a.IsDeleted || a.Details.Any(b => b.RestaurantEmail == email), pageSize, continuationToken);
+                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted) || a.Details.Any(b => b.RestaurantEmail == email), pageSize, continuationToken);
                 var list = Bookings.Value.ToList().FindAll(a => a.Details.Any(d => d.RestaurantName.ToLower().Contains(content.ToLower()))).ToList();
                 return new ResponseModel { msg = "ok", code = 200, token = Bookings.Key, data = list };
             }
         }
 
 
-        public async Task<ResponseModel> RequestBooking(TrDbRestaurantBooking booking, int shopId, string email)
-        {
-            _logger.LogInfo("RequestBooking" + shopId);
-            Guard.NotNull(booking);
-            Guard.AreEqual(booking.ShopId.Value, shopId);
-            foreach (var item in booking.Details)
-            {
-                if ((item.SelectDateTime- DateTime.Now).Value.TotalHours < 12) {
-                    return new ResponseModel { msg = "用餐时间少于12个小时", code = 200, data = null };
-                }
-            }
-
-
-            //var findRestaurant = await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == booking.RestaurantId);
-            //if (findRestaurant == null)
-            //    throw new ServiceException("Cannot Find tour");
-            TourBooking newBooking;
-            var createTime = _dateTimeUtil.GetCurrentTime();
-            var exsitBookings = await _restaurantBookingRepository.GetManyAsync(r => r.Status == OrderStatusEnum.None && r.CustomerEmail == booking.CustomerEmail);
-            var exsitBooking = exsitBookings.FirstOrDefault(a => (createTime - a.Created).Value.Hours < 2);
-            if (exsitBooking != null)
-            {
-                bool noPay = true; ;
-                foreach (var item in booking.Details)
-                {
-                    if (item.BillInfo.PaymentType != 2)
-                        noPay = false;
-                }
-                if (noPay)
-                {
-                    booking.Status = OrderStatusEnum.PayAtProperty;
-                    //SendEmail(booking);
-
-                }
-                exsitBooking.Created = _dateTimeUtil.GetCurrentTime();
-                exsitBooking.Details = booking.Details;
-                exsitBooking.Status = booking.Status;
-                exsitBooking.CustomerName = booking.CustomerName;
-                exsitBooking.CustomerPhone = booking.CustomerPhone;
-                exsitBooking.CustomerEmail = booking.CustomerEmail;
-                exsitBooking.PayCurrency = booking.PayCurrency;
-                var savedBooking = await _restaurantBookingRepository.UpdateAsync(exsitBooking);
-                if (noPay)
-                {
-                    SendEmail(savedBooking);
-                }
-                return new ResponseModel { msg = "", code = 200,  data = savedBooking };
-            }
-            else
-            {
-                bool noPay = true; ;
-                foreach (var item in booking.Details)
-                {
-                    item.Id = Guid.NewGuid().ToString();
-                    if (item.BillInfo.PaymentType != 2)
-                        noPay = false;
-                }
-                if (noPay)
-                {
-                    booking.Status = OrderStatusEnum.PayAtProperty;
-                    //SendEmail(booking);
-
-                }
-                booking.Id = Guid.NewGuid().ToString();
-                booking.BookingRef = "GM" + SnowflakeId.getSnowId();
-                booking.Created = _dateTimeUtil.GetCurrentTime();
-                var opt = new OperationInfo() { Operater = email, Operation = "新增订单", UpdateTime = DateTime.Now };
-                booking.Operations.Add(opt);
-                var newItem = await _restaurantBookingRepository.CreateAsync(booking);
-                if (noPay)
-                {
-                    SendEmail(newItem);
-                }
-
-                return new ResponseModel { msg = "", code = 200, data = newItem };
-            }
-        }
-        private async void SendEmail(TrDbRestaurantBooking booking)
-        {
-            var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
-            if (shopInfo == null)
-            {
-                _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
-                throw new ServiceException("Cannot find shop info");
-            }
-
-            decimal exchange = 1;
-            try
-            {
-                exchange = (decimal)((double)_memoryCache.Get("ExchangeRate"));
-            }
-            catch (Exception ex)
-            {
-
-                _logger.LogError("----------------_memoryCache.get.excahngeRate.err" + ex.Message + "： " + ex.StackTrace);
-            }
-            EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, _contentBuilder, exchange, _logger);
-            EmailUtils.EmailBoss(booking, shopInfo, "New Order", this._environment.WebRootPath, _twilioUtil, _contentBuilder, exchange, _logger);
-            EmailUtils.EmailSupport(booking, shopInfo, "New Order", this._environment.WebRootPath, _twilioUtil, _contentBuilder, exchange, _logger);
-
-        }
         public async Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId)
         {
             Guard.NotNull(restaurant);

@@ -25,6 +25,10 @@ using App.Domain.Enum;
 using Microsoft.AspNetCore.Html;
 using Stripe.FinancialConnections;
 using Microsoft.CodeAnalysis.Text;
+using App.Domain.Common.Customer;
+using App.Domain.Common;
+using App.Infrastructure.ServiceHandler.Common;
+using Newtonsoft.Json;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -40,6 +44,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<bool> UpdateAccepted(string bookingId, string subBillId, int acceptType, string operater);
         Task<bool> UpdateAcceptedReason(string bookingId, string subBillId, string reason, string operater);
         Task<bool> CancelBooking(string bookingId, string detailId, int shopId);
+        Task<ResponseModel> RequestBooking(TrDbRestaurantBooking booking, int shopId, string email);
+        Task<ResponseModel> ModifyBooking(TrDbRestaurantBooking booking, int shopId, string email);
     }
     public class TrRestaurantBookingServiceHandler : ITrRestaurantBookingServiceHandler
     {
@@ -53,12 +59,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         IStripeUtil _stripeUtil;
         IHostingEnvironment _environment;
         private readonly IDbCommonRepository<DbShop> _shopRepository;
+        private readonly ICustomerServiceHandler _customerServiceHandler;
         IMemoryCache _memoryCache;
         private readonly IDateTimeUtil _dateTimeUtil;
+        IAmountCaculaterUtil _amountCaculaterV1;
 
         public TrRestaurantBookingServiceHandler(ITwilioUtil twilioUtil, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository,
-            IDbCommonRepository<DbShop> shopRepository, IHostingEnvironment environment, IStripeUtil stripeUtil, IMemoryCache memoryCache,
-            IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, IDateTimeUtil dateTimeUtil,
+            IDbCommonRepository<DbShop> shopRepository, ICustomerServiceHandler customerServiceHandler, IHostingEnvironment environment, IStripeUtil stripeUtil, IMemoryCache memoryCache,
+            IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, IDateTimeUtil dateTimeUtil, IAmountCaculaterUtil amountCaculaterV1,
             ILogManager logger, IContentBuilder contentBuilder, IEmailUtil emailUtil)
         {
             _restaurantBookingRepository = restaurantBookingRepository;
@@ -69,9 +77,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _twilioUtil = twilioUtil;
             _environment = environment;
             _shopRepository = shopRepository;
+            _customerServiceHandler = customerServiceHandler;
             _stripeUtil = stripeUtil;
             _memoryCache = memoryCache;
             _dateTimeUtil = dateTimeUtil;
+            _amountCaculaterV1 = amountCaculaterV1;
         }
 
 
@@ -92,7 +102,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     SendCancelEmail(booking, item);
                 }
             }
-            booking.Status = OrderStatusEnum.PartialCanceled;
+            booking.Status = OrderStatusEnum.Canceled;
             booking.Updated = _dateTimeUtil.GetCurrentTime();
             var savedRestaurant = await _restaurantBookingRepository.UpdateAsync(booking);
 
@@ -154,12 +164,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<bool> UpdateAccepted(string billId, string subBillId, int acceptType, string operater)
         {
-            TrDbRestaurantBooking booking = GetBooking(billId).Result;
-            foreach (var item in booking.Details)
+            TrDbRestaurantBooking DBbooking = GetBooking(billId).Result;
+            TrDbRestaurantBooking booking = JsonConvert.DeserializeObject<TrDbRestaurantBooking>(JsonConvert.SerializeObject(DBbooking));// JsonConvert.DeserializeObject< TrDbRestaurantBooking >(JsonConvert.SerializeObject(DBbooking));
+            booking.Details.Clear();
+            foreach (var item in DBbooking.Details)
             {
                 if (item.Id == subBillId)
                 {
                     item.AcceptStatus = acceptType;
+                    booking.Details.Add(item);
                 }
             }
             if (booking == null) return false;
@@ -173,7 +186,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string msg = $"您于{booking.BookingDate} {booking.BookingTime} 提交的订单已被接收，请按时就餐";
             if (acceptType == 2)
                 msg = $"您于{booking.BookingDate} {booking.BookingTime} 提交的订单已被拒绝，请登录groupmeals.com查询别的餐厅";
-            //_twilioUtil.sendSMS(booking.CustomerPhone, msg);
+            _twilioUtil.sendSMS(booking.CustomerPhone, msg);
             var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
             if (shopInfo == null)
             {
@@ -181,15 +194,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 throw new ServiceException("Cannot find shop info");
             }
             if (acceptType == 1)
-                sendEmail(booking, shopInfo, "new_meals_confirm", this._environment.WebRootPath, _contentBuilder, _logger);
+                sendEmail(booking, shopInfo, "new_meals_confirm", this._environment.WebRootPath, "Your order has been accepted", _contentBuilder, _logger);
             else if (acceptType == 2)
             {
-                sendEmail(booking, shopInfo, "new_meals_decline", this._environment.WebRootPath, _contentBuilder, _logger);
+                sendEmail(booking, shopInfo, "new_meals_decline", this._environment.WebRootPath, "Your order has been declined", _contentBuilder, _logger);
             }
             return true;
         }
 
-        public async void sendEmail(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, IContentBuilder _contentBuilder, ILogManager _logger)
+        public async void sendEmail(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath,string subject, IContentBuilder _contentBuilder, ILogManager _logger)
         {
             var schedulerFactory = new StdSchedulerFactory();
             var scheduler = await schedulerFactory.GetScheduler();
@@ -200,6 +213,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                                 new KeyValuePair<string, object>("BookingID", booking.Id),
                                 new KeyValuePair<string, object>("ShopInfo", shopInfo),
                                 new KeyValuePair<string, object>("TempName", tempName),
+                                new KeyValuePair<string, object>("Subject", subject),
                                 new KeyValuePair<string, object>("WwwPath", wwwPath),
                                 new KeyValuePair<string, object>("ContentBuilder", _contentBuilder),
                                 new KeyValuePair<string, object>("Logger", _logger),
@@ -285,6 +299,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
                 _logger.LogInfo("----------------BookingPaid" + booking.Id);
                 var temp = await _restaurantBookingRepository.UpdateAsync(booking);
+                ClearCart(temp);
                 var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
                 if (shopInfo == null)
                 {
@@ -303,8 +318,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     _logger.LogError("----------------_memoryCache.get.excahngeRate.err" + ex.Message + "： " + ex.StackTrace);
                 }
 
-                EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, _contentBuilder, exchange, _logger);
-                EmailUtils.EmailBoss(booking, shopInfo, "New Order", this._environment.WebRootPath, _twilioUtil, _contentBuilder, exchange, _logger);
+                EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, "Thank you for your Booking", _contentBuilder, exchange, _logger);
+                EmailUtils.EmailBoss(booking, shopInfo, "new_meals_restaurant", this._environment.WebRootPath, "New Booking", _twilioUtil, _contentBuilder, exchange, _logger);
                 //var newItem = await _stripeCheckoutSeesionRepository.CreateAsync(new StripeCheckoutSeesion() { Data = session, BookingId = booking.Id });
             }
             catch (Exception ex)
@@ -312,6 +327,247 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 _logger.LogInfo("----------------BookingPaid.err" + ex.Message + "： " + ex.StackTrace);
             }
             return true;
+        }
+        private async void ClearCart(TrDbRestaurantBooking booking)
+        {
+
+            var customers = await _customerServiceHandler.List((int)booking.ShopId);
+            var customer = customers.FirstOrDefault(a => a.Email == booking.CustomerEmail);
+            if ((customer != null))
+            {
+                customer.CartInfos.Clear();
+                _customerServiceHandler.UpdateCart(customer, (int)booking.ShopId);
+            }
+        }
+
+        /// <summary>
+        /// 线下支付时：直接修改金额并发邮件通知
+        /// 线上支付时：新增一条支付差价记录
+        /// </summary>
+        /// <param name="booking"></param>
+        /// <param name="shopId"></param>
+        /// <param name="email"></param>
+        /// <returns></returns>
+        public async Task<ResponseModel> ModifyBooking(TrDbRestaurantBooking booking, int shopId, string email)
+        {
+            Guard.NotNull(booking);
+            Guard.AreEqual(booking.ShopId.Value, shopId);
+            var exsitBooking = await _restaurantBookingRepository.GetOneAsync(r => !r.IsDeleted && r.Id == booking.Id);
+            if (exsitBooking == null) return new ResponseModel { msg = "booking not found", code = 200, data = null };
+            OperationInfo operationInfo = new OperationInfo() { ModifyType = 4, Operater = email, UpdateTime = DateTime.Now, Operation = "订单修改" };
+            bool isChange = false;
+            foreach (var item in exsitBooking.Details)
+            {
+                var detail = booking.Details.FirstOrDefault(d => d.Id == item.Id);
+                if (detail != null)
+                {
+                    if (detail.SelectDateTime != item.SelectDateTime)
+                    {
+                        isChange = true;
+                        ModifyInfo modifyInfo = new ModifyInfo();
+                        modifyInfo.ModifyField = 1;
+                        modifyInfo.ModifyLocation = $"{booking.Id}>{item.Id}";
+                        modifyInfo.oldValue = item.SelectDateTime.ToString();
+                        modifyInfo.newValue = detail.SelectDateTime.ToString();
+                        operationInfo.ModifyInfos.Add(modifyInfo);
+                        item.SelectDateTime = detail.SelectDateTime;
+                    }
+                    if (detail.Memo != item.Memo)
+                    {
+                        isChange = true;
+                        ModifyInfo modifyInfo = new ModifyInfo();
+                        modifyInfo.ModifyField = 2;
+                        modifyInfo.ModifyLocation = $"{booking.Id}>{item.Id}";
+                        modifyInfo.oldValue = item.Memo;
+                        modifyInfo.newValue = detail.Memo;
+                        operationInfo.ModifyInfos.Add(modifyInfo);
+                        item.Memo = detail.Memo;
+                    }
+                    var Oldamount = _amountCaculaterV1.getItemAmount(item);
+                    var Olddiscount = _amountCaculaterV1.getDiscount(item);
+
+                    foreach (var course in item.Courses)
+                    {
+
+                        var _course = detail.Courses.FirstOrDefault(c => c.Id == course.Id);
+                        if (_course == null) continue;
+                        if (course.Price == _course.Price && course.Qty == _course.Qty) continue;
+                        if (course.Qty != _course.Qty)
+                        {
+                            isChange = true;
+                            ModifyInfo modifyInfo = new ModifyInfo();
+                            modifyInfo.ModifyField = 3;
+                            modifyInfo.ModifyLocation = $"{booking.Id}>{item.Id}>{course.Id}";
+                            modifyInfo.oldValue = course.Qty.ToString();
+                            modifyInfo.newValue = _course.Qty.ToString();
+                            operationInfo.ModifyInfos.Add(modifyInfo);
+                            course.Qty = _course.Qty;
+
+                        }
+                        if (course.Price != _course.Price)
+                        {
+                            isChange = true;
+                            ModifyInfo modifyInfo = new ModifyInfo();
+                            modifyInfo.ModifyField = 4;
+                            modifyInfo.ModifyLocation = $"{booking.Id}>{item.Id}>{course.Id}";
+                            modifyInfo.oldValue = course.Price.ToString();
+                            modifyInfo.newValue = _course.Price.ToString();
+                            operationInfo.ModifyInfos.Add(modifyInfo);
+                            course.Price = _course.Price;
+                            course.Category = _course.Category;
+                            course.CategoryId = _course.CategoryId;
+                            course.MenuItemDescription = _course.MenuItemDescription;
+                            course.MenuItemDescriptionCn = _course.MenuItemDescriptionCn;
+                            course.MenuItemNameCn = _course.MenuItemNameCn;
+                            course.MenuItemName = _course.MenuItemName;
+                            course.Cuisine = _course.Cuisine;
+                            course.Ingredieent = _course.Ingredieent;
+                        }
+                    }
+                    var amount = _amountCaculaterV1.getItemAmount(item);
+                    var discount = _amountCaculaterV1.getDiscount(item);
+                    if (amount != Oldamount || discount != Olddiscount)
+                    {
+                        AmountInfo amountInfo = new AmountInfo() { Id = "A" + SnowflakeId.getSnowId() };
+                        amountInfo.Amount = amount - Oldamount;//新增差价记录
+                        amountInfo.Discount = discount - Olddiscount;
+                        item.AmountInfos.Add(amountInfo);
+                    }
+                }
+            }
+            if (isChange)
+            {
+                var temo = _amountCaculaterV1.CalculateOrderAmount(exsitBooking, 0.8);
+                exsitBooking.Operations.Add(operationInfo);
+                var savedBooking = await _restaurantBookingRepository.UpdateAsync(exsitBooking);
+                TrDbRestaurantBooking sendBooking = JsonConvert.DeserializeObject<TrDbRestaurantBooking>(JsonConvert.SerializeObject(savedBooking));
+                sendBooking.Details.Clear();
+                foreach (var item in exsitBooking.Details)
+                {
+                    if (item.Status == 0)
+                        sendBooking.Details.Add(item);
+                }
+                SendModifyEmail(sendBooking);
+            }
+            return new ResponseModel { msg = "", code = 200, data = null };
+        }
+
+
+
+        public async Task<ResponseModel> RequestBooking(TrDbRestaurantBooking booking, int shopId, string email)
+        {
+            _logger.LogInfo("RequestBooking" + shopId);
+            Guard.NotNull(booking);
+            Guard.AreEqual(booking.ShopId.Value, shopId);
+            foreach (var item in booking.Details)
+            {
+                if ((item.SelectDateTime - DateTime.Now).Value.TotalHours < 12)
+                {
+                    return new ResponseModel { msg = "用餐时间少于12个小时", code = 200, data = null };
+                }
+            }
+            //var findRestaurant = await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == booking.RestaurantId);
+            //if (findRestaurant == null)
+            //    throw new ServiceException("Cannot Find tour");
+            TourBooking newBooking;
+            var createTime = _dateTimeUtil.GetCurrentTime();
+            var exsitBooking = await _restaurantBookingRepository.GetOneAsync(r => r.Status == OrderStatusEnum.None && !r.IsDeleted && r.CustomerEmail == booking.CustomerEmail);
+            //var exsitBooking = exsitBookings.FirstOrDefault();// (a => (createTime - a.Created).Value.Hours < 2);
+            if (exsitBooking != null)
+            {
+                bool noPay = true; ;
+                foreach (var item in booking.Details)
+                {
+                    if (item.BillInfo.PaymentType != 2)
+                        noPay = false;
+                }
+                if (noPay)
+                {
+                    booking.Status = OrderStatusEnum.Paid;
+                    //SendEmail(booking);
+
+                }
+                exsitBooking.Created = _dateTimeUtil.GetCurrentTime();
+                exsitBooking.Details = booking.Details;
+                exsitBooking.Status = booking.Status;
+                exsitBooking.CustomerName = booking.CustomerName;
+                exsitBooking.CustomerPhone = booking.CustomerPhone;
+                exsitBooking.CustomerEmail = booking.CustomerEmail;
+                exsitBooking.PayCurrency = booking.PayCurrency;
+                var savedBooking = await _restaurantBookingRepository.UpdateAsync(exsitBooking);
+                if (noPay)
+                {
+                    ClearCart(savedBooking);
+                    SendEmail(savedBooking);
+                }
+                return new ResponseModel { msg = "", code = 200, data = savedBooking };
+            }
+            else
+            {
+                bool noPay = true; ;
+                foreach (var item in booking.Details)
+                {
+                    item.Id = Guid.NewGuid().ToString();
+                    if (item.BillInfo.PaymentType != 2)
+                        noPay = false;
+                    foreach (var course in item.Courses)
+                    {
+                        course.Id = "C" + SnowflakeId.getSnowId();
+                    }
+                    foreach (var amount in item.AmountInfos)
+                    {
+                        amount.Id = "A" + SnowflakeId.getSnowId();
+                    }
+                }
+                if (noPay)
+                {
+                    booking.Status = OrderStatusEnum.Paid;
+                }
+                booking.Id = Guid.NewGuid().ToString();
+                booking.BookingRef = "GM" + SnowflakeId.getSnowId();
+                booking.Created = _dateTimeUtil.GetCurrentTime();
+                var opt = new OperationInfo() { Operater = email, Operation = "新增订单", UpdateTime = DateTime.Now };
+                booking.Operations.Add(opt);
+                var newItem = await _restaurantBookingRepository.CreateAsync(booking);
+                if (noPay)
+                {
+                    ClearCart(newItem);
+                    SendEmail(newItem);
+                }
+
+                return new ResponseModel { msg = "", code = 200, data = newItem };
+            }
+        }
+        private async void SendEmail(TrDbRestaurantBooking booking)
+        {
+            var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
+            if (shopInfo == null)
+            {
+                _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
+                throw new ServiceException("Cannot find shop info");
+            }
+
+            decimal exchange = (decimal)shopInfo.ExchangeRate;
+            EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, "Thank you for your Booking", _contentBuilder, exchange, _logger);
+            EmailUtils.EmailBoss(booking, shopInfo, "new_meals_restaurant", this._environment.WebRootPath, "New Booking", _twilioUtil, _contentBuilder, exchange, _logger);
+            EmailUtils.EmailSupport(booking, shopInfo, "new_meals_support", this._environment.WebRootPath, "New Booking", _twilioUtil, _contentBuilder, exchange, _logger);
+
+        }
+        private async void SendModifyEmail(TrDbRestaurantBooking booking)
+        {
+            var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
+            if (shopInfo == null)
+            {
+                _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
+                throw new ServiceException("Cannot find shop info");
+            }
+
+            decimal exchange = (decimal)shopInfo.ExchangeRate;
+
+            EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_modify", this._environment.WebRootPath,"Booking Modified", _contentBuilder, exchange, _logger);
+            EmailUtils.EmailBoss(booking, shopInfo, "new_modify", this._environment.WebRootPath, "Booking Modified", _twilioUtil, _contentBuilder, exchange, _logger);
+            EmailUtils.EmailSupport(booking, shopInfo, "new_modify", this._environment.WebRootPath, "Booking Modified", _twilioUtil, _contentBuilder, exchange, _logger);
+
         }
 
         //private async Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string subject)
@@ -392,7 +648,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     {
                         throw new ServiceException("Cannot find shop info");
                     }
-                    EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, _contentBuilder, 1, _logger);
+                    EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, "New Booking", _contentBuilder, 1, _logger);
                     //EmailUtils.EmailBoss(booking, shopInfo, "new Order", this._environment.WebRootPath, _twilioUtil, _contentBuilder, _logger);
                 }
             }

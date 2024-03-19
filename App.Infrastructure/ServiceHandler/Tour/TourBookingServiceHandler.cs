@@ -154,7 +154,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             }
 
             booking.Paid = false;
-            booking.Status = OrderStatusEnum.Refunded;
+            booking.Status = OrderStatusEnum.Canceled;
             _logger.LogInfo("BookingPaid" + booking.Id);
             var temp = await _tourBookingRepository.UpdateAsync(booking);
             //var shopInfo =
@@ -247,13 +247,13 @@ namespace App.Infrastructure.ServiceHandler.Tour
             if (string.IsNullOrEmpty(code))
             {
                 var bookings = await _tourBookingRepository.GetManyAsync(r => 1 == 1);
-                var tickets = bookings.ToList().FindAll(a => a.Status != OrderStatusEnum.Disable);
+                var tickets = bookings.ToList().FindAll(a => a.Status != OrderStatusEnum.None);
                 return tickets;
             }
             else
             {
                 var bookings = await _tourBookingRepository.GetManyAsync(r => r.Email == code);
-                var tickets = bookings.ToList().FindAll(a => a.Status != OrderStatusEnum.Disable);
+                var tickets = bookings.ToList().FindAll(a => a.Status != OrderStatusEnum.None);
                 return tickets;
             }
 
@@ -284,7 +284,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
         public async Task<TourBooking> TourBookingRefundApply(string id)
         {
             var booking = await _tourBookingRepository.GetOneAsync(r => r.Id == id);
-            booking.Status = OrderStatusEnum.ApplyRefund;
+            booking.Status = OrderStatusEnum.Canceled;
             var res = await _tourBookingRepository.UpdateAsync(booking);
 
             var shopInfo =

@@ -9,14 +9,12 @@ namespace App.Domain.Enum
 {
     public enum OrderStatusEnum
     {
-        None = 0,
+        None = 0,//支付失败
         Paid=1,
-        ApplyRefund=2,
-        Refunded=3,
-        Disable=4,
-        PayAtProperty=5,
-        PaidDeposit=6,
-        PartialCanceled=7
+        Accepted=2,
+        Canceled=3,
+        UnRefund=4,
+        Settled=5,
 
     }
     public enum PayTypeEnum

@@ -18,6 +18,7 @@ namespace App.Infrastructure.Utility.Common
         public string BookingID { get; set; }
         public DbShop ShopInfo { get; set; }
         public string TempName { get; set; }
+        public string Subject { get; set; }
         public string WwwPath { get; set; }
         public IContentBuilder ContentBuilder { get; set; }
         public ILogManager Logger { get; set; }
@@ -27,7 +28,7 @@ namespace App.Infrastructure.Utility.Common
             return Task.Factory.StartNew(async () =>
             {
                 var booking = await RestaurantBookingRepository.GetOneAsync(a => a.Id == BookingID);
-                EmailUtils.EmailCustomer(booking, ShopInfo, TempName, WwwPath, ContentBuilder, Logger);
+                EmailUtils.EmailCustomer(booking, ShopInfo, TempName, WwwPath, Subject, ContentBuilder, Logger);
             });
         }
     }

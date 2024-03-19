@@ -2,6 +2,7 @@ using App.Domain.Enum;
 using App.Domain.TravelMeals.Restaurant;
 using System;
 using System.Collections.Generic;
+using System.Net.Cache;
 
 namespace App.Domain.TravelMeals
 {
@@ -29,11 +30,20 @@ namespace App.Domain.TravelMeals
         public string Operation { get; set; }
         public string Operater { get; set; }
         public DateTime UpdateTime { get; set; }
+        public int ModifyType { get; set; }//1接收，2拒绝，3取消，4修改
+        public List<ModifyInfo> ModifyInfos { get; set; } = new List<ModifyInfo>();
+    }
+    public class ModifyInfo {
+        public int ModifyField { get; set; }//1修改时间，2修改备注，3修改人数，4修改菜单
+        public string ModifyLocation { get; set; }
+        public string oldValue { get; set; }
+        public string newValue { get; set; }
     }
     public class AmountInfo {
+        public string Id { get; set; }
         public decimal Amount { get; set; }
+        public decimal Discount { get; set; }
         public decimal PaidAmount { get; set; }
-        public decimal UnpaidAmount { get; set; }
     }
     public class PaymentInfo: StripeBase
     {
@@ -57,11 +67,12 @@ namespace App.Domain.TravelMeals
         public string AcceptReason { get; set; }
 
         public RestaurantBillInfo BillInfo { get; set; } = new RestaurantBillInfo();
-        public List<BookingCourses> Courses { get; set; } = new List<BookingCourses>();
+        public List<BookingCourse> Courses { get; set; } = new List<BookingCourse>();
         public List<AmountInfo> AmountInfos { get; set; } = new List<AmountInfo>();
     }
-    public class BookingCourses : TrDbRestaurantMenuItem
+    public class BookingCourse : TrDbRestaurantMenuItem
     {
+        public string Id { get; set; }
         public int Qty { get; set; }
         public int TableQty { get; set; }
         public string Memo { get; set; }
