@@ -20,13 +20,15 @@ namespace KingfoodIO.Controllers.Common
     public class ShopController : BaseController
     {
         private readonly IShopServiceHandler _shopServiceHandler;
+        IExcahngeUtil _excahngeUtil;
 
         IMemoryCache _memoryCache;
-        public ShopController(IShopServiceHandler shopServiceHandler, IOptions<CacheSettingConfig> cachesettingConfig,
+        public ShopController(IShopServiceHandler shopServiceHandler, IOptions<CacheSettingConfig> cachesettingConfig, IExcahngeUtil excahngeUtil,
          IMemoryCache memoryCache, IRedisCache redisCache, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
         {
             _shopServiceHandler = shopServiceHandler;
             _memoryCache = memoryCache;
+            _excahngeUtil=  excahngeUtil;
         }
 
         //[ServiceFilter(typeof(AuthActionFilter))]
@@ -45,6 +47,7 @@ namespace KingfoodIO.Controllers.Common
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> UpdateExchangeRate(double exRate, int shopId)
         {
+            _excahngeUtil.getGBPExchangeRate();
             _memoryCache.Set("ExchangeRate", exRate);
             return await ExecuteAsync(shopId, false,
                 async () => await _shopServiceHandler.UpdateExchangeRate(exRate, shopId));

@@ -13,6 +13,7 @@ namespace App.Domain.TravelMeals.Restaurant
         public string Cuisine { get; set; }
         public string Ingredieent { get; set; }
         public decimal Price { get; set; }
+        public decimal PriceIncrease { get; set; }
         public FoodCategoryEnum Category { get; set; }
         public TrDbRestaurantMenuItem Clone()
         {

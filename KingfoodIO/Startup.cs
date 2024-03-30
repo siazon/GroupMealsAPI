@@ -33,6 +33,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using App.Domain.Common.Customer;
 using App.Domain.Common.Auth;
+using System.Net.Http;
 
 namespace KingfoodIO
 {
@@ -156,6 +157,7 @@ namespace KingfoodIO
                     , "wiiyabatch", "hangfire", options)
                 );
 
+
             // Add the processing server as IHostedService
             services.AddHangfireServer();
 
@@ -166,6 +168,8 @@ namespace KingfoodIO
             services.Configure<DocumentDbConfig>(Configuration.GetSection("DocumentDb"));
 
             services.Configure<AzureStorageConfig>(Configuration.GetSection("AzureStorageConfig"));
+
+            services.AddHttpClient();
 
             //DI resolver
             var assemblyToScan = Assembly.GetAssembly(typeof(BookingBatchServiceHandler));
@@ -200,6 +204,11 @@ namespace KingfoodIO
             var settings = Configuration.GetSection("AppSetting").Get<AppSettingConfig>();
             GlobalDiagnosticsContext.Set("server", settings.ShopUrl);
             GlobalDiagnosticsContext.Set("serverinstance", Guid.NewGuid().ToString());
+
+
+            //services.AddSingleton<ExchangeService>();
+            //services.AddHostedService(p => p.GetRequiredService<ExchangeService>());
+            //services.AddHostedService<ExchangeService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -12,7 +12,6 @@ namespace App.Infrastructure.Utility.Common
         long CalculateOrderAmount(TrDbRestaurantBooking booking, double ExRate);
         decimal getItemAmount(BookingDetail bookingDetail);
         decimal getItemPayAmount(BookingDetail bookingDetail);
-        decimal getDiscount(BookingDetail bookingDetail);
     }
 
     public class AmountCaculaterV1Util : IAmountCaculaterUtil
@@ -82,12 +81,13 @@ namespace App.Infrastructure.Utility.Common
                 else
                     amount += item.Price * item.Qty;
             }
+            amount -= getDiscount(bookingDetail);
             return amount;
         }
 
         public decimal getItemPayAmount(BookingDetail bookingDetail)
         {
-            decimal amount = getItemAmount(bookingDetail) - getDiscount(bookingDetail);
+            decimal amount = getItemAmount(bookingDetail);
             if (bookingDetail.BillInfo.PaymentType == 1)//付押金
             {
                 amount = amount * (decimal)bookingDetail.BillInfo.PayRate;

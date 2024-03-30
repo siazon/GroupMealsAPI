@@ -108,7 +108,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             //Email customer ResetCode
             customer.ResetCode = GuidHashUtil.Get6DigitNumber();
             var updatedCustomer = await _customerRepository.UpdateAsync(customer);
-            var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
+            var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
             EmailForgetPWDSender(updatedCustomer, shopInfo, "Fotget password");
 
             return updatedCustomer.ClearForOutPut();
@@ -128,7 +128,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                 newItem = existingCustomer;
                 if (newItem != null)
                 {
-                    var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
+                    var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
                     EmailVerifySender(newItem, shopInfo, "Email Verify");
                     return new { msg = "ok", data = newItem.ClearForOutPut() };
                 }
@@ -151,7 +151,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                 newItem = await _customerRepository.CreateAsync(newItem);
             if (newItem != null)
             {
-                var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
+                var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
                 EmailVerifySender(newItem, shopInfo, "Email Verify");
             }
             return new { msg = "ok", data = newItem.ClearForOutPut() };

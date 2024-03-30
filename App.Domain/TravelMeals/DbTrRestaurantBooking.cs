@@ -42,7 +42,6 @@ namespace App.Domain.TravelMeals
     public class AmountInfo {
         public string Id { get; set; }
         public decimal Amount { get; set; }
-        public decimal Discount { get; set; }
         public decimal PaidAmount { get; set; }
     }
     public class PaymentInfo: StripeBase

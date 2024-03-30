@@ -28,13 +28,15 @@ namespace App.Domain.TravelMeals.Restaurant
         public RestaurantTagEnum RestaurantTag { get; set; }
         public string Website { get; set; }
         public string Image { get; set; }
-        public string ShopAddress { get; set; }
+        public string Address { get; set; }
         public string City { get; set; }
         public string Country { get; set; }
         public string Email { get; set; }
         public string ContactEmail { get; set; }
+        public string SupportName { get; set; }
         public string SupportEmail { get; set; }
-        public string ShopOpenHours { get; set; }
+        public string SupportPhone { get; set; }
+        public string OpenHours { get; set; }
         public string GoogleMap { get; set; }
         public MapPosition MapPosition { get; set; }
         public string Features { get; set; }
@@ -47,6 +49,8 @@ namespace App.Domain.TravelMeals.Restaurant
         public List<string> Tags { get; set; }
         public List<string> Attractions { get; set; }
         public int? BookingHourLength { get; set; }
+        public int MinGuest { get; set; }
+        public int MaxGuest { get; set; }
 
         public RestaurantBillInfo BillInfo { get; set; }
 
@@ -67,13 +71,13 @@ namespace App.Domain.TravelMeals.Restaurant
                 Rating = this.Rating,
                 Website = this.Website,
                 Image = this.Image,
-                ShopAddress = this.ShopAddress,
+                Address = this.Address,
                 FoodCategory = this.FoodCategory,
                 City = this.City,
                 Country = this.Country,
                 Email = this.Email,
                 ContactEmail = this.ContactEmail,
-                ShopOpenHours = this.ShopOpenHours,
+                OpenHours = this.OpenHours,
                 GoogleMap = this.GoogleMap,
                 Features = this.Features,
                 SpecialDiets = this.SpecialDiets,

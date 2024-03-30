@@ -33,14 +33,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
     public interface ITrRestaurantServiceHandler
     {
-        Task<List<TrDbRestaurant>> GetRestaurantInfo(int shopId);
-        Task<ResponseModel> GetRestaurantInfo(int shopId, int pageSize = -1, string continuationToke = null);
-        Task<List<TrDbRestaurant>> SearchRestaurantInfo(int shopId, string searchContent);
+        Task<ResponseModel> GetRestaurantInfo(int shopId,string country, int pageSize = -1, string continuationToke = null);
 
-        Task<bool> DeleteBooking(string bookingId, int shopId);
+      
         Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId);
         Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId);
-        Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
 
     }
 
@@ -78,66 +75,30 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _logger = logger;
             _memoryCache= memoryCache;
         }
-        public async Task<ResponseModel> GetRestaurantInfo(int shopId, int pageSize = -1, string continuationToke = null)
+        public async Task<ResponseModel> GetRestaurantInfo(int shopId,string country, int pageSize = -1, string continuationToke = null)
         {
             DateTime stime = DateTime.Now;
             KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage;
             //for (int i = 0; i < 5; i++)
 
             currentPage = await _restaurantRepository
-                .GetManyAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value, pageSize, continuationToke);
+                .GetManyAsync(r => r.ShopId == shopId&& r.Country==country && r.IsActive.HasValue && r.IsActive.Value, pageSize, continuationToke);
             var temp = currentPage.Value.ClearForOutPut().OrderBy(a => a.SortOrder).ToList();
             continuationToke = currentPage.Key;
             _logger.LogInfo("_restaurantRepository.GetManyAsync:" + (DateTime.Now - stime).ToString());
 
             return new ResponseModel { msg = "ok", code = 200, token = continuationToke, data = temp };
         }
-        public async Task<List<TrDbRestaurant>> GetRestaurantInfo(int shopId)
-        {
-            DateTime stime = DateTime.Now;
-            var restaurants = await _restaurantRepository.GetManyAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
-            var temp = restaurants.ClearForOutPut().OrderBy(a => a.SortOrder).ToList();
-            _logger.LogInfo("_restaurantRepository.GetManyAsync:" + (DateTime.Now - stime).ToString());
-            return temp;
-        }
-        public async Task<List<TrDbRestaurant>> SearchRestaurantInfo(int shopId, string searchContent)
-        {
-            var restaurants = await _restaurantRepository.GetManyAsync(r => r.ShopId == shopId
-            && (r.StoreName.Contains(searchContent) || r.StoreNameCn.Contains(searchContent) || r.ShopAddress.Contains(searchContent))
-            && r.IsActive.HasValue && r.IsActive.Value);
-            var temp = restaurants.ClearForOutPut();
-            return temp;//TrDbRestaurant
-        }
-        public async Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToken = null)
-        {
-
-            if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(content))
-            {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(a =>(a.Status != OrderStatusEnum.None&&!a.IsDeleted) || a.Details.Any(b => b.RestaurantEmail == email), pageSize, continuationToken);
-                var list = Bookings.Value.ToList();
-                return new ResponseModel { msg = "ok", code = 200, token = Bookings.Key, data = list };
-            }
-            if (string.IsNullOrWhiteSpace(content))
-            {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted) || a.Details.Any(b => b.RestaurantEmail == email), pageSize, continuationToken);
-                var list = Bookings.Value.ToList().FindAll(a => a.CustomerEmail == email).ToList();
-                return new ResponseModel { msg = "ok", code = 200, token = Bookings.Key, data = list };
-            }
-
-            else
-            {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted) || a.Details.Any(b => b.RestaurantEmail == email), pageSize, continuationToken);
-                var list = Bookings.Value.ToList().FindAll(a => a.Details.Any(d => d.RestaurantName.ToLower().Contains(content.ToLower()))).ToList();
-                return new ResponseModel { msg = "ok", code = 200, token = Bookings.Key, data = list };
-            }
-        }
+   
+      
+  
 
 
         public async Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId)
         {
             Guard.NotNull(restaurant);
             var existingRestaurant =
-               await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.StoreName == restaurant.StoreName && r.ShopAddress == restaurant.ShopAddress);
+               await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.StoreName == restaurant.StoreName && r.Address == restaurant.Address);
             if (existingRestaurant != null)
                 throw new ServiceException("Restaurant Already Exists");
             var newItem = restaurant.Clone();
@@ -154,7 +115,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             Guard.NotNull(restaurant);
             var existingRestaurant =
-               await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.StoreName == restaurant.StoreName && r.ShopAddress == restaurant.ShopAddress);
+               await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.StoreName == restaurant.StoreName && r.Address == restaurant.Address);
             if (existingRestaurant == null)
                 throw new ServiceException("Restaurant Not Exists");
             restaurant.Updated = _dateTimeUtil.GetCurrentTime();
@@ -162,12 +123,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var savedRestaurant = await _restaurantRepository.UpdateAsync(restaurant);
             return savedRestaurant;
         }
-        public async Task<bool> DeleteBooking(string bookingId, int shopId)
-        {
-            var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
-            booking.IsDeleted = true; booking.Updated = _dateTimeUtil.GetCurrentTime();
-            var savedRestaurant = await _restaurantBookingRepository.UpdateAsync(booking);
-            return savedRestaurant != null;
-        }
+
     }
 }

@@ -127,7 +127,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             _logger.LogInfo("BookingPaid" + booking.Id);
             var temp = await _tourBookingRepository.UpdateAsync(booking);
             var shopInfo =
-            await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
+            await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
             if (shopInfo == null)
                 throw new ServiceException("Cannot find shop info");
             var dataset = _holidayDataBuilder.BuildContent(shopInfo, booking);
@@ -157,18 +157,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             booking.Status = OrderStatusEnum.Canceled;
             _logger.LogInfo("BookingPaid" + booking.Id);
             var temp = await _tourBookingRepository.UpdateAsync(booking);
-            //var shopInfo =
-            //await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
-
-            //if (shopInfo == null)
-            //    throw new ServiceException("Cannot find shop info");
-            //var dataset = _holidayDataBuilder.BuildContent(shopInfo, booking);
-
-            ////Email to Customer
-            //await EmailCustomer(booking, shopInfo);
-
-            ////Email to boss
-            //await EmailBoss(booking, shopInfo);
+         
             return true;
         }
 
@@ -215,7 +204,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             Guard.NotNull(booking);
             if (booking == null)
                 throw new ServiceException("Cannot find booking info");
-            var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
+            var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
             if (shopInfo == null)
                 throw new ServiceException("Cannot find shop info");
             string wwwPath = this._environment.WebRootPath;
@@ -288,7 +277,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             var res = await _tourBookingRepository.UpdateAsync(booking);
 
             var shopInfo =
-            await _shopRepository.GetOneAsync(r => r.ShopId == 13 && r.IsActive.HasValue && r.IsActive.Value);
+            await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
             await EmailBoss(booking, shopInfo, $"New Refund: {booking.Ref}");
 
             return res;

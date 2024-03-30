@@ -15,6 +15,15 @@ using System.Threading.Tasks;
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
 
+    public interface IEmailUtils {
+        Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger);
+        Task EmailSupport(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger);
+        Task EmailCustomerTotal(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger);
+
+      Task EmailCustomer(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, IContentBuilder _contentBuilder, ILogManager _logger);
+
+
+    }
     public class EmailUtils
     {
         public static async Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath,string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger)
@@ -24,18 +33,19 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string Detail = "";
             foreach (var item in booking.Details)
             {
+
                 decimal amount = 0;
                 decimal paidAmount = 0; //item.AmountInfos.Sum(x => x.PaidAmount);
 
                
-                paidAmount = item.AmountInfos.Sum(x => x.PaidAmount);
+                paidAmount = item.AmountInfos.Sum(x => x.PaidAmount );
                 if (booking.PayCurrency == item.Currency)
                 {
                     amount = item.AmountInfos.Sum(x => x.Amount);
                 }
                 else if (booking.PayCurrency == "UK")
                 {
-                    amount = item.AmountInfos.Sum(x => x.Amount)* exRate;
+                    amount = item.AmountInfos.Sum(x => x.Amount )* exRate;
                 }
                 else
                 {
@@ -46,10 +56,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 Detail = "";
                 foreach (var course in item.Courses)
                 {
-                    Detail += $"{course.MenuItemName} * {course.Qty} 人 {currencyStr}{paidAmount}/{amount}<br>";
+                    Detail += $"{course.MenuItemName} * {course.Qty} 人 <br>";
                 }
+                string itemCurrencyStr=item.Currency == "UK" ? "￡" : "€";
                 //_twilioUtil.sendSMS(item.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
-                Detail += $"Amount(金额)：<b>{currencyStr}{amount}</b>, Paid(已付)：<b>{currencyStr}{paidAmount}</b>, UnPaid(待支付)：<b style=\"color: red;\">{currencyStr}{amount - paidAmount}</b>";
+                Detail += $"Amount(金额)：<b>{itemCurrencyStr}{item.AmountInfos.Sum(x => x.Amount)}</b>, Paid(已付)：<b>{currencyStr}{paidAmount}</b>, UnPaid(待支付)：<b style=\"color: red;\">{currencyStr}{amount - paidAmount}</b>";
                 var detailstr = new HtmlString(Detail);
                 var emailHtml = await _contentBuilder.BuildRazorContent(new { booking = booking, bookingDetail = item, AmountStr= amount, PaidAmountStr= paidAmount, UnpaidAmountStr= amount - paidAmount, Detail = detailstr, Memo = item.Courses[0].Memo }, htmlTemp);
                 try
@@ -94,13 +105,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     Detail += $"{course.MenuItemName} * {course.Qty} 人 {currencyStr}{paidAmount}/{amount}<br>";
                 }
+
+                string itemCurrencyStr = item.Currency == "UK" ? "￡" : "€";
                 //_twilioUtil.sendSMS(booking.Details[0].RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
-                Detail += $"Amount(金额)：<b>{currencyStr}{amount}</b> Paid(已付)：<b>{currencyStr}{paidAmount}</b> UnPaid(待支付)：<b style=\"color: red;\">{currencyStr}{amount - paidAmount}</b>";
+                Detail += $"Amount(金额)：<b>{itemCurrencyStr}{item.AmountInfos.Sum(x => x.Amount)}</b> Paid(已付)：<b>{currencyStr}{paidAmount}</b> UnPaid(待支付)：<b style=\"color: red;\">{currencyStr}{amount - paidAmount}</b>";
                 var detailstr = new HtmlString(Detail);
-                var emailHtml = await _contentBuilder.BuildRazorContent(new { booking = booking, bookingDetail = item, AmountStr = amount, PaidAmountStr = paidAmount, UnpaidAmountStr = amount - paidAmount, Detail = detailstr, Memo = item.Courses[0].Memo }, htmlTemp);
+                var emailHtml = await _contentBuilder.BuildRazorContent(new { booking = booking, bookingDetail = item, AmountStr = amount, PaidAmountStr = paidAmount, UnpaidAmountStr = amount - paidAmount, Detail = detailstr, Memo = item.Memo }, htmlTemp);
                 try
                 {
-                    BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, item.SupporterEmail, "New Booking", emailHtml));
+                    BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, item.SupporterEmail, subject, emailHtml));
                 }
                 catch (Exception ex)
                 {
@@ -117,6 +130,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string currencyStr = booking.PayCurrency == "UK" ? "￡" : "€";
             foreach (var item in booking.Details)
             {
+                if (item.Status == 1) continue;
                 Detail += item.RestaurantName + " <br> ";
                 Detail += item.RestaurantPhone + "  " + item.RestaurantEmail + " <br> ";
                 Detail += item.SelectDateTime + " <br> ";
@@ -140,9 +154,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
 
 
+                string itemCurrencyStr = item.Currency == "UK" ? "￡" : "€";
                 foreach (var course in item.Courses)
                 {
-                    Detail += $"{course.MenuItemName} * {course.Qty}  人 <br>  {currencyStr}{Math.Round(paidAmount, 2)}/{Math.Round(amount, 2)} <br> ";
+                    Detail += $"{course.MenuItemName} * {course.Qty}  人 <br> Amount(金额)：{itemCurrencyStr}{Math.Round(amount, 2)}，    Paid(已付){currencyStr}{Math.Round(paidAmount, 2)} <br> ";
                 }
                 Detail += " <br> ";
             }
