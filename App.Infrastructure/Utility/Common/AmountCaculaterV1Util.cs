@@ -10,6 +10,7 @@ namespace App.Infrastructure.Utility.Common
     public interface IAmountCaculaterUtil
     {
         long CalculateOrderAmount(TrDbRestaurantBooking booking, double ExRate);
+        long CalculateOrderPaidAmount(TrDbRestaurantBooking booking, double ExRate);
         decimal getItemAmount(BookingDetail bookingDetail);
         decimal getItemPayAmount(BookingDetail bookingDetail);
     }
@@ -17,6 +18,31 @@ namespace App.Infrastructure.Utility.Common
     public class AmountCaculaterV1Util : IAmountCaculaterUtil
     {
         public long CalculateOrderAmount(TrDbRestaurantBooking booking, double ExRate)
+        {
+            decimal amount = 0;
+            if (booking != null)
+            {
+                foreach (var course in booking.Details)
+                {
+                    if (course.Currency == booking.PayCurrency)
+                    {
+                        amount += getItemAmount(course);
+                    }
+                    else
+                    {
+                        if (booking.PayCurrency == "UK")
+                        {
+                            amount += getItemAmount(course) * (decimal)ExRate;
+                        }
+                        else
+                            amount += getItemAmount(course) / (decimal)ExRate;
+                    }
+                }
+            }
+            decimal temp = Math.Round(amount, 2);
+            return (long)(temp * 100);
+        }
+        public long CalculateOrderPaidAmount(TrDbRestaurantBooking booking, double ExRate)
         {
             decimal amount = 0;
             if (booking != null)
@@ -42,31 +68,28 @@ namespace App.Infrastructure.Utility.Common
             return (long)(temp * 100);
         }
 
-        public decimal getDiscount(BookingDetail bookingDetail)
+        private decimal getDiscount(int qty,decimal price)
         {
             decimal discount = 0;
-            foreach (var item in bookingDetail.Courses)
+             if (qty == 4 || qty == 5)
             {
-                if (item.Qty == 4 || item.Qty == 5)
-                {
-                    discount += 10 * item.Price * 0.2m;
-                }
-                else if (item.Qty == 6 || item.Qty == 7)
-                {
-                    discount += 10 * item.Price * 0.15m;
-                }
-                else if (item.Qty == 8)
-                {
-                    discount += 10 * item.Price * 0.1m;
-                }
-                else if (item.Qty == 9)
-                {
-                    discount += 10 * item.Price * 0.05m;
-                }
-                else
-                {
-                    discount += 0;
-                }
+                discount += 10 * price * 0.2m;
+            }
+            else if (qty == 6 || qty == 7)
+            {
+                discount += 10 * price * 0.15m;
+            }
+            else if (qty == 8)
+            {
+                discount += 10 * price * 0.1m;
+            }
+            else if (qty == 9)
+            {
+                discount += 10 * price * 0.05m;
+            }
+            else
+            {
+                discount += 0;
             }
             return discount;
         }
@@ -76,12 +99,33 @@ namespace App.Infrastructure.Utility.Common
             decimal amount = 0;
             foreach (var item in bookingDetail.Courses)
             {
-                if (item.Qty < 10)
-                    amount += item.Price * 10;
+                int qty = item.Qty;
+                if (item.MenuCalculateType == 1)//西餐按人头算
+                {
+                    amount += item.Price * qty;
+                }
                 else
-                    amount += item.Price * item.Qty;
+                {
+                    if (item.Price == item.ChildrenPrice)
+                    {//价格相等等于没有儿童价格
+                        qty = qty + item.ChildrenQty;
+                    }
+                    else
+                    {//价格不相等，儿童单价单独计算
+                        amount += item.ChildrenPrice * item.ChildrenQty;
+                    }
+
+                    if (qty < 10)
+                        amount += item.Price * 10;
+                    else
+                        amount += item.Price * qty;
+
+
+                    amount -= getDiscount(qty, item.Price);
+                }
             }
-            amount -= getDiscount(bookingDetail);
+
+         
             return amount;
         }
 

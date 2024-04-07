@@ -36,6 +36,13 @@ namespace KingfoodIO.Controllers.TravelMeals
             _memoryCache = memoryCache;
         }
 
+        [HttpGet]
+        //[ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> GetRestaurant(string Id, int shopId,  bool cache = true)
+        {
+            return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetRestaurant(Id));
+        }
         [HttpPost]
         //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]

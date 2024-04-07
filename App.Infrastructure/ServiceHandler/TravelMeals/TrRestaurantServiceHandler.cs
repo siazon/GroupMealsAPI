@@ -33,9 +33,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
     public interface ITrRestaurantServiceHandler
     {
-        Task<ResponseModel> GetRestaurantInfo(int shopId,string country, int pageSize = -1, string continuationToke = null);
+        Task<ResponseModel> GetRestaurantInfo(int shopId, string country, int pageSize = -1, string continuationToke = null);
 
-      
+
+        Task<ResponseModel> GetRestaurant(string Id);
         Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId);
         Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId);
 
@@ -73,25 +74,37 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _twilioUtil = twilioUtil;
             _trRestaurantBookingServiceHandler = trRestaurantBookingServiceHandler;
             _logger = logger;
-            _memoryCache= memoryCache;
+            _memoryCache = memoryCache;
         }
-        public async Task<ResponseModel> GetRestaurantInfo(int shopId,string country, int pageSize = -1, string continuationToke = null)
+        public async Task<ResponseModel> GetRestaurantInfo(int shopId, string country, int pageSize = -1, string continuationToke = null)
         {
             DateTime stime = DateTime.Now;
             KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage;
             //for (int i = 0; i < 5; i++)
-
+            if (country == "All") {
+                currentPage = await _restaurantRepository
+                   .GetManyAsync(r => r.ShopId == shopId  && r.IsActive.HasValue && r.IsActive.Value, pageSize, continuationToke);
+            }else
             currentPage = await _restaurantRepository
-                .GetManyAsync(r => r.ShopId == shopId&& r.Country==country && r.IsActive.HasValue && r.IsActive.Value, pageSize, continuationToke);
-            var temp = currentPage.Value.ClearForOutPut().OrderBy(a => a.SortOrder).ToList();
+                .GetManyAsync(r => r.ShopId == shopId && r.Country == country && r.IsActive.HasValue && r.IsActive.Value, pageSize, continuationToke);
+            var temp = currentPage.Value.ClearForOutPut().OrderByDescending(a => a.Created).OrderBy(a => a.SortOrder).ToList();
             continuationToke = currentPage.Key;
             _logger.LogInfo("_restaurantRepository.GetManyAsync:" + (DateTime.Now - stime).ToString());
 
             return new ResponseModel { msg = "ok", code = 200, token = continuationToke, data = temp };
         }
-   
-      
-  
+
+        public async Task<ResponseModel> GetRestaurant(string Id)
+        {
+            var existingRestaurant =
+               await _restaurantRepository.GetOneAsync(r => r.Id == Id);
+            if (existingRestaurant != null)
+                return new ResponseModel { msg = "ok", code = 200, data = existingRestaurant };
+            else
+                return new ResponseModel { msg = "Restaurant Already Exists", code = 501, data = existingRestaurant };
+
+        }
+
 
 
         public async Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId)

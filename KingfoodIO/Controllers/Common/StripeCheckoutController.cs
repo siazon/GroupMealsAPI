@@ -36,11 +36,14 @@ namespace KingfoodIO.Controllers.Common
         private readonly AppSettingConfig _appsettingConfig;
         IStripeUtil _stripeUtil;
         private readonly IShopServiceHandler _shopServiceHandler;
+        IAmountCaculaterUtil _amountCaculaterV1;
 
         IMemoryCache _memoryCache;
         private string secret = "";
         public StripeCheckoutController(
           IOptions<CacheSettingConfig> cachesettingConfig, IOptions<AppSettingConfig> appsettingConfig, IMemoryCache memoryCache, IRedisCache redisCache, IStripeUtil stripeUtil,
+
+        IAmountCaculaterUtil amountCaculaterV1,
         ITourBookingServiceHandler tourBookingServiceHandler, ITourServiceHandler tourServiceHandler, IStripeServiceHandler stripeServiceHandler, IShopServiceHandler shopServiceHandler,
           ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
         {
@@ -53,6 +56,7 @@ namespace KingfoodIO.Controllers.Common
             _appsettingConfig = appsettingConfig.Value;
             secret = _appsettingConfig.StripeWebhookKey;
             _stripeUtil = stripeUtil; _memoryCache = memoryCache;
+            _amountCaculaterV1=amountCaculaterV1;
         }
 
         [HttpPost]
@@ -322,7 +326,7 @@ namespace KingfoodIO.Controllers.Common
                     if (bill.SetupPay == 1)
                         Amount = 100;
                     else
-                        Amount =  CalculateOrderAmount(gpBooking, shop.ExchangeRate);
+                        Amount = _amountCaculaterV1.CalculateOrderPaidAmount(gpBooking, shop.ExchangeRate);//  CalculateOrderAmount(gpBooking, shop.ExchangeRate);
                 }
                 string currency = "eur";
                 if (gpBooking.PayCurrency == "UK")

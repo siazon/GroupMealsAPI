@@ -21,6 +21,7 @@ namespace App.Domain.TravelMeals
         public string BookingNotes { get; set; }
         public string PayCurrency { get; set; }
         public string Creater { get; set; }
+        public string Updater { get; set; }
         public List<BookingDetail> Details { get; set; }= new List<BookingDetail>();
         public List<OperationInfo> Operations { get; set; } = new List<OperationInfo>();
         public List<PaymentInfo> PaymentInfos { get; set; } = new List<PaymentInfo>();
@@ -64,6 +65,10 @@ namespace App.Domain.TravelMeals
         public int Status { get; set; }//0:defult,1:canceled
         public int AcceptStatus { get; set; }//0:Defult, 1:Accept, 2:Decline
         public string AcceptReason { get; set; }
+        public string ContactName { get; set; }
+        public string ContactPhone { get; set; }
+        public string ContactEmail { get; set; }
+        public string ContactInfos { get; set; }
 
         public RestaurantBillInfo BillInfo { get; set; } = new RestaurantBillInfo();
         public List<BookingCourse> Courses { get; set; } = new List<BookingCourse>();
@@ -73,6 +78,7 @@ namespace App.Domain.TravelMeals
     {
         public string Id { get; set; }
         public int Qty { get; set; }
+        public int ChildrenQty { get; set; }
         public int TableQty { get; set; }
         public string Memo { get; set; }
         public decimal Amount { get; set; }

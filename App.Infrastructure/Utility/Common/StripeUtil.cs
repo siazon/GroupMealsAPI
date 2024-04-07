@@ -199,7 +199,7 @@ namespace App.Infrastructure.Utility.Common
                             _logger.LogInfo("StripeCheckoutController.CalculateOrderAmount:people Qty too small");
                             throw new Exception("people Qty too small");
                         }
-                        if (item.CourseType == 0)
+                        if (item.MenuCalculateType == 0)
                         {
                             item.Amount = item.Price * item.Qty;
                             amount += item.Amount;

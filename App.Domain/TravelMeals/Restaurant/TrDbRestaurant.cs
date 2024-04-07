@@ -51,6 +51,8 @@ namespace App.Domain.TravelMeals.Restaurant
         public int? BookingHourLength { get; set; }
         public int MinGuest { get; set; }
         public int MaxGuest { get; set; }
+        public int SpeakerFlag { get; set; }
+        public int MenuCalculateType { get; set; }
 
         public RestaurantBillInfo BillInfo { get; set; }
 
