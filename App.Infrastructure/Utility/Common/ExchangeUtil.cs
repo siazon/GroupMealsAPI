@@ -1,4 +1,7 @@
 ﻿using App.Domain.Common;
+using App.Domain.Common.Shop;
+using App.Infrastructure.Exceptions;
+using App.Infrastructure.Repository;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NLog.LayoutRenderers.Wrappers;
@@ -12,17 +15,20 @@ using System.Threading.Tasks;
 
 namespace App.Infrastructure.Utility.Common
 {
-    public interface IExcahngeUtil
+    public interface IExchangeUtil
     {
         Task<double> getGBPExchangeRate();
+         void UpdateToDB(double rate);
     }
-    public class ExchangeUtil : IExcahngeUtil
+    public class ExchangeUtil : IExchangeUtil
     {
         private readonly IHttpClientFactory _httpClientFactory;
+        IDbCommonRepository<DbShop> _shopRepository;
 
-        public ExchangeUtil(IHttpClientFactory httpClientFactory)
+        public ExchangeUtil(IHttpClientFactory httpClientFactory, IDbCommonRepository<DbShop> shopRepository)
         {
             _httpClientFactory = httpClientFactory;
+            _shopRepository= shopRepository;
         }
 
         public async Task<double> getGBPExchangeRate()
@@ -40,6 +46,7 @@ namespace App.Infrastructure.Utility.Common
                     var j=JsonConvert.DeserializeObject<ExchangeModel>(jsonResponse);
                     var tee = j.conversion_rates["GBP"];
                     double.TryParse(tee,out Rate);
+                    UpdateToDB(Rate);
                 }
                 catch (Exception ex)
                 {
@@ -47,6 +54,14 @@ namespace App.Infrastructure.Utility.Common
                 }
             }
             return Rate;
+        }
+        public async void UpdateToDB(double rate) {
+            var existShop = await _shopRepository.GetOneAsync(r => r.ShopId == 11);
+            if (existShop == null)
+                throw new ServiceException("shop Not Exists");
+            existShop.ExchangeRate = rate;
+            existShop.ShopContents.Add(new Domain.Common.Content.DbShopContent() { Key = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") });
+            var savedShop = await _shopRepository.UpdateAsync(existShop);
         }
     }
 

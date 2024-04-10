@@ -14,6 +14,7 @@ using System.Net;
 using App.Domain.Common.Shop;
 using KingfoodIO.Application.Filter;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.OpenApi.Models;
 
 namespace KingfoodIO.Controllers.Common
 {
@@ -34,10 +35,16 @@ namespace KingfoodIO.Controllers.Common
             storageConfig = _storageConfig.Value;
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="files"></param>
+        /// <param name="folder">餐厅英文名，选填, 传空时,图片传到根目录(避免文件路径冲突字符)</param>
+        /// <returns></returns>
         [ServiceFilter(typeof(AuthActionFilter))]
         [HttpPost]
         [ProducesResponseType(typeof(string), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> UploadImage([FromForm] IFormCollection files)
+        public async Task<IActionResult> UploadImage([FromForm] IFormCollection files,string folder)
         {
             bool isUploaded = false;
             try
@@ -57,10 +64,13 @@ namespace KingfoodIO.Controllers.Common
                     {
                         if (formFile.Length > 0)
                         {
-                            fileName = formFile.FileName;
+                            if (string.IsNullOrWhiteSpace(folder))
+                                fileName = formFile.FileName;
+                            else
+                                fileName = folder + "/" + formFile.FileName;
                             using (Stream stream = formFile.OpenReadStream())
                             {
-                                isUploaded = await ImageUploader.UploadFileToStorage(stream, formFile.FileName, storageConfig);
+                                isUploaded = await ImageUploader.UploadFileToStorage(stream, fileName, storageConfig);
                             }
                         }
                     }

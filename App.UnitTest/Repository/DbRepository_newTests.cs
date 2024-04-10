@@ -15,7 +15,7 @@ namespace App.Infrastructure.Repository.Tests
         [TestMethod()]
         public void testTest()
         {
-            IDbRepository_new<DbCustomer> dbRepository_New =new Repository.DbRepository_new<DbCustomer>();
+            IDbRepository_new<DbCustomer> dbRepository_New =new Repository.DbRepositoryV3<DbCustomer>();
             dbRepository_New.SetUpConnection("https://wiiyadevelop.documents.azure.com:443/", "X8SlC0zDFDE91DguIZ8XVSytAoburu2mZczsnKVgVYKHj4I7fnC9JdE7lLb6TeRcUU7OKxDXinW0KNzvEDMKfA==", "wiiya");
             dbRepository_New.GetOneAsync(r=>r.Id=="");
         }

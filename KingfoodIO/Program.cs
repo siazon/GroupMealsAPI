@@ -22,6 +22,7 @@ namespace KingfoodIO
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();
+                    Console.WriteLine("running");
                 });
     }
 }

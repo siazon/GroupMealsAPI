@@ -14,18 +14,18 @@ using Microsoft.Azure.Cosmos.Linq;
 
 namespace App.Infrastructure.Repository
 {
-    public interface IDbRepository_new<T> where T : DbEntity
+    public interface IDbRepositoryV3<T> where T : DbEntity
     {
-        //Task<IEnumerable<T>> GetManyAsync(Expression<Func<T, bool>> predicate);
+        Task<IEnumerable<T>> GetManyAsync(Expression<Func<T, bool>> predicate);
         Task<KeyValuePair<string, IEnumerable<T>>> GetManyAsync(Expression<Func<T, bool>> predicate, int pageSize = -1, string continueToken = null);
 
         Task<T> GetOneAsync(Expression<Func<T, bool>> predicate);
 
-        //Task<T> CreateAsync(T item);
+        Task<T> CreateAsync(T item);
 
-        //Task<T> UpdateAsync(T item);
+        Task<T> UpdateAsync(T item);
 
-        //Task<T> DeleteAsync(T item);
+        Task<T> DeleteAsync(T item);
 
         //Task CreateCollectionIfNotExists();
 
@@ -34,15 +34,15 @@ namespace App.Infrastructure.Repository
         void SetUpConnection(string documentDbEndPoint, string documentDbAuthKey, string documentDbName);
     }
 
-    public class DbRepository_new<T>
-        : IDbRepository_new<T> where T : DbEntity
+    public class DbRepositoryV3<T>
+        : IDbRepositoryV3<T> where T : DbEntity
     {
-        private CosmosClient _client;
+        protected CosmosClient _client;
         protected string CollectionId;
         protected string DatabaseId;
         protected DocumentDbConfig DbConfig;
         protected Container container;
-        private Container getContainer(string databaseId)
+        public Container getContainer(string databaseId)
         {
             return _client.GetDatabase(databaseId).GetContainer(typeof(T).Name);
         }
@@ -53,90 +53,59 @@ namespace App.Infrastructure.Repository
             CollectionId = typeof(T).Name;
             container = getContainer(documentDbName);
         }
+
+
         public async Task<T> GetOneAsync(Expression<Func<T, bool>> predicate)
         {
-            QueryDefinition query = new QueryDefinition("SELECT * FROM "+ CollectionId);
-            string continuation = null;
-            
-            List<T> results = new List<T>();
-            using (FeedIterator<T> resultSetIterator = container.GetItemQueryIterator<T>(
-                query,
-                requestOptions: new QueryRequestOptions()
+            try
+            {
+                List<T> results = new List<T>();
+                string continuation = null;
+                var query = container.GetItemLinqQueryable<T>(true)
+                         .Where(predicate);
+
+                using (var iterator = query.ToFeedIterator())
                 {
-                    MaxItemCount = 5, 
-                }))
-
-               
-
-            // Execute query and get 1 item in the results. Then, get a continuation token to resume later
-            while (resultSetIterator.HasMoreResults)
-                {
-                    FeedResponse<T> response = await resultSetIterator.ReadNextAsync();
-
-                    results.AddRange(response);
-                    if (response.Diagnostics != null)
+                    if (iterator.HasMoreResults)
                     {
-                        Console.WriteLine($"\nQueryWithContinuationTokens Diagnostics: {response.Diagnostics.ToString()}");
-                    }
-
-                    // Get continuation token once we've gotten > 0 results. 
-                    if (response.Count > 0)
-                    {
+                        FeedResponse<T> response = await iterator.ReadNextAsync();
+                        results.AddRange(response.Resource);
                         continuation = response.ContinuationToken;
-                        break;
+
+                        if (iterator.ReadNextAsync().Result.Count == 0)
+                            continuation = null;
                     }
                 }
 
-            // Check if query has already been fully drained
-            if (continuation == null)
-            {
-                return null;
+                return results.FirstOrDefault();
             }
-
-            // Resume query using continuation token
-            using (FeedIterator<T> resultSetIterator = container.GetItemQueryIterator<T>(
-                    query,
-                    requestOptions: new QueryRequestOptions()
-                    {
-                        MaxItemCount = -1
-                    },
-                    continuationToken: continuation))
+            catch (Exception e)
             {
-                while (resultSetIterator.HasMoreResults)
-                {
-                    FeedResponse<T> response = await resultSetIterator.ReadNextAsync();
-
-                    results.AddRange(response);
-                    if (response.Diagnostics != null)
-                    {
-                        Console.WriteLine($"\nQueryWithContinuationTokens Diagnostics: {response.Diagnostics.ToString()}");
-                    }
-                }
+                throw new DataRepositoryException(e);
             }
-            return null;
         }
 
         public async Task<KeyValuePair<string, IEnumerable<T>>> GetManyAsync(Expression<Func<T, bool>> predicate, int pageSize = -1, string continueToken = null)
         {
-            List<T> results = new List<T>();
-            string continuation=null;
-            var query = container.GetItemLinqQueryable<T>(true, continueToken, new QueryRequestOptions { MaxItemCount= pageSize, EnableScanInQuery=true,  })
-                     .Where(predicate);
-
-            using (var iterator = query.ToFeedIterator())
+            try
             {
-                if (iterator.HasMoreResults)
-                {
-                    FeedResponse<T> response = await iterator.ReadNextAsync();
-                    results.AddRange(response.Resource);
-                    continuation = response.ContinuationToken;
+                string continuationToken = null;
 
-                    if (iterator.ReadNextAsync().Result.Count == 0)
-                        continuation = null;
-                }
+                var queryRequestOptions = new QueryRequestOptions { MaxItemCount = pageSize, EnableScanInQuery = true, };
+
+                IOrderedQueryable<T> linqQueryable = container.GetItemLinqQueryable<T>(allowSynchronousQueryExecution: true, continuationToken: continuationToken, requestOptions: queryRequestOptions);
+                List<T> results = linqQueryable.ToList();
+
+                var tokens = linqQueryable.ToFeedIterator();
+                FeedResponse<T> responses = await tokens.ReadNextAsync();
+                continuationToken = responses.ContinuationToken;
+
+                return new KeyValuePair<string, IEnumerable<T>>(continuationToken, results);
             }
-
-            return new KeyValuePair<string, IEnumerable<T>>(continuation, results);
+            catch (Exception e)
+            {
+                throw new DataRepositoryException(e);
+            }
         }
         //public async Task<(IEnumerable<T> Results, string ContinuationToken)> Where<T>(Expression<Func<T, bool>> pred, 
         //    int maxRecords = 0, string partitionKey = "", string continuationToken = "") where T : IDocumentModel
@@ -177,21 +146,34 @@ namespace App.Infrastructure.Repository
         //}
 
 
-        //public async Task<IEnumerable<T>> GetManyAsync(Expression<Func<T, bool>> predicate)
-        //{
-        //    try
-        //    {
-        //        var query = Client.CreateDocumentQuery<T>(
-        //                UriFactory.CreateDocumentCollectionUri(DatabaseId, CollectionId),
-        //                new FeedOptions { MaxItemCount = -1, EnableCrossPartitionQuery = true })
-        //            .Where(predicate).AsEnumerable();
-        //        return query;
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        throw new DataRepositoryException(e);
-        //    }
-        //}
+        public async Task<IEnumerable<T>> GetManyAsync(Expression<Func<T, bool>> predicate)
+        {
+            try
+            {
+                List<T> results = new List<T>();
+                string continuation = null;
+                var query = container.GetItemLinqQueryable<T>(true)
+                         .Where(predicate);
+
+                using (var iterator = query.ToFeedIterator())
+                {
+                    if (iterator.HasMoreResults)
+                    {
+                        FeedResponse<T> response = await iterator.ReadNextAsync();
+                        results.AddRange(response.Resource);
+                        continuation = response.ContinuationToken;
+
+                        if (iterator.ReadNextAsync().Result.Count == 0)
+                            continuation = null;
+                    }
+                }
+                return results;
+            }
+            catch (Exception e)
+            {
+                throw new DataRepositoryException(e);
+            }
+        }
 
         //public async Task<KeyValuePair<string, IEnumerable<T>>> GetManyAsync(Expression<Func<T, bool>> predicate, int pageSize = -1, string continueToken = null)
         //{
@@ -224,65 +206,45 @@ namespace App.Infrastructure.Repository
         //    }
         //}
 
-        //public async Task<T> GetOneAsync(Expression<Func<T, bool>> predicate)
-        //{
-        //    try
-        //    {
-        //        var query = Client.CreateDocumentQuery<T>(
-        //                UriFactory.CreateDocumentCollectionUri(DatabaseId, CollectionId),
-        //                new FeedOptions { MaxItemCount = -1, EnableCrossPartitionQuery = true })
-        //            .Where(predicate).AsEnumerable();
-        //        return query.FirstOrDefault();
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        throw new DataRepositoryException(e);
-        //    }
-        //}
 
-        //public async Task<T> CreateAsync(T item)
-        //{
-        //    try
-        //    {
-        //        var doc =
-        //            await Client.CreateDocumentAsync(
-        //                UriFactory.CreateDocumentCollectionUri(DatabaseId, CollectionId), item);
-        //        return JsonConvert.DeserializeObject<T>(doc.Resource.ToString());
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        throw new DataRepositoryException(e);
-        //    }
-        //}
+        public async Task<T> CreateAsync(T item)
+        {
+            try
+            {
+                var doc = await container.UpsertItemAsync(item);
+                return doc.Resource;
+            }
+            catch (Exception e)
+            {
+                throw new DataRepositoryException(e);
+            }
+        }
 
-        //public async Task<T> UpdateAsync(T item)
-        //{
-        //    try
-        //    {
-        //        var doc = await Client.ReplaceDocumentAsync(
-        //            UriFactory.CreateDocumentUri(DatabaseId, CollectionId, item.Id), item);
-        //        return JsonConvert.DeserializeObject<T>(doc.Resource.ToString());
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        throw new DataRepositoryException(e);
-        //    }
-        //}
+        public async Task<T> UpdateAsync(T item)
+        {
+            try
+            {
+                var doc = await container.UpsertItemAsync(item);
+                return doc.Resource;
+            }
+            catch (Exception e)
+            {
+                throw new DataRepositoryException(e);
+            }
+        }
 
-        //public async Task<T> DeleteAsync(T item)
-        //{
-        //    try
-        //    {
-        //        var doc =
-        //            await Client.DeleteDocumentAsync(UriFactory.CreateDocumentUri(DatabaseId, CollectionId, item.Id),
-        //                new RequestOptions { PartitionKey = new PartitionKey(Undefined.Value) });
-        //        return item;
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        throw new DataRepositoryException(e);
-        //    }
-        //}
+        public async Task<T> DeleteAsync(T item)
+        {
+            try
+            {
+                var doc = await container.DeleteItemAsync<T>($"{item.Id}", new PartitionKey($"{item.Id}"));
+                return doc.Resource;
+            }
+            catch (Exception e)
+            {
+                throw new DataRepositoryException(e);
+            }
+        }
 
         //public async Task CreateCollectionIfNotExists()
         //{

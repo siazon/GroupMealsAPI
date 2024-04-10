@@ -20,10 +20,10 @@ namespace KingfoodIO.Controllers.Common
     public class ShopController : BaseController
     {
         private readonly IShopServiceHandler _shopServiceHandler;
-        IExcahngeUtil _excahngeUtil;
+        IExchangeUtil _excahngeUtil;
 
         IMemoryCache _memoryCache;
-        public ShopController(IShopServiceHandler shopServiceHandler, IOptions<CacheSettingConfig> cachesettingConfig, IExcahngeUtil excahngeUtil,
+        public ShopController(IShopServiceHandler shopServiceHandler, IOptions<CacheSettingConfig> cachesettingConfig, IExchangeUtil excahngeUtil,
          IMemoryCache memoryCache, IRedisCache redisCache, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
         {
             _shopServiceHandler = shopServiceHandler;

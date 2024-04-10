@@ -52,6 +52,14 @@ namespace KingfoodIO.Controllers.Common
             try
             {
                 customer = await _customerServiceHandler.LoginCustomer(email, password, shopId);
+                if (customer == null)
+                {
+                    return new { msg = "User not found!(用户不存在)", data = customer, token };
+                }
+                else if (!customer.IsVerity) {
+                    return new { msg = "Email is not verified!(邮箱未验证)", data = customer, token };
+                }
+                customer= customer.ClearForOutPut();
                 DbToken dbToken = new DbToken()
                 {
                     ShopId = shopId,

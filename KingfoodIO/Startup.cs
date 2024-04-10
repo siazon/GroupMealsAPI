@@ -34,6 +34,7 @@ using System.Security.Claims;
 using App.Domain.Common.Customer;
 using App.Domain.Common.Auth;
 using System.Net.Http;
+using Microsoft.Azure.Cosmos;
 
 namespace KingfoodIO
 {
@@ -64,6 +65,11 @@ namespace KingfoodIO
                     In = ParameterLocation.Header,
                     Type = SecuritySchemeType.ApiKey
                 });
+
+                var file = Path.Combine(AppContext.BaseDirectory, "KingfoodIO.xml");  // xml文档绝对路径
+                var path = Path.Combine(AppContext.BaseDirectory, file); // xml文档绝对路径
+                c.IncludeXmlComments(path, true); // true : 显示控制器层注释
+                c.OrderActionsBy(o => o.RelativePath); // 对action的名称进行排序，如果有多个，就可以看见效果了。
 
                 c.AddSecurityRequirement(new OpenApiSecurityRequirement()
                 {
@@ -136,29 +142,29 @@ namespace KingfoodIO
                                   });
             });
 
-            Hangfire.Azure.DocumentDbStorageOptions options = new Hangfire.Azure.DocumentDbStorageOptions
+
+
+            CosmosClientOptions options = new CosmosClientOptions
             {
+                ApplicationName = "hangfire",
                 RequestTimeout = TimeSpan.FromSeconds(30),
-                ExpirationCheckInterval = TimeSpan.FromMinutes(2),
-                CountersAggregateInterval = TimeSpan.FromMinutes(2),
-                QueuePollInterval = TimeSpan.FromSeconds(15),
-                ConnectionMode = ConnectionMode.Direct,
-                ConnectionProtocol = Protocol.Tcp,
-                EnablePartition = true, // default: false true; to enable partition on /type
+                ConnectionMode= Microsoft.Azure.Cosmos.ConnectionMode.Direct,
 
             };
 
-            services.AddHangfire(configuration => configuration
-                .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
-                .UseSimpleAssemblyNameTypeSerializer()
-                .UseRecommendedSerializerSettings()
-                .UseAzureDocumentDbStorage("https://wiiyabatch.documents.azure.com:443/"
+            services.AddHangfire(configuration => { configuration
+                //.SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
+                //.UseSimpleAssemblyNameTypeSerializer()
+                //.UseRecommendedSerializerSettings()
+                .UseAzureCosmosDbStorage("https://wiiyabatch.documents.azure.com:443/"
                     , "NgYw07nv13kY0RCVzRigi3O7HpPlhj2HE0iMfHAmzhuo7VxB4CzYQ7GRpzTNxF9qbxzoeSgErypI00bTN1D0mA=="
-                    , "wiiyabatch", "hangfire", options)
-                );
+                    , "wiiyabatch", "hangfirev", options);
+                configuration.UseColouredConsoleLogProvider(Hangfire.Logging.LogLevel.Trace);
+                
+                });
 
 
-            // Add the processing server as IHostedService
+            //Add the processing server as IHostedService
             services.AddHangfireServer();
 
             services.Configure<AppSettingConfig>(Configuration.GetSection("AppSetting"));
@@ -206,9 +212,16 @@ namespace KingfoodIO
             GlobalDiagnosticsContext.Set("serverinstance", Guid.NewGuid().ToString());
 
 
-            //services.AddSingleton<ExchangeService>();
+            services.AddSingleton<ExchangeService>();
             //services.AddHostedService(p => p.GetRequiredService<ExchangeService>());
-            //services.AddHostedService<ExchangeService>();
+
+            services.AddTransient<IExchangeUtil, ExchangeUtil>();
+
+            services.AddHostedService<ExchangeService>();
+
+
+          
+
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -10,7 +10,7 @@ namespace App.Domain.Common.Customer
     public class DbCustomer : DbEntity
     {
         public string UserName { get; set; }
-        public string ContactName { get; set; }
+        //public string ContactName { get; set; }
         public string Email { get; set; }
         public string WeChat { get; set; }
         public string Phone { get; set; }
@@ -48,7 +48,7 @@ namespace App.Domain.Common.Customer
             {
                 UserName = source.UserName,
                 Email = source.Email,
-                ContactName = source.ContactName,
+                //ContactName = source.ContactName,
                 WeChat = source.WeChat,
                 DeliveryCharge = source.DeliveryCharge,
                 Phone = source.Phone,
@@ -73,7 +73,7 @@ namespace App.Domain.Common.Customer
         {
             source.UserName = copyValue.UserName;
             source.Email = copyValue.Email;
-            source.ContactName = copyValue.ContactName;
+            //source.ContactName = copyValue.ContactName;
             source.WeChat = copyValue.WeChat;
             source.Phone = copyValue.Phone;
             source.Latitude = copyValue.Latitude;

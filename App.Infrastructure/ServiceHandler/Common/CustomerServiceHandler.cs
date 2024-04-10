@@ -25,12 +25,12 @@ namespace App.Infrastructure.ServiceHandler.Common
 
         Task<DbCustomer> LoginCustomer(string email, string password, int shopId);
 
-        Task<DbCustomer> ForgetPassword(string email, int shopId);
+        Task<object> ForgetPassword(string email, int shopId);
 
         Task<object> RegisterAccount(DbCustomer customer, int shopId);
         Task<object> VerityEmail(string email, string id, int shopId);
 
-        Task<DbCustomer> ResetPassword(string email, string resetCode, string password, int shopId);
+        Task<object> ResetPassword(string email, string resetCode, string password, int shopId);
         Task<object> UpdatePassword(string email, string oldPassword, string password, int shopId);
 
         Task<DbCustomer> UpdateAccount(DbCustomer customer, int shopId);
@@ -87,23 +87,20 @@ namespace App.Infrastructure.ServiceHandler.Common
             Guard.GreaterThanZero(shopId);
             var passwordEncode = _encryptionHelper.EncryptString(password);
             var customer = await _customerRepository.GetOneAsync(r =>
-                r.Email == email && r.Password == passwordEncode && r.IsActive.HasValue && r.IsActive.Value && r.IsVerity
+                r.Email == email && r.Password == passwordEncode && r.IsActive.HasValue && r.IsActive.Value
                 && r.ShopId == shopId);
-            if (customer == null)
-                throw new ServiceException("User not exist");
 
-            return customer.ClearForOutPut();
+            return   customer ;
         }
 
-        public async Task<DbCustomer> ForgetPassword(string email, int shopId)
+        public async Task<object> ForgetPassword(string email, int shopId)
         {
-
             Guard.NotNull(email);
             Guard.GreaterThanZero(shopId);
             var customer = await _customerRepository.GetOneAsync(r =>
                 r.Email == email && r.IsActive.HasValue && r.IsActive.Value && r.ShopId == shopId);
             if (customer == null)
-                throw new ServiceException("User not exist");
+                return new { msg = "用户不存在", data = new { } };
 
             //Email customer ResetCode
             customer.ResetCode = GuidHashUtil.Get6DigitNumber();
@@ -111,7 +108,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
             EmailForgetPWDSender(updatedCustomer, shopInfo, "Fotget password");
 
-            return updatedCustomer.ClearForOutPut();
+            return new { msg = "ok", data = updatedCustomer.ClearForOutPut() };
         }
 
         public async Task<object> RegisterAccount(DbCustomer customer, int shopId)
@@ -145,10 +142,15 @@ namespace App.Infrastructure.ServiceHandler.Common
             newItem.PinCode = GuidHashUtil.Get6DigitNumber();
             if (existingCustomer != null)
             {
-                newItem.Id= existingCustomer.Id;
-                await _customerRepository.UpdateAsync(newItem); }
+                newItem.Id = existingCustomer.Id;
+                await _customerRepository.UpdateAsync(newItem);
+            }
             else
+            {
+                newItem.Id= Guid.NewGuid().ToString();
                 newItem = await _customerRepository.CreateAsync(newItem);
+            
+            }
             if (newItem != null)
             {
                 var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
@@ -209,18 +211,20 @@ namespace App.Infrastructure.ServiceHandler.Common
             //{
             //}
         }
-        public async Task<DbCustomer> ResetPassword(string email, string resetCode, string password, int shopId)
+        public async Task<object> ResetPassword(string email, string resetCode, string password, int shopId)
         {
             Guard.NotNull(email);
             Guard.GreaterThanZero(shopId);
             var customer = await _customerRepository.GetOneAsync(r =>
-                r.Email == email && r.ResetCode == resetCode && r.IsActive.HasValue && r.IsActive.Value && r.ShopId == shopId);
+                r.Email == email  && r.IsActive.HasValue && r.IsActive.Value && r.ShopId == shopId);
             if (customer == null)
-                throw new ServiceException("Cannot Reset User not exist");
+                return new { msg = "用户不存在", };
+            else if(customer.ResetCode!=resetCode)
+                return new { msg = "验证码错误", };
 
             customer.Password = _encryptionHelper.EncryptString(password);
             var updatedCustomer = await _customerRepository.UpdateAsync(customer);
-            return updatedCustomer.ClearForOutPut();
+            return new { msg = "ok", data = updatedCustomer.ClearForOutPut() };
         }
         public async Task<object> UpdatePassword(string email, string oldPassword, string password, int shopId)
         {
