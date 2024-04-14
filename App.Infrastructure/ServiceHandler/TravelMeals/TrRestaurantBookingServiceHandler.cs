@@ -788,7 +788,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async void SettleOrder()
         {
+            DateTime stime=DateTime.Now;
             var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted));
+            var span = (DateTime.Now - stime).TotalMilliseconds;
+            Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff")+" : "+ span);
             var list = Bookings.ToList();
             foreach (var item in list)
             {

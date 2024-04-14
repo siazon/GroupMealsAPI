@@ -159,7 +159,7 @@ namespace KingfoodIO
                 .UseAzureCosmosDbStorage("https://wiiyabatch.documents.azure.com:443/"
                     , "NgYw07nv13kY0RCVzRigi3O7HpPlhj2HE0iMfHAmzhuo7VxB4CzYQ7GRpzTNxF9qbxzoeSgErypI00bTN1D0mA=="
                     , "wiiyabatch", "hangfirev", options);
-                configuration.UseColouredConsoleLogProvider(Hangfire.Logging.LogLevel.Trace);
+                configuration.UseColouredConsoleLogProvider(Hangfire.Logging.LogLevel.Error);
                 
                 });
 

@@ -83,13 +83,21 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //for (int i = 0; i < 5; i++)
             if (country == "All")
             {
+                stime = DateTime.Now;
                 currentPage = await _restaurantRepository
                    .GetManyAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value == true, pageSize, continuationToke);
+                Console.WriteLine(country+DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " : " + (DateTime.Now - stime).TotalMilliseconds);
+                _logger.LogInfo(country + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " : " + (DateTime.Now - stime).TotalMilliseconds);
             }
             else
+            {
+                stime = DateTime.Now;
                 currentPage = await _restaurantRepository
                     .GetManyAsync(r => r.ShopId == shopId && r.Country == country && r.IsActive.HasValue && r.IsActive.Value, pageSize, continuationToke);
-            var temp = currentPage.Value.ClearForOutPut().OrderByDescending(a => a.Created).OrderBy(a => a.SortOrder).ToList();
+                Console.WriteLine(country + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " : " + (DateTime.Now - stime).TotalMilliseconds);
+                _logger.LogInfo(country + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " : " + (DateTime.Now - stime).TotalMilliseconds);
+            }
+                var temp = currentPage.Value.ClearForOutPut().OrderByDescending(a => a.Created).OrderBy(a => a.SortOrder).ToList();
             continuationToke = currentPage.Key;
             var time = (DateTime.Now - stime).ToString();
             _logger.LogInfo("_restaurantRepository.GetManyAsync:" + (DateTime.Now - stime).ToString());
