@@ -94,7 +94,7 @@ namespace App.Infrastructure.Repository
                 var queryRequestOptions = new QueryRequestOptions { MaxItemCount = pageSize, EnableScanInQuery = true, };
 
                 IOrderedQueryable<T> linqQueryable = container.GetItemLinqQueryable<T>(allowSynchronousQueryExecution: true, continuationToken: continuationToken, requestOptions: queryRequestOptions);
-                List<T> results = linqQueryable.ToList();
+                List<T> results = linqQueryable.Where(predicate).ToList();
 
                 var tokens = linqQueryable.ToFeedIterator();
                 FeedResponse<T> responses = await tokens.ReadNextAsync();

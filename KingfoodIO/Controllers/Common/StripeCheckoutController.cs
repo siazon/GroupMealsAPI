@@ -25,6 +25,9 @@ using System.Threading.Tasks;
 
 namespace KingfoodIO.Controllers.Common
 {
+    /// <summary>
+    /// 
+    /// </summary>
     [Route("api/[controller]/[action]")]
     public class StripeCheckoutController : BaseController
     {
@@ -40,6 +43,21 @@ namespace KingfoodIO.Controllers.Common
 
         IMemoryCache _memoryCache;
         private string secret = "";
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="cachesettingConfig"></param>
+        /// <param name="appsettingConfig"></param>
+        /// <param name="memoryCache"></param>
+        /// <param name="redisCache"></param>
+        /// <param name="stripeUtil"></param>
+        /// <param name="amountCaculaterV1"></param>
+        /// <param name="tourBookingServiceHandler"></param>
+        /// <param name="tourServiceHandler"></param>
+        /// <param name="stripeServiceHandler"></param>
+        /// <param name="shopServiceHandler"></param>
+        /// <param name="restaurantBookingServiceHandler"></param>
+        /// <param name="logger"></param>
         public StripeCheckoutController(
           IOptions<CacheSettingConfig> cachesettingConfig, IOptions<AppSettingConfig> appsettingConfig, IMemoryCache memoryCache, IRedisCache redisCache, IStripeUtil stripeUtil,
 
@@ -59,6 +77,11 @@ namespace KingfoodIO.Controllers.Common
             _amountCaculaterV1=amountCaculaterV1;
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="checkoutParam"></param>
+        /// <returns></returns>
         [HttpPost]
         public string Create([FromBody] CheckoutParam checkoutParam)
         {
@@ -92,12 +115,20 @@ namespace KingfoodIO.Controllers.Common
             }
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
         [HttpGet]
         public async Task<IActionResult> GetWebhook()
         {
             return Ok();
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
         [HttpPost]
         public async Task<IActionResult> Webhook()
         {
@@ -200,6 +231,12 @@ namespace KingfoodIO.Controllers.Common
             }
 
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="bookingId"></param>
+        /// <returns></returns>
         [HttpPost]
         public ActionResult CreateSetupIntent([FromBody] string bookingId)
         {
@@ -232,6 +269,12 @@ namespace KingfoodIO.Controllers.Common
                 return BadRequest(ex.Message);
             }
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="bookingId"></param>
+        /// <returns></returns>
         [HttpPost]
         public async Task<ActionResult> SetupPayAction([FromBody] string bookingId)
         {
@@ -293,6 +336,13 @@ namespace KingfoodIO.Controllers.Common
             }
             return Json(new { msg = "OK" });
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="bill"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpPost]
         public async Task<ActionResult> CreatePayIntent([FromBody] PayIntentParam bill, int shopId)
         {
@@ -383,6 +433,13 @@ namespace KingfoodIO.Controllers.Common
             var payment = service.Update(paymentId, options);
             return payment;
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="bill"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpPost]
         public async Task<ActionResult> RefundPay([FromBody] PayIntentParam bill, int shopId)
         {
@@ -473,11 +530,11 @@ namespace KingfoodIO.Controllers.Common
         private decimal getItemPayAmount(BookingDetail bookingDetail)
         {
             decimal amount = getItemAmount(bookingDetail) - getDiscount(bookingDetail);
-            if (bookingDetail.BillInfo.PaymentType == 1)//付押金
+            if (bookingDetail.BillInfo.PaymentType == PaymentTypeEnum.Deposit)//付押金
             {
                 amount = amount * (decimal)bookingDetail.BillInfo.PayRate;
             }
-            else if (bookingDetail.BillInfo.PaymentType == 2)//到店付
+            else if (bookingDetail.BillInfo.PaymentType == PaymentTypeEnum.PayAtStore)//到店付
             {
                 amount = 0;
             }

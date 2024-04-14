@@ -17,6 +17,9 @@ using Microsoft.Extensions.Primitives;
 
 namespace KingfoodIO.Controllers.Common
 {
+    /// <summary>
+    /// 
+    /// </summary>
     [Route("api/[controller]/[action]")]
     public class CustomerController : BaseController
     {
@@ -24,6 +27,15 @@ namespace KingfoodIO.Controllers.Common
         AppSettingConfig _appsettingConfig;
         ILogManager logger;
         IMemoryCache _memoryCache;
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="cachesettingConfig"></param>
+        /// <param name="appsettingConfig"></param>
+        /// <param name="memoryCache"></param>
+        /// <param name="redisCache"></param>
+        /// <param name="customerServiceHandler"></param>
+        /// <param name="logger"></param>
         public CustomerController(IOptions<CacheSettingConfig> cachesettingConfig, IOptions<AppSettingConfig> appsettingConfig,
             IMemoryCache memoryCache, IRedisCache redisCache,
         ICustomerServiceHandler customerServiceHandler, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
@@ -34,6 +46,11 @@ namespace KingfoodIO.Controllers.Common
             _appsettingConfig = appsettingConfig.Value;
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpGet]
         [ProducesResponseType(typeof(List<DbCustomer>), (int)HttpStatusCode.OK)]
         //[ServiceFilter(typeof(AuthActionFilter))]
@@ -42,6 +59,13 @@ namespace KingfoodIO.Controllers.Common
             return await ExecuteAsync(shopId, false,
                 async () => await _customerServiceHandler.List(shopId));
         }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="email"></param>
+        /// <param name="password"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpGet]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         //[ServiceFilter(typeof(AuthActionFilter))]
@@ -91,7 +115,12 @@ namespace KingfoodIO.Controllers.Common
             }
             return new { msg = "ok", data = customer, token };
         }
-
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="email"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpGet]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         //[ServiceFilter(typeof(AuthActionFilter))]
@@ -100,7 +129,14 @@ namespace KingfoodIO.Controllers.Common
             return await ExecuteAsync(shopId, false,
                 async () => await _customerServiceHandler.ForgetPassword(email, shopId));
         }
-
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="email"></param>
+        /// <param name="resetCode"></param>
+        /// <param name="password"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpGet]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         //[ServiceFilter(typeof(AuthActionFilter))]
@@ -109,6 +145,14 @@ namespace KingfoodIO.Controllers.Common
             return await ExecuteAsync(shopId, false,
                 async () => await _customerServiceHandler.ResetPassword(email, resetCode, password, shopId));
         }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="email"></param>
+        /// <param name="oldPassword"></param>
+        /// <param name="password"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpGet]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         //[ServiceFilter(typeof(AuthActionFilter))]
@@ -117,7 +161,13 @@ namespace KingfoodIO.Controllers.Common
             return await ExecuteAsync(shopId, false,
                 async () => await _customerServiceHandler.UpdatePassword(email, oldPassword, password, shopId));
         }
-
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="email"></param>
+        /// <param name="customerId"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpGet]
         [ProducesResponseType(typeof(object), (int)HttpStatusCode.OK)]
         //[ServiceFilter(typeof(AuthActionFilter))]
@@ -126,7 +176,12 @@ namespace KingfoodIO.Controllers.Common
             return await ExecuteAsync(shopId, false,
                 async () => await _customerServiceHandler.VerityEmail(email, customerId, shopId));
         }
-
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="customer"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpPost]
         [ProducesResponseType(typeof(object), (int)HttpStatusCode.OK)]
         //[ServiceFilter(typeof(AuthActionFilter))]
@@ -135,7 +190,12 @@ namespace KingfoodIO.Controllers.Common
             return await ExecuteAsync(shopId, false,
                 async () => await _customerServiceHandler.RegisterAccount(customer, shopId));
         }
-
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="customer"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpPost]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         //[ServiceFilter(typeof(AuthActionFilter))]
@@ -145,7 +205,12 @@ namespace KingfoodIO.Controllers.Common
                 async () => await _customerServiceHandler.UpdateAccount(customer, shopId));
         }
 
-
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="customer"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpPost]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         //[ServiceFilter(typeof(AuthActionFilter))]
@@ -155,7 +220,12 @@ namespace KingfoodIO.Controllers.Common
                 async () => await _customerServiceHandler.UpdatePassword(customer, shopId));
         }
 
-
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="item"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [ServiceFilter(typeof(AdminAuthFilter))]
         [HttpDelete]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
@@ -165,6 +235,12 @@ namespace KingfoodIO.Controllers.Common
                 async () => await _customerServiceHandler.Delete(item, shopId));
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="customer"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpPost]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
@@ -174,6 +250,12 @@ namespace KingfoodIO.Controllers.Common
                 async () => await _customerServiceHandler.UpdateFavorite(customer, shopId));
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="customer"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpPost]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]

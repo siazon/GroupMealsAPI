@@ -19,6 +19,12 @@ using Microsoft.Extensions.Primitives;
 
 namespace KingfoodIO.Controllers.TravelMeals
 {
+    /// <summary>
+    /// FoodCategory:  Chinese,Thai,Pizza,Burgers,Kebab,Chicken
+    /// RestaurantTag: SpecialOffers,GoodStars,New,Halal
+    /// MenuCalculateType:  DEFAULT, WesternFood, ChineseFood
+    /// PaymentType: Full, Deposit, PayAtStore
+    /// </summary>
     [Route("api/[controller]/[action]")]
     public class TrRestaurantController : BaseController
     {
@@ -26,6 +32,15 @@ namespace KingfoodIO.Controllers.TravelMeals
 
         IMemoryCache _memoryCache;
         ILogManager _logger;
+
+        /// <summary>
+        /// </summary>
+        /// <param name="cachesettingConfig"></param>
+        /// <param name="memoryCache"></param>
+        /// <param name="redisCache"></param>
+        /// <param name="restaurantBookingServiceHandler"></param>
+        /// <param name="restaurantServiceHandler"></param>
+        /// <param name="logger"></param>
         public TrRestaurantController(
             IOptions<CacheSettingConfig> cachesettingConfig, IMemoryCache memoryCache, IRedisCache redisCache, ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler,
             ITrRestaurantServiceHandler restaurantServiceHandler, ILogManager logger) :
@@ -36,6 +51,13 @@ namespace KingfoodIO.Controllers.TravelMeals
             _memoryCache = memoryCache;
         }
 
+        /// <summary>
+        /// </summary>
+        /// <param name="Id"></param>
+        /// <param name="shopId"></param>
+        /// <param name="cache"></param>
+        /// <returns>
+        /// </returns>
         [HttpGet]
         //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
@@ -43,6 +65,17 @@ namespace KingfoodIO.Controllers.TravelMeals
         {
             return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetRestaurant(Id));
         }
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="pageToken"></param>
+        /// <param name="shopId"></param>
+        /// <param name="country"></param>
+        /// <param name="pageSize">-1 ±≤ª∑÷“≥</param>
+        /// <param name="cache"></param>
+        /// <returns></returns>
         [HttpPost]
         //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
@@ -54,6 +87,12 @@ namespace KingfoodIO.Controllers.TravelMeals
             return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetRestaurantInfo(shopId,country, pageSize, pageToken));
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="restaurant"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpPost]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
@@ -63,6 +102,12 @@ namespace KingfoodIO.Controllers.TravelMeals
                 async () => await _restaurantServiceHandler.AddRestaurant(restaurant, shopId));
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="restaurant"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpPost]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]

@@ -132,11 +132,11 @@ namespace App.Infrastructure.Utility.Common
         public decimal getItemPayAmount(BookingDetail bookingDetail)
         {
             decimal amount = getItemAmount(bookingDetail);
-            if (bookingDetail.BillInfo.PaymentType == 1)//付押金
+            if (bookingDetail.BillInfo.PaymentType == Domain.TravelMeals.Restaurant.PaymentTypeEnum.Deposit)//付押金
             {
                 amount = amount * (decimal)bookingDetail.BillInfo.PayRate;
             }
-            else if (bookingDetail.BillInfo.PaymentType == 2)//到店付
+            else if (bookingDetail.BillInfo.PaymentType == Domain.TravelMeals.Restaurant.PaymentTypeEnum.PayAtStore)//到店付
             {
                 amount = 0;
             }

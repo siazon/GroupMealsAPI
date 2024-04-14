@@ -81,14 +81,17 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             DateTime stime = DateTime.Now;
             KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage;
             //for (int i = 0; i < 5; i++)
-            if (country == "All") {
+            if (country == "All")
+            {
                 currentPage = await _restaurantRepository
-                   .GetManyAsync(r => r.ShopId == shopId  && r.IsActive.HasValue && r.IsActive.Value, pageSize, continuationToke);
-            }else
-            currentPage = await _restaurantRepository
-                .GetManyAsync(r => r.ShopId == shopId && r.Country == country && r.IsActive.HasValue && r.IsActive.Value, pageSize, continuationToke);
+                   .GetManyAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value == true, pageSize, continuationToke);
+            }
+            else
+                currentPage = await _restaurantRepository
+                    .GetManyAsync(r => r.ShopId == shopId && r.Country == country && r.IsActive.HasValue && r.IsActive.Value, pageSize, continuationToke);
             var temp = currentPage.Value.ClearForOutPut().OrderByDescending(a => a.Created).OrderBy(a => a.SortOrder).ToList();
             continuationToke = currentPage.Key;
+            var time = (DateTime.Now - stime).ToString();
             _logger.LogInfo("_restaurantRepository.GetManyAsync:" + (DateTime.Now - stime).ToString());
 
             return new ResponseModel { msg = "ok", code = 200, token = continuationToke, data = temp };
@@ -114,14 +117,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.StoreName == restaurant.StoreName && r.Address == restaurant.Address);
             if (existingRestaurant != null)
                 throw new ServiceException("Restaurant Already Exists");
-            var newItem = restaurant.Clone();
 
-            newItem.ShopId = shopId;
-            newItem.Created = _dateTimeUtil.GetCurrentTime();
-            newItem.Updated = _dateTimeUtil.GetCurrentTime();
-            newItem.IsActive = true;
+            restaurant.Id = Guid.NewGuid().ToString();
+            restaurant.ShopId = shopId;
+            restaurant.Created = _dateTimeUtil.GetCurrentTime();
+            restaurant.Updated = _dateTimeUtil.GetCurrentTime();
+            restaurant.IsActive = true;
 
-            var savedRestaurant = await _restaurantRepository.CreateAsync(newItem);
+            var savedRestaurant = await _restaurantRepository.CreateAsync(restaurant);
             return savedRestaurant;
         }
         public async Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId)

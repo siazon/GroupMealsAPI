@@ -14,6 +14,8 @@ using App.Infrastructure.Exceptions;
 using App.Domain.Common;
 using Newtonsoft.Json;
 using Microsoft.Extensions.DependencyInjection;
+using App.Infrastructure.ServiceHandler.TravelMeals;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace App.Infrastructure.Utility.Common
 {
@@ -27,7 +29,8 @@ namespace App.Infrastructure.Utility.Common
         public async Task StartAsync(CancellationToken cancellationToken)
         {
 
-            RecurringJob.AddOrUpdate("TO_DO_ANOTHER_TASK_JOB", () => DoTask(), Cron.Hourly);
+            RecurringJob.AddOrUpdate("TO_DO_ANOTHER_TASK_JOB", () => DoTask(), Cron.Daily);
+            RecurringJob.AddOrUpdate("TO_DO_ANOTHER_TASK_JOB_Minutely", () => DoTaskMinutely(), Cron.Minutely);
 
             //var schedulerFactory = new StdSchedulerFactory();
             //var scheduler = await schedulerFactory.GetScheduler();
@@ -53,11 +56,23 @@ namespace App.Infrastructure.Utility.Common
         {
             return Task.CompletedTask;
         }
-        public  void DoTask() {
+        public void DoTaskMinutely()
+        {
+            using (var scope = _serviceScopeFactory.CreateScope())
+            {
+
+                var _restaurantBookingServiceHandler = scope.ServiceProvider.GetRequiredService<ITrRestaurantBookingServiceHandler>();
+
+                _restaurantBookingServiceHandler.SettleOrder();
+
+            }
+        }
+        public void DoTask()
+        {
 
 
-         
-                using (var scope = _serviceScopeFactory.CreateScope())
+
+            using (var scope = _serviceScopeFactory.CreateScope())
             {
                 // 获取需要的服务实例
                 var myService = scope.ServiceProvider.GetRequiredService<IExchangeUtil>();
@@ -65,17 +80,18 @@ namespace App.Infrastructure.Utility.Common
                 // 在这里执行后台任务
                 myService.UpdateToDB(9);
 
+
             }
 
-            Console.WriteLine("ssss"+DateTime.Now.ToString("HH:mm:ss"));
+            Console.WriteLine("ssss" + DateTime.Now.ToString("HH:mm:ss"));
 
 
-         
+
 
 
         }
 
-     
+
     }
-    
+
 }

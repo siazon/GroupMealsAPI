@@ -22,9 +22,11 @@ namespace App.Domain.TravelMeals.Restaurant
         public string DescriptionHtml { get; set; }
         public string DescriptionHtmlCn { get; set; }
         public string PhoneNumber { get; set; }
+        public string ContactPhone { get; set; }
         public string Wechat { get; set; }
         public int Rating { get; set; }
         public RestaurantCategoryEnum FoodCategory { get; set; }
+        public List<RestaurantCategoryEnum> FoodCategories { get; set; }
         public RestaurantTagEnum RestaurantTag { get; set; }
         public string Website { get; set; }
         public string Image { get; set; }
@@ -52,7 +54,10 @@ namespace App.Domain.TravelMeals.Restaurant
         public int MinGuest { get; set; }
         public int MaxGuest { get; set; }
         public int SpeakerFlag { get; set; }
-        public int MenuCalculateType { get; set; }
+        public bool VegetarianDiet { get; set; }
+        public bool HalalFood { get; set; }
+        public bool DriverFree { get; set; }
+        public MenuCalculateTypeEnum MenuCalculateType { get; set; }
 
         public RestaurantBillInfo BillInfo { get; set; }
 
@@ -89,12 +94,19 @@ namespace App.Domain.TravelMeals.Restaurant
             };
         }
     }
+    public enum MenuCalculateTypeEnum
+    {
+        DEFAULT, WesternFood, ChineseFood
+    }
+    public enum PaymentTypeEnum
+    {
+        Full, Deposit, PayAtStore
+    }
     public class RestaurantBillInfo
     {
-        public int Payment { get; set; }//1全额，2全额+到店支付，3全额+到店支付+百分比支付
-        public int PaymentType { get; set; }//支付方式 0:全额,1:支付押金,2:到店支付
+        public List<PaymentTypeEnum> SupportedPaymentTypes { get; set; }//1全额，2全额+到店支付，3全额+到店支付+百分比支付
+        public PaymentTypeEnum PaymentType { get; set; }//支付方式 0:全额,1:支付押金,2:到店支付
         public double PayRate { get; set; }//百分比
-
 
     }
     public class MapPosition

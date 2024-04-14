@@ -44,9 +44,10 @@ namespace App.Infrastructure.Utility.Common
 
             // Create the blob client.
             BlobClient blobClient = new BlobClient(blobUri, storageCredentials);
+            
 
             // Upload the file
-            await blobClient.UploadAsync(fileStream);
+            await blobClient.UploadAsync(fileStream,true);
 
             return await Task.FromResult(true);
         }

@@ -16,6 +16,9 @@ using System.Threading.Tasks;
 
 namespace KingfoodIO.Controllers.Common
 {
+    /// <summary>
+    /// 
+    /// </summary>
     [Route("api/[controller]/[action]")]
     public class ShopController : BaseController
     {
@@ -23,6 +26,15 @@ namespace KingfoodIO.Controllers.Common
         IExchangeUtil _excahngeUtil;
 
         IMemoryCache _memoryCache;
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="shopServiceHandler"></param>
+        /// <param name="cachesettingConfig"></param>
+        /// <param name="excahngeUtil"></param>
+        /// <param name="memoryCache"></param>
+        /// <param name="redisCache"></param>
+        /// <param name="logger"></param>
         public ShopController(IShopServiceHandler shopServiceHandler, IOptions<CacheSettingConfig> cachesettingConfig, IExchangeUtil excahngeUtil,
          IMemoryCache memoryCache, IRedisCache redisCache, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
         {
@@ -30,7 +42,12 @@ namespace KingfoodIO.Controllers.Common
             _memoryCache = memoryCache;
             _excahngeUtil=  excahngeUtil;
         }
-
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="shopId"></param>
+        /// <param name="cache"></param>
+        /// <returns></returns>
         //[ServiceFilter(typeof(AuthActionFilter))]
         [HttpGet]
         [ProducesResponseType(typeof(DbShop), (int)HttpStatusCode.OK)]
@@ -42,6 +59,12 @@ namespace KingfoodIO.Controllers.Common
             return shopInfo;
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="exRate"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpGet]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)] 
         [ServiceFilter(typeof(AuthActionFilter))]

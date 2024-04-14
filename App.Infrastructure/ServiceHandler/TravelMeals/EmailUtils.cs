@@ -127,7 +127,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string currencyStr = booking.PayCurrency == "UK" ? "￡" : "€";
             foreach (var item in booking.Details)
             {
-                if (item.Status == 1) continue;
+                if (item.Status == DetailStatusEnum.Canceled) continue;
                 Detail += item.RestaurantName +" <br> ";
                 Detail += item.RestaurantAddress + " <br> ";
                 Detail += item.RestaurantPhone + "  " + item.RestaurantEmail + " <br> ";

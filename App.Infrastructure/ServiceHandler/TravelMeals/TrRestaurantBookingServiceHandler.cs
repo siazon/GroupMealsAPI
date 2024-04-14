@@ -50,6 +50,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<bool> DeleteBooking(string bookingId, int shopId);
         Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
         Task<ResponseModel> SearchBookingsByRestaurant(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
+        void SettleOrder();
     }
     public class TrRestaurantBookingServiceHandler : ITrRestaurantBookingServiceHandler
     {
@@ -100,10 +101,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
             foreach (var item in booking.Details)
             {
-                if (item.Status == 1) continue;
+                if (item.Status == DetailStatusEnum.Canceled) continue;
                 if (item.Id == detailId)
                 {
-                    item.Status = 1;
+                    item.Status = DetailStatusEnum.Canceled;
                     SendCancelEmail(booking, item);
                 }
             }
@@ -180,12 +181,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 if (item.Id == subBillId)
                 {
                     if (item.AcceptStatus == 0)
-                        item.AcceptStatus = acceptType;
-                    else if (item.AcceptStatus == 1)
+                        item.AcceptStatus = (AcceptStatusEnum)acceptType;
+                    else if (item.AcceptStatus == AcceptStatusEnum.Accepted)
                     {
                         return new { code = 1, msg = "订单已接收", data = booking };
                     }
-                    else if (item.AcceptStatus == 2)
+                    else if (item.AcceptStatus == AcceptStatusEnum.Declined)
                     {
                         return new { code = 2, msg = "订单已接收", data = booking };
                     }
@@ -399,7 +400,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     if (detail.SelectDateTime != item.SelectDateTime)
                     {
-                        item.Status = 3;
+                        item.Modified = true;
                         isChange = true;
                         ModifyInfo modifyInfo = new ModifyInfo();
                         modifyInfo.ModifyField = 1;
@@ -411,7 +412,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     }
                     if (detail.Memo != item.Memo)
                     {
-                        item.Status = 3;
+                        item.Modified = true;
                         isChange = true;
                         ModifyInfo modifyInfo = new ModifyInfo();
                         modifyInfo.ModifyField = 2;
@@ -431,7 +432,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         if (course.Price == _course.Price && course.Qty == _course.Qty && course.ChildrenQty == _course.ChildrenQty) continue;
                         if (course.Qty != _course.Qty)
                         {
-                            item.Status = 3;
+                            item.Modified = true;
                             isChange = true;
                             ModifyInfo modifyInfo = new ModifyInfo();
                             modifyInfo.ModifyField = 3;
@@ -444,7 +445,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         }
                         if (course.ChildrenQty != _course.ChildrenQty)
                         {
-                            item.Status = 3;
+                            item.Modified = true;
                             isChange = true;
                             ModifyInfo modifyInfo = new ModifyInfo();
                             modifyInfo.ModifyField = 5;
@@ -457,7 +458,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         }
                         if (course.Price != _course.Price)
                         {
-                            item.Status = 3;
+                            item.Modified = true;
                             isChange = true;
                             ModifyInfo modifyInfo = new ModifyInfo();
                             modifyInfo.ModifyField = 4;
@@ -494,7 +495,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 sendBooking.Details.Clear();
                 foreach (var item in exsitBooking.Details)
                 {
-                    if (item.Status == 3)
+                    if (item.Modified)
                         sendBooking.Details.Add(item);
                 }
                 SendModifyEmail(sendBooking);
@@ -530,7 +531,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 bool noPay = true; ;
                 foreach (var item in booking.Details)
                 {
-                    if (item.BillInfo.PaymentType != 2)
+                    if (item.BillInfo.PaymentType != PaymentTypeEnum.PayAtStore)
                         noPay = false;
                 }
                 if (noPay)
@@ -560,7 +561,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 foreach (var item in booking.Details)
                 {
                     item.Id = Guid.NewGuid().ToString();
-                    if (item.BillInfo.PaymentType != 2)
+                    if (item.BillInfo.PaymentType != PaymentTypeEnum.PayAtStore)
                         noPay = false;
                     foreach (var course in item.Courses)
                     {
@@ -785,7 +786,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
 
         }
-        private async void settleOrder()
+        public async void SettleOrder()
         {
             var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted));
             var list = Bookings.ToList();
@@ -794,7 +795,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 bool isSettled = true;
                 foreach (var b in item.Details)
                 {
-                    if (b.Status == 0 && b.AcceptStatus == 1 && b.SelectDateTime < DateTime.Now)
+                    if (b.Status == 0 && b.AcceptStatus == AcceptStatusEnum.Accepted && b.SelectDateTime < DateTime.Now)
                     {
 
                     }
@@ -803,7 +804,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         isSettled = false;
                     }
                 }
-                if (isSettled)
+                if (isSettled && item.Status != OrderStatusEnum.Settled)
                 {
                     item.Status = OrderStatusEnum.Settled;
                     await _restaurantBookingRepository.UpdateAsync(item);

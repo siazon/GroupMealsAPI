@@ -58,14 +58,14 @@ namespace KingfoodIO
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "Wiiya", Version = "v1" });
-
+                
                 c.AddSecurityDefinition("WAuthToken", new OpenApiSecurityScheme()
                 {
                     Name = "WAuthToken",
                     In = ParameterLocation.Header,
                     Type = SecuritySchemeType.ApiKey
                 });
-
+                
                 var file = Path.Combine(AppContext.BaseDirectory, "KingfoodIO.xml");  // xml文档绝对路径
                 var path = Path.Combine(AppContext.BaseDirectory, file); // xml文档绝对路径
                 c.IncludeXmlComments(path, true); // true : 显示控制器层注释
@@ -259,6 +259,7 @@ namespace KingfoodIO
             app.UseSwagger(c =>
             {
                 c.RouteTemplate = "/apis/{documentName}/swagger.json";
+                
             });
 
             app.UseSwaggerUI(c =>

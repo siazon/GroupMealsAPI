@@ -8,6 +8,6 @@ namespace App.Domain.Enum
 {
     public enum RestaurantCategoryEnum
     {
-        Chinese,Thai,Pizza,Burgers,Kebab,Chicken
+        Chinese,Thai,Pizza,Burgers,Kebab,Chicken,Buffet
     }
 }
