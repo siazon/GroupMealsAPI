@@ -62,18 +62,31 @@ namespace KingfoodIO.Controllers.Common
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="exRate"></param>
+        /// <param name="exRateExtra"></param>
         /// <param name="shopId"></param>
         /// <returns></returns>
         [HttpGet]
-        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)] 
+        [ProducesResponseType(typeof(DbExchangeRate), (int)HttpStatusCode.OK)] 
         [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> UpdateExchangeRate(double exRate, int shopId)
+        public async Task<IActionResult> UpdateExchangeRateExtra(double exRateExtra, int shopId)
         {
-            _excahngeUtil.getGBPExchangeRate();
-            _memoryCache.Set("ExchangeRate", exRate);
             return await ExecuteAsync(shopId, false,
-                async () => await _shopServiceHandler.UpdateExchangeRate(exRate, shopId));
+                async () => await _shopServiceHandler.UpdateExchangeRateExtra(exRateExtra, shopId));
+        }
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [ProducesResponseType(typeof(DbExchangeRate), (int)HttpStatusCode.OK)]
+        //[ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> GetExchangeRate(int shopId)
+        {
+            return await ExecuteAsync(shopId, false,
+                async () => await _shopServiceHandler.GetExchangeRate(shopId));
         }
 
     }

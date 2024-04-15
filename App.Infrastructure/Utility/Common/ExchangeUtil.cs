@@ -28,7 +28,7 @@ namespace App.Infrastructure.Utility.Common
         public ExchangeUtil(IHttpClientFactory httpClientFactory, IDbCommonRepository<DbShop> shopRepository)
         {
             _httpClientFactory = httpClientFactory;
-            _shopRepository= shopRepository;
+            _shopRepository = shopRepository;
         }
 
         public async Task<double> getGBPExchangeRate()
@@ -55,13 +55,16 @@ namespace App.Infrastructure.Utility.Common
             }
             return Rate;
         }
-        public async void UpdateToDB(double rate) {
-            var existShop = await _shopRepository.GetOneAsync(r => r.ShopId == 11);
-            if (existShop == null)
-                throw new ServiceException("shop Not Exists");
-            existShop.ExchangeRate = rate;
-            existShop.ShopContents.Add(new Domain.Common.Content.DbShopContent() { Key = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") });
-            var savedShop = await _shopRepository.UpdateAsync(existShop);
+        public async void UpdateToDB(double rate)
+        {
+            var existRate = await _shopRepository.GetOneAsync(r => r.ShopId == 11);
+            if (existRate != null)
+            {
+                existRate.Updated = DateTime.Now;
+                existRate.RateUpdate = DateTime.Now;
+                existRate.ExchangeRate = rate+existRate.ExchangeRateExtra;
+                var savedShop = await _shopRepository.UpdateAsync(existRate);
+            }
         }
     }
 

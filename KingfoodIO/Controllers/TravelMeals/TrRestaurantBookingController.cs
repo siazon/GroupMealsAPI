@@ -20,7 +20,8 @@ using Microsoft.Extensions.Primitives;
 namespace KingfoodIO.Controllers.TravelMeals
 {
     /// <summary>
-    /// 
+    /// Status: None=0,UnAccepted=1,Accepted=2,Canceled=3,OpenOrder = 4, Settled=5,
+    /// AcceptStatus: 0:Defult, 1:Accepted, 2:Declined
     /// </summary>
     [Route("api/[controller]/[action]")]
     public class TrRestaurantBookingController : BaseController

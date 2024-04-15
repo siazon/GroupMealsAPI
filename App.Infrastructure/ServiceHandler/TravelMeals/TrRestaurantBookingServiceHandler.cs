@@ -101,10 +101,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
             foreach (var item in booking.Details)
             {
-                if (item.Status == DetailStatusEnum.Canceled) continue;
+                if (item.Status == OrderStatusEnum.Canceled) continue;
                 if (item.Id == detailId)
                 {
-                    item.Status = DetailStatusEnum.Canceled;
+                    item.Status = OrderStatusEnum.Canceled;
                     SendCancelEmail(booking, item);
                 }
             }
@@ -332,7 +332,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     booking.PaymentInfos[0].StripeChargeId = chargeId;
                     booking.PaymentInfos[0].StripeReceiptUrl = receiptUrl;
                     booking.PaymentInfos[0].Paid = true;
-                    booking.Status = Domain.Enum.OrderStatusEnum.Paid;
+                    booking.Status = Domain.Enum.OrderStatusEnum.UnAccepted;
                 }
                 _logger.LogInfo("----------------BookingPaid" + booking.Id);
                 var temp = await _restaurantBookingRepository.UpdateAsync(booking);
@@ -536,7 +536,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
                 if (noPay)
                 {
-                    booking.Status = OrderStatusEnum.Paid;
+                    booking.Status = OrderStatusEnum.UnAccepted;
                     //SendEmail(booking);
 
                 }
@@ -574,7 +574,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
                 if (noPay)
                 {
-                    booking.Status = OrderStatusEnum.Paid;
+                    booking.Status = OrderStatusEnum.UnAccepted;
                 }
                 booking.Id = Guid.NewGuid().ToString();
                 booking.BookingRef = "GM" + SnowflakeId.getSnowId();
@@ -798,7 +798,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 bool isSettled = true;
                 foreach (var b in item.Details)
                 {
-                    if (b.Status == 0 && b.AcceptStatus == AcceptStatusEnum.Accepted && b.SelectDateTime < DateTime.Now)
+                    if (b.Status == OrderStatusEnum.Accepted && b.AcceptStatus == AcceptStatusEnum.Accepted && b.SelectDateTime < DateTime.Now)
                     {
 
                     }
@@ -810,6 +810,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 if (isSettled && item.Status != OrderStatusEnum.Settled)
                 {
                     item.Status = OrderStatusEnum.Settled;
+                    item.Details.ForEach(a => a.Status = OrderStatusEnum.Settled);
                     await _restaurantBookingRepository.UpdateAsync(item);
                 }
             }

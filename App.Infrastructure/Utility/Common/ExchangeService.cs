@@ -28,28 +28,10 @@ namespace App.Infrastructure.Utility.Common
         }
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-
-            RecurringJob.AddOrUpdate("TO_DO_ANOTHER_TASK_JOB", () => DoTask(), Cron.Daily);
-            RecurringJob.AddOrUpdate("TO_DO_ANOTHER_TASK_JOB_Minutely", () => DoTaskMinutely(), Cron.Minutely);
-
-            //var schedulerFactory = new StdSchedulerFactory();
-            //var scheduler = await schedulerFactory.GetScheduler();
-            //await scheduler.Start();
-
-            ////创建作业和触发器
-            //var jobDetail = JobBuilder.Create<ExchangeRateTask>().SetJobData(new JobDataMap() {
-            //                    new KeyValuePair<string, object>("_shopRepository", _shopRepository),
-            //                }).Build();
-            //var trigger = TriggerBuilder.Create()
-            //                            .WithSimpleSchedule(m =>
-            //                            {
-            //                                m.WithRepeatCount(0).WithIntervalInSeconds(10);
-            //                            }).StartAt(new DateTimeOffset(DateTime.Now.AddSeconds(20)))
-            //                            .Build();
-
-            ////添加调度
-            //await scheduler.ScheduleJob(jobDetail, trigger);
-
+#if RELEASE
+            RecurringJob.AddOrUpdate("Daily_Update_ExChangeRate_TASK_JOB", () => DoTask(), Cron.Daily);
+            //RecurringJob.AddOrUpdate("TO_DO_ANOTHER_TASK_JOB_Minutely", () => DoTaskMinutely(), Cron.Daily);
+#endif
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
@@ -69,26 +51,15 @@ namespace App.Infrastructure.Utility.Common
         }
         public void DoTask()
         {
-
-
-
             using (var scope = _serviceScopeFactory.CreateScope())
             {
                 // 获取需要的服务实例
                 var myService = scope.ServiceProvider.GetRequiredService<IExchangeUtil>();
-
                 // 在这里执行后台任务
-                myService.UpdateToDB(9);
+                myService.getGBPExchangeRate();
 
 
             }
-
-            Console.WriteLine("ssss" + DateTime.Now.ToString("HH:mm:ss"));
-
-
-
-
-
         }
 
 

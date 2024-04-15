@@ -57,6 +57,9 @@ namespace App.Domain.TravelMeals.Restaurant
         public bool VegetarianDiet { get; set; }
         public bool HalalFood { get; set; }
         public bool DriverFree { get; set; }
+        public decimal Price { get; set; }
+        public decimal PriceIncrease { get; set; }
+        public decimal ChildrenPrice { get; set; }
         public MenuCalculateTypeEnum MenuCalculateType { get; set; }
 
         public RestaurantBillInfo BillInfo { get; set; }

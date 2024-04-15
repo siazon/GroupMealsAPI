@@ -1,5 +1,6 @@
 ﻿using App.Domain.Common.Content;
 using App.Domain.Common.Setting;
+using System;
 using System.Collections.Generic;
 
 namespace App.Domain.Common.Shop
@@ -26,6 +27,8 @@ namespace App.Domain.Common.Shop
 
         public string AdminTokenKey { get; set; }
         public double ExchangeRate { get; set; }
+        public double ExchangeRateExtra { get; set; }
+        public DateTime RateUpdate { get; set; }
 
         //CountryIdEnum
         public int? CountryId { get; set; }

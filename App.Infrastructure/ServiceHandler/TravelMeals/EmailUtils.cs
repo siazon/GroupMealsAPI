@@ -1,4 +1,5 @@
 ﻿using App.Domain.Common.Shop;
+using App.Domain.Enum;
 using App.Domain.TravelMeals;
 using App.Infrastructure.Builders.Common;
 using App.Infrastructure.ServiceHandler.Tour;
@@ -127,7 +128,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string currencyStr = booking.PayCurrency == "UK" ? "￡" : "€";
             foreach (var item in booking.Details)
             {
-                if (item.Status == DetailStatusEnum.Canceled) continue;
+                if (item.Status == OrderStatusEnum.Canceled) continue;
                 Detail += item.RestaurantName +" <br> ";
                 Detail += item.RestaurantAddress + " <br> ";
                 Detail += item.RestaurantPhone + "  " + item.RestaurantEmail + " <br> ";

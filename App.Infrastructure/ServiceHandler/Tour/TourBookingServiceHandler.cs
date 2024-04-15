@@ -122,7 +122,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             {
                 booking.StripeReceiptUrl = receiptUrl;
                 booking.Paid = true;
-                booking.Status = OrderStatusEnum.Paid;
+                booking.Status = OrderStatusEnum.UnAccepted;
             }
             _logger.LogInfo("BookingPaid" + booking.Id);
             var temp = await _tourBookingRepository.UpdateAsync(booking);

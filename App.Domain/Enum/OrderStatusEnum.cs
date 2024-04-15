@@ -10,10 +10,10 @@ namespace App.Domain.Enum
     public enum OrderStatusEnum
     {
         None = 0,//支付失败
-        Paid=1,
+        UnAccepted=1,
         Accepted=2,
         Canceled=3,
-        UnRefund=4,
+        OpenOrder = 4,
         Settled=5,
 
     }

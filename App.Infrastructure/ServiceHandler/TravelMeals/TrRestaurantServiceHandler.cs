@@ -139,7 +139,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             Guard.NotNull(restaurant);
             var existingRestaurant =
-               await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.StoreName == restaurant.StoreName && r.Address == restaurant.Address);
+               await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.Id==restaurant.Id);
             if (existingRestaurant == null)
                 throw new ServiceException("Restaurant Not Exists");
             restaurant.Updated = _dateTimeUtil.GetCurrentTime();

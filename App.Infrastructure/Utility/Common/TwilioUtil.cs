@@ -21,6 +21,8 @@ namespace App.Infrastructure.Utility.Common
         }
         public void sendSMS(string phone, string content)
         {
+
+#if RELEASE
             try
             {
                 string accountSid = "AC2edbf7ebba55ff47906bab408e8d5e1d"; //Environment.GetEnvironmentVariable("AC0d14be935864d72c96a971861b1ef75b");
@@ -38,6 +40,7 @@ namespace App.Infrastructure.Utility.Common
             {
                 _logger.LogError("sendSMS: " + e.Message + e.StackTrace);
             }
+#endif
         }
     }
 }

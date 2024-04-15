@@ -65,7 +65,7 @@ namespace App.Domain.TravelMeals
         public string Memo { get; set; }
         public string Currency { get; set; }
         public DateTime? SelectDateTime { get; set; }
-        public DetailStatusEnum Status { get; set; }//0:defult,1:canceled
+        public OrderStatusEnum Status { get; set; }//0:defult,1:canceled
         public AcceptStatusEnum AcceptStatus { get; set; }//0:Defult, 1:Accepted, 2:Declined
         public bool Modified { get; set; }
         public string AcceptReason { get; set; }
@@ -73,6 +73,7 @@ namespace App.Domain.TravelMeals
         public string ContactPhone { get; set; }
         public string ContactEmail { get; set; }
         public string ContactInfos { get; set; }
+        public string GroupRef { get; set; }
 
         public RestaurantBillInfo BillInfo { get; set; } = new RestaurantBillInfo();
         public List<BookingCourse> Courses { get; set; } = new List<BookingCourse>();

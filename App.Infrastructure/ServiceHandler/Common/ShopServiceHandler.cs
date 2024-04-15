@@ -14,7 +14,8 @@ namespace App.Infrastructure.ServiceHandler.Common
     public interface IShopServiceHandler
     {
         Task<DbShop> GetShopInfo(int shopId);
-        Task<DbShop> UpdateExchangeRate(double exRate, int shopId);
+        Task<DbExchangeRate> UpdateExchangeRateExtra(double exRateExtra, int shopId);
+        Task<DbExchangeRate> GetExchangeRate(int shopId);
     }
 
     public class BookingBatchServiceHandler : IShopServiceHandler
@@ -31,7 +32,6 @@ namespace App.Infrastructure.ServiceHandler.Common
         public async Task<DbShop> GetShopInfo(int shopId)
         {
             var shopInfo = await GetBasicShopInfo(shopId);
-            _memoryCache.Set("ExchangeRate", shopInfo.ExchangeRate);
             return shopInfo.ClearForOutPut();
         }
 
@@ -45,15 +45,23 @@ namespace App.Infrastructure.ServiceHandler.Common
                 throw new ServiceException("Cannot find shop info");
             return shopInfo;
         }
-        public async Task<DbShop> UpdateExchangeRate(double exRate, int shopId)
+        public async Task<DbExchangeRate> UpdateExchangeRateExtra(double exRateExtra, int shopId)
         {
             var existShop =
-               await _shopRepository.GetOneAsync(r => r.ShopId==shopId);
+               await _shopRepository.GetOneAsync(a => a.ShopId==shopId);
             if (existShop == null)
                 throw new ServiceException("shop Not Exists");
-            existShop.ExchangeRate = exRate;
+            existShop.ExchangeRateExtra = exRateExtra;
              var savedShop= await _shopRepository.UpdateAsync(existShop);
-            return savedShop;
+            DbExchangeRate rate = new DbExchangeRate() { Rate = savedShop.ExchangeRate, UpdateTime = savedShop.RateUpdate };
+            return rate;
+        }
+        public async Task<DbExchangeRate> GetExchangeRate(int shopId)
+        {
+            var savedShop =
+               await _shopRepository.GetOneAsync(a => a.ShopId == shopId);
+            DbExchangeRate rate = new DbExchangeRate() { Rate = savedShop.ExchangeRate, UpdateTime = savedShop.RateUpdate };
+            return rate;
         }
 
     }
