@@ -82,7 +82,7 @@ namespace KingfoodIO.Controllers.Common
         /// <returns></returns>
         [HttpGet]
         [ProducesResponseType(typeof(DbExchangeRate), (int)HttpStatusCode.OK)]
-        //[ServiceFilter(typeof(AuthActionFilter))]
+        [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> GetExchangeRate(int shopId)
         {
             return await ExecuteAsync(shopId, false,

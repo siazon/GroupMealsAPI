@@ -53,14 +53,14 @@ namespace App.Infrastructure.ServiceHandler.Common
                 throw new ServiceException("shop Not Exists");
             existShop.ExchangeRateExtra = exRateExtra;
              var savedShop= await _shopRepository.UpdateAsync(existShop);
-            DbExchangeRate rate = new DbExchangeRate() { Rate = savedShop.ExchangeRate, UpdateTime = savedShop.RateUpdate };
+            DbExchangeRate rate = new DbExchangeRate() { Rate = savedShop.ExchangeRate+ savedShop.ExchangeRateExtra, UpdateTime = savedShop.RateUpdate };
             return rate;
         }
         public async Task<DbExchangeRate> GetExchangeRate(int shopId)
         {
             var savedShop =
                await _shopRepository.GetOneAsync(a => a.ShopId == shopId);
-            DbExchangeRate rate = new DbExchangeRate() { Rate = savedShop.ExchangeRate, UpdateTime = savedShop.RateUpdate };
+            DbExchangeRate rate = new DbExchangeRate() { Rate = savedShop.ExchangeRate + savedShop.ExchangeRateExtra, UpdateTime = savedShop.RateUpdate };
             return rate;
         }
 

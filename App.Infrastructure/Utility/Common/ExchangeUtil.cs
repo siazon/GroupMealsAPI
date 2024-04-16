@@ -62,7 +62,7 @@ namespace App.Infrastructure.Utility.Common
             {
                 existRate.Updated = DateTime.Now;
                 existRate.RateUpdate = DateTime.Now;
-                existRate.ExchangeRate = rate+existRate.ExchangeRateExtra;
+                existRate.ExchangeRate = rate;
                 var savedShop = await _shopRepository.UpdateAsync(existRate);
             }
         }

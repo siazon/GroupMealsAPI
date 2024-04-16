@@ -107,43 +107,7 @@ namespace App.Infrastructure.Repository
                 throw new DataRepositoryException(e);
             }
         }
-        //public async Task<(IEnumerable<T> Results, string ContinuationToken)> Where<T>(Expression<Func<T, bool>> pred, 
-        //    int maxRecords = 0, string partitionKey = "", string continuationToken = "") where T : IDocumentModel
-        //{
 
-        //    QueryRequestOptions options = new QueryRequestOptions();
-
-        //    if (partitionKey != "")
-        //        options.PartitionKey = new PartitionKey(partitionKey);
-
-        //    if (maxRecords == 0)
-        //    {
-        //        return (Container.GetItemLinqQueryable<T>(true, null, options).Where(x => x.Type == typeof(T).Name).Where(pred), "");
-        //    }
-        //    else
-        //    {
-        //        options.MaxItemCount = maxRecords;
-        //        string token = "";
-        //        FeedIterator<T> feed;
-        //        List<T> res = new List<T>();
-
-        //        if (continuationToken == "")
-        //            feed = Container.GetItemLinqQueryable<T>(true, null, options).Where(x => x.Type == typeof(T).Name).Where(pred).ToFeedIterator();
-        //        else
-        //            feed = Container.GetItemLinqQueryable<T>(true, continuationToken, options).Where(x => x.Type == typeof(T).Name).Where(pred).ToFeedIterator();
-
-        //        Microsoft.Azure.Cosmos.FeedResponse<T> f = await feed.ReadNextAsync();
-        //        token = f.ContinuationToken;
-
-        //        foreach (var item in f)
-        //        {
-        //            res.Add(item);
-        //        }
-
-        //        return (res, token);
-        //    }
-
-        //}
 
 
         public async Task<IEnumerable<T>> GetManyAsync(Expression<Func<T, bool>> predicate)
@@ -175,36 +139,6 @@ namespace App.Infrastructure.Repository
             }
         }
 
-        //public async Task<KeyValuePair<string, IEnumerable<T>>> GetManyAsync(Expression<Func<T, bool>> predicate, int pageSize = -1, string continueToken = null)
-        //{
-        //    try
-        //    {
-        //        FeedResponse<T> feedRespose = null;// = await query.ExecuteNextAsync<T>();
-        //        IDocumentQuery<T> query = null;
-        //        List<T> documents = new List<T>();
-        //        var options = new FeedOptions
-        //        {
-        //            MaxItemCount = pageSize,
-        //            EnableCrossPartitionQuery = true,
-        //            RequestContinuation = continueToken,
-        //            EnableScanInQuery = true
-        //        };
-        //        query = Client.CreateDocumentQuery<T>(UriFactory.CreateDocumentCollectionUri(DatabaseId, CollectionId), options).Where(predicate).AsDocumentQuery();
-        //        while (query.HasMoreResults)
-        //        {
-        //            feedRespose = await query.ExecuteNextAsync<T>();
-        //            documents.AddRange(feedRespose);
-        //            return new KeyValuePair<string, IEnumerable<T>>(feedRespose.ResponseContinuation, documents);
-        //        }
-        //        string continuation = null;
-        //        if (feedRespose != null) { continuation = feedRespose.ResponseContinuation; }
-        //        return new KeyValuePair<string, IEnumerable<T>>(continuation, documents);
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        throw new DataRepositoryException(e);
-        //    }
-        //}
 
 
         public async Task<T> CreateAsync(T item)

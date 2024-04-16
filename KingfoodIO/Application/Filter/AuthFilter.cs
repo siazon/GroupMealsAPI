@@ -35,10 +35,10 @@ namespace KingfoodIO.Application.Filter
             context.HttpContext.Request.Headers.TryGetValue("WAuthToken", out StringValues token);
 
             if (StringValues.IsNullOrEmpty(token))
-            { context.Result = new ContentResult { StatusCode = 401, Content = "error" }; return; }
+            { context.Result = new ContentResult { StatusCode = 501, Content = "Token is required" }; return; }
 
             if (!ValidateToken(token[0]))
-                throw new AuthException("Unauthorized User");
+            { context.Result = new ContentResult { StatusCode = 501, Content = "Token validation failed" }; return; }
         }
 
         private bool ValidateToken(string token)

@@ -51,6 +51,7 @@ namespace App.Infrastructure.Utility.Common
         }
         public void DoTask()
         {
+#if RELEASE
             using (var scope = _serviceScopeFactory.CreateScope())
             {
                 // 获取需要的服务实例
@@ -60,6 +61,7 @@ namespace App.Infrastructure.Utility.Common
 
 
             }
+#endif
         }
 
 
