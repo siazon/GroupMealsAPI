@@ -28,10 +28,10 @@ namespace App.Domain.Common.Customer
         [Column(TypeName = "decimal(18, 2)")] 
         public decimal? DeliveryCharge { get; set; }
         public string PinCode { get; set; }
-        public virtual ICollection<Role> UserRoles { get; set; }
+        public virtual ICollection<string> UserRoles { get; set; }
         public bool IsVerity { get; set; }
         public bool IsBoss { get; set; }
-        public int AuthValue { get; set; }
+        public ulong AuthValue { get; set; }
         public string PayCurrency { get; set; }
         public List<CommonParam> Favorites { get; set; }
         public List<BookingDetail> CartInfos { get; set; }=new List<BookingDetail>();

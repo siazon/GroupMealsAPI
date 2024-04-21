@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
+using Microsoft.IdentityModel.Clients.ActiveDirectory;
 
 namespace KingfoodIO.Controllers.TravelMeals
 {
@@ -73,18 +74,33 @@ namespace KingfoodIO.Controllers.TravelMeals
         /// <param name="pageToken"></param>
         /// <param name="shopId"></param>
         /// <param name="country"></param>
+        /// <param name="city"></param>
+        /// <param name="content"></param>
         /// <param name="pageSize">-1 ±≤ª∑÷“≥</param>
         /// <param name="cache"></param>
         /// <returns></returns>
         [HttpPost]
         //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> GetRestaurants([FromBody] string pageToken, int shopId,string country, int pageSize = -1, bool cache = true)
+        public async Task<IActionResult> GetRestaurants([FromBody] string pageToken, int shopId,string country="All", string city="All", string content = "", int pageSize = -1, bool cache = true)
         {
             //return await ExecuteAsync(shopId, cache,
             //    async () => await _restaurantServiceHandler.GetRestaurantInfo(shopId));
 
-            return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetRestaurantInfo(shopId,country, pageSize, pageToken));
+            DbToken userInfo = new DbToken();
+            var authHeader = Request.Headers["Wauthtoken"];
+            try
+            {
+
+                if (!string.IsNullOrEmpty(authHeader))
+                    userInfo = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            }
+            catch (Exception ex)
+            {
+
+            }
+            return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetRestaurantInfo(shopId, country, city, content, userInfo, pageSize, pageToken));
+            
         }
 
         /// <summary>

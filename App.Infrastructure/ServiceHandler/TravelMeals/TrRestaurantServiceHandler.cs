@@ -28,12 +28,15 @@ using App.Domain.Common.Auth;
 using Newtonsoft.Json.Linq;
 using Microsoft.Azure.Cosmos.Serialization.HybridRow.Schemas;
 using Microsoft.Extensions.Caching.Memory;
+using Stripe;
+using System.Linq.Expressions;
+using Quartz.Util;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
     public interface ITrRestaurantServiceHandler
     {
-        Task<ResponseModel> GetRestaurantInfo(int shopId, string country, int pageSize = -1, string continuationToke = null);
+        Task<ResponseModel> GetRestaurantInfo(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null);
 
 
         Task<ResponseModel> GetRestaurant(string Id);
@@ -54,12 +57,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         ITwilioUtil _twilioUtil;
         IMemoryCache _memoryCache;
 
-        Microsoft.AspNetCore.Hosting.IHostingEnvironment _environment;
         private ITrRestaurantBookingServiceHandler _trRestaurantBookingServiceHandler;
         ILogManager _logger;
 
         public TrRestaurantServiceHandler(IDbCommonRepository<TrDbRestaurant> restaurantRepository, IDateTimeUtil dateTimeUtil, ILogManager logger, ITwilioUtil twilioUtil,
-            Microsoft.AspNetCore.Hosting.IHostingEnvironment environment, IDbCommonRepository<DbShop> shopRepository, ITrBookingDataSetBuilder bookingDataSetBuilder,
+           IDbCommonRepository<DbShop> shopRepository, ITrBookingDataSetBuilder bookingDataSetBuilder,
             IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository, ITrRestaurantBookingServiceHandler trRestaurantBookingServiceHandler, IMemoryCache memoryCache,
             IContentBuilder contentBuilder, IEmailUtil emailUtil)
         {
@@ -70,39 +72,123 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _restaurantBookingRepository = restaurantBookingRepository;
             _contentBuilder = contentBuilder;
             _emailUtil = emailUtil;
-            _environment = environment;
             _twilioUtil = twilioUtil;
             _trRestaurantBookingServiceHandler = trRestaurantBookingServiceHandler;
             _logger = logger;
             _memoryCache = memoryCache;
         }
-        public async Task<ResponseModel> GetRestaurantInfo(int shopId, string country, int pageSize = -1, string continuationToke = null)
-        {
-            DateTime stime = DateTime.Now;
-            KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage;
-            //for (int i = 0; i < 5; i++)
-            if (country == "All")
-            {
-                stime = DateTime.Now;
-                currentPage = await _restaurantRepository
-                   .GetManyAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value == true, pageSize, continuationToke);
-                Console.WriteLine(country+DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " : " + (DateTime.Now - stime).TotalMilliseconds);
-                _logger.LogInfo(country + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " : " + (DateTime.Now - stime).TotalMilliseconds);
-            }
-            else
-            {
-                stime = DateTime.Now;
-                currentPage = await _restaurantRepository
-                    .GetManyAsync(r => r.ShopId == shopId && r.Country == country && r.IsActive.HasValue && r.IsActive.Value, pageSize, continuationToke);
-                Console.WriteLine(country + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " : " + (DateTime.Now - stime).TotalMilliseconds);
-                _logger.LogInfo(country + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " : " + (DateTime.Now - stime).TotalMilliseconds);
-            }
-                var temp = currentPage.Value.ClearForOutPut().OrderByDescending(a => a.Created).OrderBy(a => a.SortOrder).ToList();
-            continuationToke = currentPage.Key;
-            var time = (DateTime.Now - stime).ToString();
-            _logger.LogInfo("_restaurantRepository.GetManyAsync:" + (DateTime.Now - stime).ToString());
 
-            return new ResponseModel { msg = "ok", code = 200, token = continuationToke, data = temp };
+        public static Expression<Func<TrDbRestaurant, bool>> CreateContainsExpression(string propertyName, string value)
+        {
+            var param = Expression.Parameter(typeof(TrDbRestaurant), "p");
+            var member = Expression.Property(param, propertyName);
+            var constant = Expression.Constant(value);
+            var body = Expression.Call(member, "Contains", Type.EmptyTypes, constant);
+            return Expression.Lambda<Func<TrDbRestaurant, bool>>(body, param);
+        }
+        public static Expression CreateEqualExpression(string propertyName, object? value, Type type)
+        {
+            var param = Expression.Parameter(typeof(TrDbRestaurant));
+            var member = Expression.Property(param, propertyName);
+            var constant = Expression.Constant(value, type);
+            var body = Expression.Equal(member, constant);
+            return body;
+        }
+
+        public async Task<ResponseModel> GetRestaurantInfo(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null)
+        {
+            KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage;
+            List<TrDbRestaurant> data = new List<TrDbRestaurant>();
+            try
+            {
+
+           
+            bool IsAdmin = userInfo.RoleLevel.AuthVerify(7);
+            bool isAllCountry = country == "All";
+            bool isAllCity = city == "All";
+            bool isContentEmpty = string.IsNullOrWhiteSpace(content);
+            Expression expr = null;
+            ParameterExpression parameterExp = Expression.Parameter(typeof(TrDbRestaurant));
+
+            Expression memberExpression = null;
+            Expression constantExpression = null;
+            Expression expressionBody = null;
+
+            if (!isContentEmpty)
+            {
+                //content = content.ToLower().Trim();
+                memberExpression = Expression.Property(parameterExp, "StoreName");
+                constantExpression = Expression.Constant(content);
+                expressionBody = Expression.Call(memberExpression, "Contains", Type.EmptyTypes, constantExpression, Expression.Constant(StringComparison.OrdinalIgnoreCase));
+                if (expr != null)
+                    expr = Expression.And(expr, expressionBody);
+                else
+                    expr = expressionBody;
+
+                memberExpression = Expression.Property(parameterExp, "Address");
+                constantExpression = Expression.Constant(content);
+                expressionBody = Expression.Call(memberExpression, "Contains", Type.EmptyTypes, constantExpression, Expression.Constant(StringComparison.OrdinalIgnoreCase));
+                expr = Expression.OrElse(expr, expressionBody);
+            }
+
+
+            memberExpression = Expression.Property(parameterExp, "ShopId");
+            constantExpression = Expression.Constant(shopId, typeof(int?));
+            expressionBody = Expression.Equal(memberExpression, constantExpression);
+            if (expr != null)
+                expr = Expression.AndAlso(expr, expressionBody);
+            else
+                expr = expressionBody;
+
+            if (!IsAdmin)
+            {
+                memberExpression = Expression.Property(parameterExp, "IsActive");
+                constantExpression = Expression.Constant(true, typeof(bool?));
+                expressionBody = Expression.Equal(memberExpression, constantExpression);
+                expr = Expression.AndAlso(expr, expressionBody);
+                //expr = Expression.AndAlso(expr, CreateEqualExpression("IsActive", true,typeof(bool?)));
+            }
+
+            if (!isAllCountry)
+            {
+                memberExpression = Expression.Property(parameterExp, "Country");
+                constantExpression = Expression.Constant(country, typeof(string));
+                expressionBody = Expression.Equal(memberExpression, constantExpression);
+                expr = Expression.AndAlso(expr, expressionBody);
+                //expr = Expression.AndAlso(expr, CreateEqualExpression("Country", country, typeof(string)));
+            }
+            if (!isAllCity)
+            {
+                memberExpression = Expression.Property(parameterExp, "City");
+                constantExpression = Expression.Constant(city);
+                expressionBody = Expression.Call(memberExpression, "Contains", Type.EmptyTypes, constantExpression, Expression.Constant(StringComparison.OrdinalIgnoreCase));
+                expr = Expression.AndAlso(expr, expressionBody);
+
+                //expr = Expression.AndAlso(expr, CreateEqualExpression("City", city, typeof(string)));
+            }
+
+
+
+
+            Expression<Func<TrDbRestaurant, bool>> lambdaExpr = Expression.Lambda<Func<TrDbRestaurant, bool>>(expr, parameterExp);
+
+           
+
+            currentPage = await _restaurantRepository.GetManyAsync(lambdaExpr, pageSize, continuationToke);
+
+            data = currentPage.Value.ClearForOutPut().OrderByDescending(a => a.Created).OrderBy(a => a.SortOrder).ToList();
+            continuationToke = currentPage.Key;
+
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+                Console.WriteLine(ex.StackTrace);
+            }
+
+            return new ResponseModel { msg = "ok", code = 200, token = continuationToke, data = data };
+
         }
 
         public async Task<ResponseModel> GetRestaurant(string Id)
@@ -115,8 +201,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 return new ResponseModel { msg = "Restaurant Already Exists", code = 501, data = existingRestaurant };
 
         }
-
-
 
         public async Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId)
         {
@@ -139,9 +223,17 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             Guard.NotNull(restaurant);
             var existingRestaurant =
-               await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.Id==restaurant.Id);
+               await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == restaurant.Id);
             if (existingRestaurant == null)
                 throw new ServiceException("Restaurant Not Exists");
+            foreach (var r in restaurant.Categories) {
+                foreach (var item in r.MenuItems)
+                {
+                    item.MenuCalculateType = restaurant.MenuCalculateType;
+                }
+            }
+
+
             restaurant.Updated = _dateTimeUtil.GetCurrentTime();
 
             var savedRestaurant = await _restaurantRepository.UpdateAsync(restaurant);

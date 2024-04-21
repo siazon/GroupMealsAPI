@@ -18,6 +18,6 @@ namespace App.Domain.Common.Auth
 
         public string Remarks { get; set; }
 
-        public virtual ICollection<Menu> Menus { get; set; }
+        public virtual ICollection<string> Menus { get; set; }
     }
 }

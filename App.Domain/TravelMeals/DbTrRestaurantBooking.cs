@@ -3,12 +3,13 @@ using App.Domain.TravelMeals.Restaurant;
 using System;
 using System.Collections.Generic;
 using System.Net.Cache;
+using System.Text.Json.Serialization;
 
 namespace App.Domain.TravelMeals
 {
     public class TrDbRestaurantBooking : DbEntity
     {
-
+        [JsonIgnore]
         public OrderStatusEnum Status { get; set; } = OrderStatusEnum.None;
         public string BookingRef { get; set; }
         public string CustomerName { get; set; }
@@ -16,12 +17,14 @@ namespace App.Domain.TravelMeals
         public string CustomerPhone { get; set; }
         public string BookingDate { get; set; } = DateTime.Now.ToString("yyyy-MMM-dd");
         public string BookingTime { get; set; } = DateTime.Now.ToString("HH:mm");
+        [JsonIgnore]
         public int NumberOfAdults { get; set; }
+        [JsonIgnore]
         public int NumberOfChildren { get; set; }
+        [JsonIgnore]
         public string BookingNotes { get; set; }
         public string PayCurrency { get; set; }
         public string Creater { get; set; }
-        public string Updater { get; set; }
         public List<BookingDetail> Details { get; set; } = new List<BookingDetail>();
         public List<OperationInfo> Operations { get; set; } = new List<OperationInfo>();
         public List<PaymentInfo> PaymentInfos { get; set; } = new List<PaymentInfo>();

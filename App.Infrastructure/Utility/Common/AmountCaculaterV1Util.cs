@@ -1,4 +1,5 @@
 ﻿using App.Domain.TravelMeals;
+using App.Domain.TravelMeals.Restaurant;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -100,7 +101,7 @@ namespace App.Infrastructure.Utility.Common
             foreach (var item in bookingDetail.Courses)
             {
                 int qty = item.Qty;
-                if (item.MenuCalculateType == 1)//西餐按人头算
+                if (item.MenuCalculateType == MenuCalculateTypeEnum.WesternFood)//西餐按人头算
                 {
                     amount += item.Price * qty;
                 }

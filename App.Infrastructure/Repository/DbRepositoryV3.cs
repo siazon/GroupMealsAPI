@@ -11,6 +11,10 @@ using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
+using static FluentValidation.Validators.PredicateValidator;
+using System.Text.RegularExpressions;
+using StackExchange.Redis;
+using Microsoft.Extensions.Options;
 
 namespace App.Infrastructure.Repository
 {
@@ -18,6 +22,7 @@ namespace App.Infrastructure.Repository
     {
         Task<IEnumerable<T>> GetManyAsync(Expression<Func<T, bool>> predicate);
         Task<KeyValuePair<string, IEnumerable<T>>> GetManyAsync(Expression<Func<T, bool>> predicate, int pageSize = -1, string continueToken = null);
+        Task<KeyValuePair<string, IEnumerable<T>>> GetManyBySqlAsync(string sql, int pageSize = -1, string continueToken = null);
 
         Task<T> GetOneAsync(Expression<Func<T, bool>> predicate);
 
@@ -90,15 +95,27 @@ namespace App.Infrastructure.Repository
             try
             {
                 string continuationToken = null;
+                if (!string.IsNullOrWhiteSpace(continueToken))
+                    continuationToken = continueToken;
+
+                //await Where(predicate, pageSize, continueToken, null);
+
 
                 var queryRequestOptions = new QueryRequestOptions { MaxItemCount = pageSize, EnableScanInQuery = true, };
 
-                IOrderedQueryable<T> linqQueryable = container.GetItemLinqQueryable<T>(allowSynchronousQueryExecution: true, continuationToken: continuationToken, requestOptions: queryRequestOptions);
-                List<T> results = linqQueryable.Where(predicate).ToList();
+                IOrderedQueryable<T> linqQueryable = container.GetItemLinqQueryable<T>(true, continuationToken, queryRequestOptions);
 
-                var tokens = linqQueryable.ToFeedIterator();
-                FeedResponse<T> responses = await tokens.ReadNextAsync();
-                continuationToken = responses.ContinuationToken;
+
+                FeedIterator<T> feed;
+                if (continuationToken == "")
+                    feed = linqQueryable.Where(predicate).ToFeedIterator();
+                else
+                    feed = linqQueryable.Where(predicate).ToFeedIterator();
+
+                List<T> results = new List<T>();
+                FeedResponse<T> response = await feed.ReadNextAsync();
+                results.AddRange(response);
+                continuationToken = response.ContinuationToken;
 
                 return new KeyValuePair<string, IEnumerable<T>>(continuationToken, results);
             }
@@ -108,7 +125,72 @@ namespace App.Infrastructure.Repository
             }
         }
 
+        public async Task<(IEnumerable<T> Results, string ContinuationToken)> Where<T>(Expression<Func<T, bool>> pred, int maxRecords = 0, string partitionKey = "", string continuationToken = "")
+        {
 
+            QueryRequestOptions options = new QueryRequestOptions();
+
+            if (partitionKey != "")
+                options.PartitionKey = new PartitionKey(partitionKey);
+
+
+            if (maxRecords == 0)
+            {
+                return (container.GetItemLinqQueryable<T>(true, null, options).Where(pred), "");
+            }
+            else
+            {
+                options.MaxItemCount = maxRecords;
+                string token = "";
+                FeedIterator<T> feed;
+                List<T> res = new List<T>();
+
+                if (continuationToken == "")
+                    feed = container.GetItemLinqQueryable<T>(true, null, options).Where(pred).ToFeedIterator();
+                else
+                    feed = container.GetItemLinqQueryable<T>(true, continuationToken, options).Where(pred).ToFeedIterator();
+
+                Microsoft.Azure.Cosmos.FeedResponse<T> f = await feed.ReadNextAsync();
+                token = f.ContinuationToken;
+
+                foreach (var item in f)
+                {
+                    res.Add(item);
+                }
+
+                return (res, token);
+            }
+
+        }
+
+        public async Task<KeyValuePair<string, IEnumerable<T>>> GetManyBySqlAsync(string sql, int pageSize = -1, string continueToken = null)
+        {
+            try
+            {
+                List<T> results = new List<T>();
+                string continuationToken = null;
+                if (!string.IsNullOrWhiteSpace(continueToken))
+                    continuationToken = continueToken;
+
+                var queryRequestOptions = new QueryRequestOptions { MaxItemCount = pageSize, };
+                QueryDefinition queryDefinition = new($"select * from {typeof(T).Name} t where 1=1 {sql}");
+                using (FeedIterator<T> feedIterator = container.GetItemQueryIterator<T>(queryDefinition, continuationToken, queryRequestOptions))
+                {
+                    while (feedIterator.HasMoreResults)
+                    {
+                        FeedResponse<T> response = await feedIterator.ReadNextAsync();
+                        results.AddRange(response);
+                        continuationToken = response.ContinuationToken;
+                    }
+                }
+
+                return new KeyValuePair<string, IEnumerable<T>>(continuationToken, results);
+            }
+            catch (Exception e)
+            {
+                throw new DataRepositoryException(e);
+            }
+        }
 
         public async Task<IEnumerable<T>> GetManyAsync(Expression<Func<T, bool>> predicate)
         {

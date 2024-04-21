@@ -18,9 +18,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
     public interface IEmailUtils
     {
-        Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger);
+        Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, ILogManager _logger);
         //Task EmailSupport(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger);
-        Task EmailCustomerTotal(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger);
+        Task EmailCustomerTotal(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, IContentBuilder _contentBuilder, ILogManager _logger);
 
         Task EmailCustomer(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, IContentBuilder _contentBuilder, ILogManager _logger);
 
@@ -28,7 +28,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
     }
     public class EmailUtils
     {
-        public static async Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger)
+        public static async Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, ILogManager _logger)
         {
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";
@@ -119,7 +119,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         //    }
         //}
 
-        public static async Task EmailCustomerTotal(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger)
+        public static async Task EmailCustomerTotal(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, IContentBuilder _contentBuilder,  ILogManager _logger)
         {
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";

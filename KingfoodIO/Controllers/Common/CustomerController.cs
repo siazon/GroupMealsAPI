@@ -60,7 +60,7 @@ namespace KingfoodIO.Controllers.Common
                 async () => await _customerServiceHandler.List(shopId));
         }
         /// <summary>
-        /// 
+        /// AuthValue:0.HomePage, 1.OrdersPage, 2.ContactPage, 3.CartPage, 4.ProfilePage, 5.RestaurantMagPage, 6.authPage, 
         /// </summary>
         /// <param name="email"></param>
         /// <param name="password"></param>
@@ -93,7 +93,7 @@ namespace KingfoodIO.Controllers.Common
                     UserName = customer.UserName,
                     UserEmail = customer.Email,
                     IsActive = customer.IsActive,
-                    RoleLevel = customer.AuthValue
+                    RoleLevel = customer.AuthValue,
                 };
                 token = new TokenEncryptorHelper().Encrypt(dbToken);// new KingfoodIO.Common.JwtAuthManager(_jwtConfig).GenerateTokens(email, claims);
                 var claims = new[]

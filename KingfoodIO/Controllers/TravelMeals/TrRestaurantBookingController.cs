@@ -63,7 +63,7 @@ namespace KingfoodIO.Controllers.TravelMeals
             var authHeader = Request.Headers["Wauthtoken"];
             var temp = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, false,
-                async () => await _restaurantBookingServiceHandler.RequestBooking(booking, shopId, temp.UserEmail));
+                async () => await _restaurantBookingServiceHandler.RequestBooking(booking, shopId, temp.UserId));
         }
 
         /// <summary>

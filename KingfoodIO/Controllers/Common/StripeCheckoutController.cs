@@ -433,14 +433,27 @@ namespace KingfoodIO.Controllers.Common
             var payment = service.Update(paymentId, options);
             return payment;
         }
-
         /// <summary>
         /// 
         /// </summary>
         /// <param name="bill"></param>
         /// <param name="shopId"></param>
         /// <returns></returns>
-        [HttpPost]
+        [HttpGet]
+        public async Task<ActionResult> TestWebhook( string billId, int shopId)
+        {
+            var booking = await _trRestaurantBookingServiceHandler.GetBooking(billId);
+
+            _trRestaurantBookingServiceHandler.BookingPaid(billId, booking.PaymentInfos[0].StripeCustomerId, booking.PaymentInfos[0].StripePaymentId, "paymethod","url");
+            return Json(new { msg = "OK",  });
+        }
+            /// <summary>
+            /// 
+            /// </summary>
+            /// <param name="bill"></param>
+            /// <param name="shopId"></param>
+            /// <returns></returns>
+            [HttpPost]
         public async Task<ActionResult> RefundPay([FromBody] PayIntentParam bill, int shopId)
         {
             //_stripeUtil.Refund(bill);
