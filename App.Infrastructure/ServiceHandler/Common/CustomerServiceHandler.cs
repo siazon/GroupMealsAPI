@@ -16,6 +16,7 @@ using App.Domain.Holiday;
 using App.Infrastructure.ServiceHandler.Tour;
 using Hangfire;
 using Microsoft.AspNetCore.Hosting;
+using App.Domain.TravelMeals;
 
 namespace App.Infrastructure.ServiceHandler.Common
 {
@@ -37,7 +38,8 @@ namespace App.Infrastructure.ServiceHandler.Common
 
         Task<DbCustomer> UpdatePassword(DbCustomer customer, int shopId);
         Task<DbCustomer> UpdateFavorite(DbCustomer customer, int shopId);
-        Task<DbCustomer> UpdateCart(DbCustomer customer, int shopId);
+        Task<object> UpdateCart(List<BookingDetail> cartInfos,string UserId, int shopId);
+        Task<object> GetCart(string UserId, int shopId);
 
         Task<DbCustomer> Delete(DbCustomer item, int shopId);
     }
@@ -53,10 +55,10 @@ namespace App.Infrastructure.ServiceHandler.Common
         private readonly IContentBuilder _contentBuilder;
         private readonly IEmailUtil _emailUtil;
         ILogManager _logger;
-
+        IAmountCaculaterUtil _amountCaculaterV1;
         IHostingEnvironment _environment;
 
-        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, IEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
+        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCaculaterUtil amountCaculaterV1, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, IEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
         {
             _customerRepository = customerRepository;
             _encryptionHelper = encryptionHelper;
@@ -68,6 +70,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             _logger= logger;
             _settingRepository = settingRepository;
             _environment = environment;
+            _amountCaculaterV1= amountCaculaterV1;
         }
 
         public async Task<List<DbCustomer>> List(int shopId)
@@ -104,7 +107,7 @@ namespace App.Infrastructure.ServiceHandler.Common
 
             //Email customer ResetCode
             customer.ResetCode = GuidHashUtil.Get6DigitNumber();
-            var updatedCustomer = await _customerRepository.UpdateAsync(customer);
+            var updatedCustomer = await _customerRepository.UpsertAsync(customer);
             var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
             EmailForgetPWDSender(updatedCustomer, shopInfo, "Fotget password");
 
@@ -143,12 +146,12 @@ namespace App.Infrastructure.ServiceHandler.Common
             if (existingCustomer != null)
             {
                 newItem.Id = existingCustomer.Id;
-                await _customerRepository.UpdateAsync(newItem);
+                await _customerRepository.UpsertAsync(newItem);
             }
             else
             {
                 newItem.Id= Guid.NewGuid().ToString();
-                newItem = await _customerRepository.CreateAsync(newItem);
+                newItem = await _customerRepository.UpsertAsync(newItem);
             
             }
             if (newItem != null)
@@ -162,7 +165,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         public async Task<object> VerityEmail(string email, string id, int shopId) {
             var customer = await _customerRepository.GetOneAsync(c => c.Id == id);
             customer.IsVerity=true;
-            var savedCustomer = await _customerRepository.UpdateAsync(customer);
+            var savedCustomer = await _customerRepository.UpsertAsync(customer);
             if (savedCustomer != null)
             {
                 return new { msg = "ok", data = savedCustomer.ClearForOutPut() };
@@ -223,7 +226,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                 return new { msg = "验证码错误", };
 
             customer.Password = _encryptionHelper.EncryptString(password);
-            var updatedCustomer = await _customerRepository.UpdateAsync(customer);
+            var updatedCustomer = await _customerRepository.UpsertAsync(customer);
             return new { msg = "ok", data = updatedCustomer.ClearForOutPut() };
         }
         public async Task<object> UpdatePassword(string email, string oldPassword, string password, int shopId)
@@ -237,7 +240,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                 return new { msg = "用户不存在，或原密码错误",  };
 
             customer.Password = _encryptionHelper.EncryptString(password);
-            var updatedCustomer = await _customerRepository.UpdateAsync(customer);
+            var updatedCustomer = await _customerRepository.UpsertAsync(customer);
 
             return new { msg = "ok", data = updatedCustomer.ClearForOutPut() };
         }
@@ -252,7 +255,7 @@ namespace App.Infrastructure.ServiceHandler.Common
 
             var updateCustomer = existingCustomer.Copy(customer);
 
-            var savedCustomer = await _customerRepository.UpdateAsync(updateCustomer);
+            var savedCustomer = await _customerRepository.UpsertAsync(updateCustomer);
 
             return savedCustomer.ClearForOutPut();
         }
@@ -269,7 +272,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             existingCustomer.Updated = _dateTimeUtil.GetCurrentTime();
             existingCustomer.Password = _encryptionHelper.EncryptString(customer.Password);
 
-            var savedCustomer = await _customerRepository.UpdateAsync(existingCustomer);
+            var savedCustomer = await _customerRepository.UpsertAsync(existingCustomer);
 
             return savedCustomer.ClearForOutPut();
         }
@@ -285,22 +288,45 @@ namespace App.Infrastructure.ServiceHandler.Common
             existingCustomer.Updated = _dateTimeUtil.GetCurrentTime();
             existingCustomer.Favorites = customer.Favorites;
 
-            var savedCustomer = await _customerRepository.UpdateAsync(existingCustomer);
+            var savedCustomer = await _customerRepository.UpsertAsync(existingCustomer);
 
             return savedCustomer.ClearForOutPut();
         }
-        public async Task<DbCustomer> UpdateCart(DbCustomer customer, int shopId)
+        public async Task<object> UpdateCart(List<BookingDetail> cartInfos,string userId, int shopId)
         {
-            Guard.NotNull(customer);
             var existingCustomer =
-                await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == customer.Id);
+                await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == userId);
             if (existingCustomer == null)
-                throw new ServiceException("Customer Not Exists");
+                return new { msg = "User not found!(用户不存在)", };
 
-            existingCustomer.CartInfos = customer.CartInfos;
-            var savedCustomer = await _customerRepository.UpdateAsync(existingCustomer);
+            if (cartInfos != null) {
+                foreach (var item in cartInfos)
+                {
+                    if(string.IsNullOrWhiteSpace( item.Id))
+                        item.Id= Guid.NewGuid().ToString();
+                    if (item.AmountInfos == null)
+                        item.AmountInfos = new List<AmountInfo>();
+                    item.AmountInfos?.Clear();
+                    AmountInfo amountInfo = new AmountInfo() {  Amount=_amountCaculaterV1.getItemAmount(item),PaidAmount=_amountCaculaterV1.getItemPayAmount(item) };
+                    item.AmountInfos.Add(amountInfo);
+                }
+            }
 
-            return savedCustomer.ClearForOutPut();
+
+            existingCustomer.CartInfos = cartInfos;
+            var savedCustomer = await _customerRepository.UpsertAsync(existingCustomer);
+
+            return new { msg = "ok", data = savedCustomer.ClearForOutPut() };
+        }
+        public async Task<object> GetCart(string userId, int shopId)
+        {
+            var existingCustomer =
+                await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == userId);
+            if (existingCustomer == null)
+                return new { msg = "User not found!(用户不存在)",  };
+
+
+            return new { msg = "ok", data = existingCustomer .CartInfos};
         }
         public async Task<DbCustomer> Delete(DbCustomer item, int shopId)
         {

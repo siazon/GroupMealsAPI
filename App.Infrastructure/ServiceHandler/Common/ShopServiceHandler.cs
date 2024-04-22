@@ -52,7 +52,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             if (existShop == null)
                 throw new ServiceException("shop Not Exists");
             existShop.ExchangeRateExtra = exRateExtra;
-             var savedShop= await _shopRepository.UpdateAsync(existShop);
+             var savedShop= await _shopRepository.UpsertAsync(existShop);
             DbExchangeRate rate = new DbExchangeRate() { Rate = savedShop.ExchangeRate+ savedShop.ExchangeRateExtra, UpdateTime = savedShop.RateUpdate };
             return rate;
         }

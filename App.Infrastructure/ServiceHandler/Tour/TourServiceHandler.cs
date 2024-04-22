@@ -85,7 +85,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             tour.IsActive = true;
             tour.ShopId = shopId;
 
-            var savedBooking = await _tourRepository.CreateAsync(tour);
+            var savedBooking = await _tourRepository.UpsertAsync(tour);
 
             return savedBooking;
         }
@@ -99,7 +99,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
                 throw new ServiceException("Cannot Find tour");
             tour.Updated = _dateTimeUtil.GetCurrentTime();
 
-            var saveTour = await _tourRepository.UpdateAsync(tour);
+            var saveTour = await _tourRepository.UpsertAsync(tour);
 
             return saveTour;
         }

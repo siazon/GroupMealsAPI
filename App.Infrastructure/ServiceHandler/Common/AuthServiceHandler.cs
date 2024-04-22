@@ -84,25 +84,25 @@ namespace App.Infrastructure.ServiceHandler.Common
         public async Task<Menu> AddMenu(Menu menu)
         {
             Guard.NotNull(menu);
-            var savedMenu = await _menuRepository.CreateAsync(menu);
+            var savedMenu = await _menuRepository.UpsertAsync(menu);
             return savedMenu;
         }
         public async Task<Menu> UpdateMenu(Menu menu)
         {
             Guard.NotNull(menu);
-            var savedMenu = await _menuRepository.UpdateAsync(menu);
+            var savedMenu = await _menuRepository.UpsertAsync(menu);
             return savedMenu;
         }
         public async Task<Role> AddRole(Role role)
         {
             Guard.NotNull(role);
-            var savedRole = await _roleRepository.CreateAsync(role);
+            var savedRole = await _roleRepository.UpsertAsync(role);
             return savedRole;
         }
         public async Task<Role> UpdateRole(Role role)
         {
             Guard.NotNull(role);
-            var savedRole = await _roleRepository.UpdateAsync(role);
+            var savedRole = await _roleRepository.UpsertAsync(role);
             return savedRole;
         }
 
@@ -172,7 +172,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             newItem.ResetCode = null;
             newItem.PinCode = GuidHashUtil.Get6DigitNumber();
 
-            var savedCustomer = await _customerRepository.CreateAsync(newItem);
+            var savedCustomer = await _customerRepository.UpsertAsync(newItem);
             return savedCustomer.ClearForOutPut();
         }
 
@@ -186,7 +186,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                 throw new ServiceException("Cannot Reset User not exist");
 
             customer.Password = _encryptionHelper.EncryptString(password);
-            var updatedCustomer = await _customerRepository.UpdateAsync(customer);
+            var updatedCustomer = await _customerRepository.UpsertAsync(customer);
 
             return updatedCustomer.ClearForOutPut();
         }
@@ -201,7 +201,7 @@ namespace App.Infrastructure.ServiceHandler.Common
 
             var updateCustomer = existingCustomer.Copy(customer);
 
-            var savedCustomer = await _customerRepository.UpdateAsync(updateCustomer);
+            var savedCustomer = await _customerRepository.UpsertAsync(updateCustomer);
 
             return savedCustomer.ClearForOutPut();
         }
@@ -218,7 +218,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             existingCustomer.Updated = _dateTimeUtil.GetCurrentTime();
             existingCustomer.Password = _encryptionHelper.EncryptString(customer.Password);
 
-            var savedCustomer = await _customerRepository.UpdateAsync(existingCustomer);
+            var savedCustomer = await _customerRepository.UpsertAsync(existingCustomer);
 
             return savedCustomer.ClearForOutPut();
         }

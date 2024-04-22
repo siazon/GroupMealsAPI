@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using App.Domain.Common.Auth;
 using App.Domain.Common.Customer;
 using App.Domain.Config;
+using App.Domain.TravelMeals;
 using App.Infrastructure.ServiceHandler.Common;
 using App.Infrastructure.Utility.Common;
 using KingfoodIO.Application.Filter;
@@ -96,6 +97,8 @@ namespace KingfoodIO.Controllers.Common
                     RoleLevel = customer.AuthValue,
                 };
                 token = new TokenEncryptorHelper().Encrypt(dbToken);// new KingfoodIO.Common.JwtAuthManager(_jwtConfig).GenerateTokens(email, claims);
+
+                var temo = new TokenEncryptorHelper().Decrypt<DbToken>(token);
                 var claims = new[]
                 {
                    new Claim("ServerKey",_appsettingConfig.ShopAuthKey),
@@ -251,18 +254,36 @@ namespace KingfoodIO.Controllers.Common
         }
 
         /// <summary>
-        /// 
+        /// 更新后会计算金额，保存在amountInfo中，直接取值可以省下单独调计算的接口
         /// </summary>
-        /// <param name="customer"></param>
+        /// <param name="cartInfos">此处Id在前端生成GUID,不然后端每次update生成的ID不一样</param>
         /// <param name="shopId"></param>
         /// <returns></returns>
         [HttpPost]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> UpdateCart([FromBody] DbCustomer customer, int shopId)
+        public async Task<IActionResult> UpdateCartInfos([FromBody] List<BookingDetail> cartInfos, int shopId)
         {
+            var authHeader = Request.Headers["Wauthtoken"];
+            var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, false,
-                async () => await _customerServiceHandler.UpdateCart(customer, shopId));
+                async () => await _customerServiceHandler.UpdateCart(cartInfos,user.UserId, shopId));
+        }
+
+      /// <summary>
+      /// 
+      /// </summary>
+      /// <param name="shopId"></param>
+      /// <returns></returns>
+        [HttpGet]
+        [ProducesResponseType(typeof(List<BookingDetail>), (int)HttpStatusCode.OK)]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> GetCartInfos(int shopId)
+        {
+            var authHeader = Request.Headers["Wauthtoken"];
+            var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            return await ExecuteAsync(shopId, false,
+                async () => await _customerServiceHandler.GetCart(user.UserId, shopId));
         }
 
     }

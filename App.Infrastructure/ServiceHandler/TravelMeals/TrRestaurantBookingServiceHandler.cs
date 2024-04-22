@@ -30,6 +30,7 @@ using App.Domain.Common;
 using App.Infrastructure.ServiceHandler.Common;
 using Newtonsoft.Json;
 using System.Drawing.Printing;
+using Twilio.Jwt.AccessToken;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -50,6 +51,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<bool> DeleteBooking(string bookingId, int shopId);
         Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
         Task<ResponseModel> SearchBookingsByRestaurant(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
+
+
+        Task<ResponseModel> GetBookingItemAmount(bool isBookingModify, string userId, string detailId);
+        Task<ResponseModel> GetBookingAmount(bool isBookingModify, string currency, string userId, double rate, List<string> Ids);
         void SettleOrder();
     }
     public class TrRestaurantBookingServiceHandler : ITrRestaurantBookingServiceHandler
@@ -58,6 +63,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private readonly IDbCommonRepository<TrDbRestaurantBooking> _restaurantBookingRepository;
         private readonly IDbCommonRepository<StripeCheckoutSeesion> _stripeCheckoutSeesionRepository;
         private readonly IDbCommonRepository<DbCustomer> _customerRepository;
+        private readonly IShopServiceHandler _shopServiceHandler;
         private readonly IContentBuilder _contentBuilder;
         private readonly IEmailUtil _emailUtil;
         ILogManager _logger;
@@ -71,7 +77,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         IAmountCaculaterUtil _amountCaculaterV1;
 
         public TrRestaurantBookingServiceHandler(ITwilioUtil twilioUtil, IDbCommonRepository<TrDbRestaurant> restaurantRepository, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository, IDbCommonRepository<DbCustomer> customerRepository,
-            IDbCommonRepository<DbShop> shopRepository, ICustomerServiceHandler customerServiceHandler, IHostingEnvironment environment, IStripeUtil stripeUtil, IMemoryCache memoryCache,
+            IDbCommonRepository<DbShop> shopRepository, ICustomerServiceHandler customerServiceHandler, IHostingEnvironment environment, IStripeUtil stripeUtil, IMemoryCache memoryCache, IShopServiceHandler shopServiceHandler,
             IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, IDateTimeUtil dateTimeUtil, IAmountCaculaterUtil amountCaculaterV1,
             ILogManager logger, IContentBuilder contentBuilder, IEmailUtil emailUtil)
         {
@@ -90,6 +96,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _memoryCache = memoryCache;
             _dateTimeUtil = dateTimeUtil;
             _amountCaculaterV1 = amountCaculaterV1;
+            _shopServiceHandler = shopServiceHandler;
         }
 
 
@@ -117,7 +124,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             OperationInfo operationInfo = new OperationInfo() { ModifyType = 3, Operater = userEmail, UpdateTime = DateTime.Now, Operation = "订单取消" };
             booking.Operations.Add(operationInfo);
 
-            var savedRestaurant = await _restaurantBookingRepository.UpdateAsync(booking);
+            var savedRestaurant = await _restaurantBookingRepository.UpsertAsync(booking);
 
             return savedRestaurant != null;
         }
@@ -172,7 +179,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (booking == null) return false;
             booking.PaymentInfos[0].StripeProductId = productId;
             booking.PaymentInfos[0].StripePriceId = priceId;
-            var temp = await _restaurantBookingRepository.UpdateAsync(booking);
+            var temp = await _restaurantBookingRepository.UpsertAsync(booking);
             return true;
         }
         public async Task<object> UpdateAccepted(string billId, string subBillId, int acceptType, string operater)
@@ -202,7 +209,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //}
             var opt = new OperationInfo() { Operater = operater, Operation = acceptType == 1 ? "接收预订" : "拒绝预订", UpdateTime = DateTime.Now };
             booking.Operations.Add(opt);
-            var temp = await _restaurantBookingRepository.UpdateAsync(DBbooking);
+            var temp = await _restaurantBookingRepository.UpsertAsync(DBbooking);
             string msg = $"您于{booking.BookingDate} {booking.BookingTime} 提交的订单已被接收，请按时就餐";
             if (acceptType == 2)
                 msg = $"您于{booking.BookingDate} {booking.BookingTime} 提交的订单已被拒绝，请登录groupmeals.com查询别的餐厅";
@@ -283,7 +290,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             var opt = new OperationInfo() { Operater = operater, Operation = "添加原因", UpdateTime = DateTime.Now };
             booking.Operations.Add(opt);
-            var temp = await _restaurantBookingRepository.UpdateAsync(booking);
+            var temp = await _restaurantBookingRepository.UpsertAsync(booking);
             return true;
         }
 
@@ -297,10 +304,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 booking.PaymentInfos[0].Paid = true;
 
                 _logger.LogInfo("BookingPaid.session.id:" + booking.Id);
-                var temp = await _restaurantBookingRepository.UpdateAsync(booking);
+                var temp = await _restaurantBookingRepository.UpsertAsync(booking);
 
                 _logger.LogInfo("BookingPaid.UpdateAsync.session" + temp.Id);
-                var newItem = await _stripeCheckoutSeesionRepository.CreateAsync(new StripeCheckoutSeesion() { Data = session, BookingId = booking.Id });
+                var newItem = await _stripeCheckoutSeesionRepository.UpsertAsync(new StripeCheckoutSeesion() { Data = session, BookingId = booking.Id });
             }
             catch (Exception ex)
             {
@@ -338,7 +345,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     booking.Status = Domain.Enum.OrderStatusEnum.UnAccepted;
                 }
                 _logger.LogInfo("----------------BookingPaid" + booking.Id);
-                var temp = await _restaurantBookingRepository.UpdateAsync(booking);
+                var temp = await _restaurantBookingRepository.UpsertAsync(booking);
                 ClearCart(temp);
                 var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
                 if (shopInfo == null)
@@ -347,7 +354,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     throw new ServiceException("Cannot find shop info");
                 }
 
-               
+
 
                 EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, "Thank you for your Booking", _contentBuilder, _logger);
                 EmailUtils.EmailBoss(booking, shopInfo, "new_meals_restaurant", this._environment.WebRootPath, "New Booking", _twilioUtil, _contentBuilder, _logger);
@@ -367,7 +374,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if ((customer != null))
             {
                 customer.CartInfos.Clear();
-                _customerServiceHandler.UpdateCart(customer, (int)booking.ShopId);
+                _customerServiceHandler.UpdateCart(new List<BookingDetail>(),customer.Id, (int)booking.ShopId);
             }
         }
 
@@ -484,7 +491,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 var temo = _amountCaculaterV1.CalculateOrderPaidAmount(exsitBooking, 0.8);
                 exsitBooking.Operations.Add(operationInfo);
-                var savedBooking = await _restaurantBookingRepository.UpdateAsync(exsitBooking);
+                var savedBooking = await _restaurantBookingRepository.UpsertAsync(exsitBooking);
                 TrDbRestaurantBooking sendBooking = JsonConvert.DeserializeObject<TrDbRestaurantBooking>(JsonConvert.SerializeObject(savedBooking));
                 sendBooking.Details.Clear();
                 foreach (var item in exsitBooking.Details)
@@ -546,7 +553,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 exsitBooking.CustomerPhone = user.Phone;
                 exsitBooking.CustomerEmail = user.Email;
                 exsitBooking.PayCurrency = booking.PayCurrency;
-                var savedBooking = await _restaurantBookingRepository.UpdateAsync(exsitBooking);
+                var savedBooking = await _restaurantBookingRepository.UpsertAsync(exsitBooking);
                 if (noPay)
                 {
                     ClearCart(savedBooking);
@@ -572,8 +579,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         Amount = _amountCaculaterV1.getItemAmount(item),
                         PaidAmount = _amountCaculaterV1.getItemPayAmount(item)
                     };
-                    if(item.AmountInfos.Count()==0)
-                    item.AmountInfos.Add(amountInfo);
+                    if (item.AmountInfos.Count() == 0)
+                        item.AmountInfos.Add(amountInfo);
                     foreach (var amount in item.AmountInfos)
                     {
                         amount.Id = "A" + SnowflakeId.getSnowId();
@@ -594,7 +601,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 if (shopInfo == null)
                 {
                     _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
-                    return new ResponseModel { msg = "Cannot find shop info", code = 500,  };
+                    return new ResponseModel { msg = "Cannot find shop info", code = 500, };
                 }
 
                 double exchange = (double)shopInfo.ExchangeRate;
@@ -602,7 +609,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 booking.CustomerName = user.UserName;
                 booking.CustomerPhone = user.Phone;
                 booking.CustomerEmail = user.Email;
-                var newItem = await _restaurantBookingRepository.CreateAsync(booking);
+                var newItem = await _restaurantBookingRepository.UpsertAsync(booking);
                 if (noPay)
                 {
                     ClearCart(newItem);
@@ -747,7 +754,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 booking.PaymentInfos[0].StripeSetupIntent = true;
                 booking.PaymentInfos[0].StripePaymentId = paymentId;
             }
-            var temp = await _restaurantBookingRepository.UpdateAsync(booking);
+            var temp = await _restaurantBookingRepository.UpsertAsync(booking);
 
             //var newItem = await _stripeCheckoutSeesionRepository.CreateAsync(new StripeCheckoutSeesion() { Data = session, BookingId = booking.Id });
 
@@ -759,14 +766,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             booking.PaymentInfos[0].StripePaymentId = PaymentId;
             booking.PaymentInfos[0].SetupPay = isSetupPay;
             booking.PaymentInfos[0].StripeClientSecretKey = stripeClientSecretKey;
-            var res = await _restaurantBookingRepository.UpdateAsync(booking);
+            var res = await _restaurantBookingRepository.UpsertAsync(booking);
             return res;
         }
         public async Task<bool> DeleteBooking(string bookingId, int shopId)
         {
             var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
             booking.IsDeleted = true; booking.Updated = _dateTimeUtil.GetCurrentTime();
-            var savedRestaurant = await _restaurantBookingRepository.UpdateAsync(booking);
+            var savedRestaurant = await _restaurantBookingRepository.UpsertAsync(booking);
             return savedRestaurant != null;
         }
         public async Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToken = null)
@@ -818,7 +825,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     item.Status = OrderStatusEnum.Settled;
                     item.Details.ForEach(a => a.Status = OrderStatusEnum.Settled);
-                    await _restaurantBookingRepository.UpdateAsync(item);
+                    await _restaurantBookingRepository.UpsertAsync(item);
                 }
             }
         }
@@ -854,6 +861,119 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
 
             return new ResponseModel { msg = "ok", code = 200, token = token, data = res };
+        }
+
+
+        public async Task<ResponseModel> GetBookingItemAmount(bool isBookingModify, string userId, string detailId)
+        {
+            decimal amount = 0, payAmount = 0;
+            BookingDetail detail = null;
+            if (isBookingModify)
+            {
+                var Bookings = await _restaurantBookingRepository.GetOneAsync(a => a.Details.Any(d => d.Id == detailId));
+                if (Bookings == null || Bookings.Details == null || Bookings.Details.Count() == 0)
+                {
+                    return new ResponseModel { msg = "detailId can't find in Order list", code = 500, data = new { amount = 0, payAmount = 0 } };
+                }
+                detail = Bookings.Details.FirstOrDefault(a => a.Id == detailId);
+                if (detail == null)
+                    return new ResponseModel { msg = "detailId can't find in Order list", code = 500, data = new { amount = 0, payAmount = 0 } };
+                payAmount = detail.AmountInfos.Sum(a => a.PaidAmount);
+            }
+            else
+            {
+                var User = await _customerRepository.GetOneAsync(a => a.Id == userId);
+                detail = User.CartInfos.FirstOrDefault(a => a.Id == detailId);
+                if (detail == null)
+                    return new ResponseModel { msg = "detailId can't find in cartInfo", code = 500, data = new { amount = 0, payAmount = 0 } };
+                payAmount = _amountCaculaterV1.getItemPayAmount(detail);
+            }
+
+            amount = _amountCaculaterV1.getItemAmount(detail);
+
+
+            return new ResponseModel { msg = "ok", code = 200, data = new { amount = amount, payAmount = payAmount } };
+
+        }
+        public async Task<ResponseModel> GetBookingAmount(bool isBookingModify, string currency, string userId, double rate, List<string> Ids)
+        {
+            decimal EUAmount = 0, UKAmount = 0,EUPayAmount=0,UKPayAmount=0,   totalPayAmount = 0;
+            DateTime sdate = DateTime.Now;
+            if (isBookingModify)
+            {
+                DateTime stime= DateTime.Now;
+                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => a.Details.Any(d => Ids.Contains(d.Id)));
+                Console.WriteLine((DateTime.Now-stime).TotalMilliseconds);
+                if (Bookings == null || Bookings.Count() == 0)
+                {
+
+                    return new ResponseModel { msg = "detailId can't find in Order list", code = 500, };
+
+                }
+
+                foreach (var item in Bookings)
+                {
+                    var items = item.Details.FindAll(d => Ids.Contains(d.Id));
+                    foreach (var detail in items)
+                    {
+                        totalPayAmount += detail.AmountInfos.Sum(a => a.PaidAmount);
+                        if (detail.Currency == "UK")
+                        {
+                            UKAmount += _amountCaculaterV1.getItemAmount(detail);
+                            UKPayAmount += detail.AmountInfos.Sum(a => a.PaidAmount);
+
+
+                        }
+                        else
+                        {
+                            EUAmount += _amountCaculaterV1.getItemAmount(detail);
+                            EUPayAmount += detail.AmountInfos.Sum(a => a.PaidAmount);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                DateTime stime = DateTime.Now;
+                var user = await _customerRepository.GetOneAsync(a => a.Id == userId);
+                Console.WriteLine("cart:"+(DateTime.Now - stime).TotalMilliseconds);
+                var details = user.CartInfos.FindAll(c => Ids.Contains(c.Id));
+                if (details == null || details.Count() == 0)
+                {
+                    return new ResponseModel { msg = "detailId can't find in cartinfo", code = 500, };
+
+                }
+                foreach (var detail in details)
+                {
+                    if (currency == detail.Currency)
+                    {
+                        totalPayAmount += _amountCaculaterV1.getItemPayAmount(detail);
+                    }
+                    else
+                    {
+                        if (detail.Currency == "UK")
+                        {
+                            totalPayAmount += _amountCaculaterV1.getItemPayAmount(detail) * (decimal)rate;
+                        }
+                        else
+                            totalPayAmount += _amountCaculaterV1.getItemPayAmount(detail) / (decimal)rate;
+                    }
+                    if (detail.Currency == "UK")
+                    {
+                        UKAmount += _amountCaculaterV1.getItemAmount(detail);
+                        UKPayAmount += _amountCaculaterV1.getItemPayAmount(detail);
+                    }
+                    else
+                    {
+                        EUAmount += _amountCaculaterV1.getItemAmount(detail);
+                        EUPayAmount += _amountCaculaterV1.getItemPayAmount(detail);
+                    }
+                }
+
+            }
+            Console.WriteLine("Total: "+(DateTime.Now - sdate).TotalMilliseconds);
+            return new ResponseModel { msg = "ok", code = 200, data = new { EUAmount, UKAmount, EUPayAmount, UKPayAmount,   totalPayAmount } };
+
         }
 
     }

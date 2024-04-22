@@ -63,7 +63,7 @@ namespace App.Infrastructure.Utility.Common
                 existRate.Updated = DateTime.Now;
                 existRate.RateUpdate = DateTime.Now;
                 existRate.ExchangeRate = rate;
-                var savedShop = await _shopRepository.UpdateAsync(existRate);
+                var savedShop = await _shopRepository.UpsertAsync(existRate);
             }
         }
     }

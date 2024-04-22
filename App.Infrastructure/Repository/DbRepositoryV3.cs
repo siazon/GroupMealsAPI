@@ -28,7 +28,7 @@ namespace App.Infrastructure.Repository
 
         Task<T> CreateAsync(T item);
 
-        Task<T> UpdateAsync(T item);
+        Task<T> UpsertAsync(T item);
 
         Task<T> DeleteAsync(T item);
 
@@ -235,8 +235,8 @@ namespace App.Infrastructure.Repository
                 throw new DataRepositoryException(e);
             }
         }
-
-        public async Task<T> UpdateAsync(T item)
+        
+        public async Task<T> UpsertAsync(T item)
         {
             try
             {

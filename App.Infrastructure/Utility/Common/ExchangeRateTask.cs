@@ -35,7 +35,7 @@ namespace App.Infrastructure.Utility.Common
                     var existShop = await _shopRepository.GetOneAsync(r => r.ShopId == 11);
                     if (existShop == null)
                         throw new ServiceException("shop Not Exists");
-                    var savedShop = await _shopRepository.UpdateAsync(existShop);
+                    var savedShop = await _shopRepository.UpsertAsync(existShop);
                 }
                 catch (Exception ex)
                 {

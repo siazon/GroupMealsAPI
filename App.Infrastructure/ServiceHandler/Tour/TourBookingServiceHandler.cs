@@ -83,7 +83,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
                 exsitBooking.SelectDate = booking.SelectDate;
                 exsitBooking.Name = booking.Name;
                 exsitBooking.Tour=booking.Tour;
-                var savedBooking = await _tourBookingRepository.UpdateAsync(exsitBooking);
+                var savedBooking = await _tourBookingRepository.UpsertAsync(exsitBooking);
 
                 return savedBooking;
             }
@@ -94,7 +94,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
                 newBooking.Created = _dateTimeUtil.GetCurrentTime();
                 newBooking.Ref = GuidHashUtil.Get6DigitNumber();
 
-                var savedBooking = await _tourBookingRepository.CreateAsync(newBooking);
+                var savedBooking = await _tourBookingRepository.UpsertAsync(newBooking);
 
                 return savedBooking;
             }
@@ -125,7 +125,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
                 booking.Status = OrderStatusEnum.UnAccepted;
             }
             _logger.LogInfo("BookingPaid" + booking.Id);
-            var temp = await _tourBookingRepository.UpdateAsync(booking);
+            var temp = await _tourBookingRepository.UpsertAsync(booking);
             var shopInfo =
             await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
             if (shopInfo == null)
@@ -156,7 +156,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             booking.Paid = false;
             booking.Status = OrderStatusEnum.Canceled;
             _logger.LogInfo("BookingPaid" + booking.Id);
-            var temp = await _tourBookingRepository.UpdateAsync(booking);
+            var temp = await _tourBookingRepository.UpsertAsync(booking);
          
             return true;
         }
@@ -257,7 +257,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
         public async Task<TourBooking> UpdateTourBooking(TourBooking booking)
         {
             Guard.NotNull(booking);
-            var res = await _tourBookingRepository.UpdateAsync(booking);
+            var res = await _tourBookingRepository.UpsertAsync(booking);
             return res;
         }
         public async Task<TourBooking> BindingPayInfoToTourBooking(string bookingId, string PaymentId, string stripeClientSecretKey)
@@ -266,7 +266,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             Guard.NotNull(booking);
             booking.StripePaymentId = PaymentId;
             booking.StripeClientSecretKey = stripeClientSecretKey;
-            var res = await _tourBookingRepository.UpdateAsync(booking);
+            var res = await _tourBookingRepository.UpsertAsync(booking);
             return res;
         }
 
@@ -274,7 +274,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
         {
             var booking = await _tourBookingRepository.GetOneAsync(r => r.Id == id);
             booking.Status = OrderStatusEnum.Canceled;
-            var res = await _tourBookingRepository.UpdateAsync(booking);
+            var res = await _tourBookingRepository.UpsertAsync(booking);
 
             var shopInfo =
             await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);

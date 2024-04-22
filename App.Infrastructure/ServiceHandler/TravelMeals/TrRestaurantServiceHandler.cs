@@ -216,7 +216,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             restaurant.Updated = _dateTimeUtil.GetCurrentTime();
             restaurant.IsActive = true;
 
-            var savedRestaurant = await _restaurantRepository.CreateAsync(restaurant);
+            var savedRestaurant = await _restaurantRepository.UpsertAsync(restaurant);
             return savedRestaurant;
         }
         public async Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId)
@@ -236,7 +236,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             restaurant.Updated = _dateTimeUtil.GetCurrentTime();
 
-            var savedRestaurant = await _restaurantRepository.UpdateAsync(restaurant);
+            var savedRestaurant = await _restaurantRepository.UpsertAsync(restaurant);
             return savedRestaurant;
         }
 

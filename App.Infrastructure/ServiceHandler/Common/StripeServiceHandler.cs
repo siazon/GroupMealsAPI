@@ -35,7 +35,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             Guard.NotNull(booking);
             booking.StripePaymentId = PaymentId;
             booking.StripeClientSecretKey = stripeClientSecretKey;
-            var res = await _stripeBaseRepository.UpdateAsync(booking);
+            var res = await _stripeBaseRepository.UpsertAsync(booking);
             return res;
         }
     }
