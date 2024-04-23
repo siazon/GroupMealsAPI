@@ -100,6 +100,9 @@ namespace App.Domain.TravelMeals.Restaurant
     }
     public enum MenuCalculateTypeEnum
     {
+        /// <summary>
+        /// Ä¬ÈÏÖĞ²Í
+        /// </summary>
         DEFAULT, WesternFood, ChineseFood
     }
     public enum PaymentTypeEnum

@@ -39,7 +39,7 @@ namespace KingfoodIO.Controllers.Common
         private readonly AppSettingConfig _appsettingConfig;
         IStripeUtil _stripeUtil;
         private readonly IShopServiceHandler _shopServiceHandler;
-        IAmountCaculaterUtil _amountCaculaterV1;
+        IAmountCalculaterUtil _amountCalculaterV1;
 
         IMemoryCache _memoryCache;
         private string secret = "";
@@ -61,7 +61,7 @@ namespace KingfoodIO.Controllers.Common
         public StripeCheckoutController(
           IOptions<CacheSettingConfig> cachesettingConfig, IOptions<AppSettingConfig> appsettingConfig, IMemoryCache memoryCache, IRedisCache redisCache, IStripeUtil stripeUtil,
 
-        IAmountCaculaterUtil amountCaculaterV1,
+        IAmountCalculaterUtil amountCalculaterV1,
         ITourBookingServiceHandler tourBookingServiceHandler, ITourServiceHandler tourServiceHandler, IStripeServiceHandler stripeServiceHandler, IShopServiceHandler shopServiceHandler,
           ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
         {
@@ -74,7 +74,7 @@ namespace KingfoodIO.Controllers.Common
             _appsettingConfig = appsettingConfig.Value;
             secret = _appsettingConfig.StripeWebhookKey;
             _stripeUtil = stripeUtil; _memoryCache = memoryCache;
-            _amountCaculaterV1=amountCaculaterV1;
+            _amountCalculaterV1=amountCalculaterV1;
         }
 
         /// <summary>
@@ -376,7 +376,7 @@ namespace KingfoodIO.Controllers.Common
                     if (bill.SetupPay == 1)
                         Amount = 100;
                     else
-                        Amount = _amountCaculaterV1.CalculateOrderPaidAmount(gpBooking, shop.ExchangeRate);//  CalculateOrderAmount(gpBooking, shop.ExchangeRate);
+                        Amount = _amountCalculaterV1.CalculateOrderPaidAmount(gpBooking, shop.ExchangeRate);//  CalculateOrderAmount(gpBooking, shop.ExchangeRate);
                 }
                 string currency = "eur";
                 if (gpBooking.PayCurrency == "UK")

@@ -75,6 +75,7 @@ namespace App.Domain.TravelMeals
         public string ContactName { get; set; }
         public string ContactPhone { get; set; }
         public string ContactEmail { get; set; }
+        public string ContactWechat { get; set; }
         public string ContactInfos { get; set; }
         public string GroupRef { get; set; }
 
@@ -93,7 +94,9 @@ namespace App.Domain.TravelMeals
     public class BookingCourse : TrDbRestaurantMenuItem
     {
         public string Id { get; set; }
+        /// <summary>计算时必填</summary>
         public int Qty { get; set; }
+        /// <summary>计算时必填</summary>
         public int ChildrenQty { get; set; }
         public int TableQty { get; set; }
         public string Memo { get; set; }

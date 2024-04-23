@@ -55,10 +55,10 @@ namespace App.Infrastructure.ServiceHandler.Common
         private readonly IContentBuilder _contentBuilder;
         private readonly IEmailUtil _emailUtil;
         ILogManager _logger;
-        IAmountCaculaterUtil _amountCaculaterV1;
+        IAmountCalculaterUtil _amountCalculaterV1;
         IHostingEnvironment _environment;
 
-        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCaculaterUtil amountCaculaterV1, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, IEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
+        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, IEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
         {
             _customerRepository = customerRepository;
             _encryptionHelper = encryptionHelper;
@@ -70,7 +70,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             _logger= logger;
             _settingRepository = settingRepository;
             _environment = environment;
-            _amountCaculaterV1= amountCaculaterV1;
+            _amountCalculaterV1= amountCalculaterV1;
         }
 
         public async Task<List<DbCustomer>> List(int shopId)
@@ -302,12 +302,13 @@ namespace App.Infrastructure.ServiceHandler.Common
             if (cartInfos != null) {
                 foreach (var item in cartInfos)
                 {
+                    
                     if(string.IsNullOrWhiteSpace( item.Id))
                         item.Id= Guid.NewGuid().ToString();
                     if (item.AmountInfos == null)
                         item.AmountInfos = new List<AmountInfo>();
                     item.AmountInfos?.Clear();
-                    AmountInfo amountInfo = new AmountInfo() {  Amount=_amountCaculaterV1.getItemAmount(item),PaidAmount=_amountCaculaterV1.getItemPayAmount(item) };
+                    AmountInfo amountInfo = new AmountInfo() {  Amount= _amountCalculaterV1.getItemAmount(item),PaidAmount= _amountCalculaterV1.getItemPayAmount(item) };
                     item.AmountInfos.Add(amountInfo);
                 }
             }

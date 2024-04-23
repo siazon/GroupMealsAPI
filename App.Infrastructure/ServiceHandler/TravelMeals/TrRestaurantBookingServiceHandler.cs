@@ -31,6 +31,7 @@ using App.Infrastructure.ServiceHandler.Common;
 using Newtonsoft.Json;
 using System.Drawing.Printing;
 using Twilio.Jwt.AccessToken;
+using Microsoft.Azure.Cosmos;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -53,7 +54,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<ResponseModel> SearchBookingsByRestaurant(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
 
 
-        Task<ResponseModel> GetBookingItemAmount(bool isBookingModify, string userId, string detailId);
+        ResponseModel GetBookingItemAmount(List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate);
         Task<ResponseModel> GetBookingAmount(bool isBookingModify, string currency, string userId, double rate, List<string> Ids);
         void SettleOrder();
     }
@@ -74,11 +75,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private readonly ICustomerServiceHandler _customerServiceHandler;
         IMemoryCache _memoryCache;
         private readonly IDateTimeUtil _dateTimeUtil;
-        IAmountCaculaterUtil _amountCaculaterV1;
+        IAmountCalculaterUtil _amountCalculaterV1;
 
         public TrRestaurantBookingServiceHandler(ITwilioUtil twilioUtil, IDbCommonRepository<TrDbRestaurant> restaurantRepository, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository, IDbCommonRepository<DbCustomer> customerRepository,
             IDbCommonRepository<DbShop> shopRepository, ICustomerServiceHandler customerServiceHandler, IHostingEnvironment environment, IStripeUtil stripeUtil, IMemoryCache memoryCache, IShopServiceHandler shopServiceHandler,
-            IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, IDateTimeUtil dateTimeUtil, IAmountCaculaterUtil amountCaculaterV1,
+            IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, IDateTimeUtil dateTimeUtil, IAmountCalculaterUtil amountCalculaterV1,
             ILogManager logger, IContentBuilder contentBuilder, IEmailUtil emailUtil)
         {
             _restaurantRepository = restaurantRepository;
@@ -95,7 +96,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _stripeUtil = stripeUtil;
             _memoryCache = memoryCache;
             _dateTimeUtil = dateTimeUtil;
-            _amountCaculaterV1 = amountCaculaterV1;
+            _amountCalculaterV1 = amountCalculaterV1;
             _shopServiceHandler = shopServiceHandler;
         }
 
@@ -374,7 +375,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if ((customer != null))
             {
                 customer.CartInfos.Clear();
-                _customerServiceHandler.UpdateCart(new List<BookingDetail>(),customer.Id, (int)booking.ShopId);
+                _customerServiceHandler.UpdateCart(new List<BookingDetail>(), customer.Id, (int)booking.ShopId);
             }
         }
 
@@ -423,7 +424,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         operationInfo.ModifyInfos.Add(modifyInfo);
                         item.Memo = detail.Memo;
                     }
-                    var Oldamount = _amountCaculaterV1.getItemAmount(item);
+                    var Oldamount = _amountCalculaterV1.getItemAmount(item);
 
                     foreach (var course in item.Courses)
                     {
@@ -478,7 +479,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                             course.Ingredieent = _course.Ingredieent;
                         }
                     }
-                    var amount = _amountCaculaterV1.getItemAmount(item);
+                    var amount = _amountCalculaterV1.getItemAmount(item);
                     if (amount != Oldamount)
                     {
                         AmountInfo amountInfo = new AmountInfo() { Id = "A" + SnowflakeId.getSnowId() };
@@ -489,7 +490,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             if (isChange)
             {
-                var temo = _amountCaculaterV1.CalculateOrderPaidAmount(exsitBooking, 0.8);
+                var temo = _amountCalculaterV1.CalculateOrderPaidAmount(exsitBooking, 0.8);
                 exsitBooking.Operations.Add(operationInfo);
                 var savedBooking = await _restaurantBookingRepository.UpsertAsync(exsitBooking);
                 TrDbRestaurantBooking sendBooking = JsonConvert.DeserializeObject<TrDbRestaurantBooking>(JsonConvert.SerializeObject(savedBooking));
@@ -529,9 +530,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             TourBooking newBooking;
             var createTime = _dateTimeUtil.GetCurrentTime();
             var exsitBooking = await _restaurantBookingRepository.GetOneAsync(r => r.Status == OrderStatusEnum.None && !r.IsDeleted && r.CustomerEmail == user.Email);
-            var tem = await _restaurantBookingRepository.GetManyAsync(a => 1 == 1);
-            var te = tem.ToList();
-            //var exsitBooking = exsitBookings.FirstOrDefault();// (a => (createTime - a.Created).Value.Hours < 2);
             if (exsitBooking != null)
             {
                 bool noPay = true; ;
@@ -563,27 +561,33 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             else
             {
-                bool noPay = true; ;
+                bool noPay = true;
                 foreach (var item in booking.Details)
                 {
-                    item.Id = Guid.NewGuid().ToString();
                     if (item.BillInfo.PaymentType != PaymentTypeEnum.PayAtStore)
                         noPay = false;
+
+
+                    if (string.IsNullOrWhiteSpace(item.Id))
+                        item.Id = Guid.NewGuid().ToString();
+
                     foreach (var course in item.Courses)
                     {
-                        course.Id = "C" + SnowflakeId.getSnowId();
+                        if (string.IsNullOrWhiteSpace(course.Id))
+                            course.Id = "C" + SnowflakeId.getSnowId();
                     }
                     AmountInfo amountInfo = new AmountInfo()
                     {
                         Id = "A" + SnowflakeId.getSnowId(),
-                        Amount = _amountCaculaterV1.getItemAmount(item),
-                        PaidAmount = _amountCaculaterV1.getItemPayAmount(item)
+                        Amount = _amountCalculaterV1.getItemAmount(item),
+                        PaidAmount = _amountCalculaterV1.getItemPayAmount(item)
                     };
                     if (item.AmountInfos.Count() == 0)
                         item.AmountInfos.Add(amountInfo);
                     foreach (var amount in item.AmountInfos)
                     {
-                        amount.Id = "A" + SnowflakeId.getSnowId();
+                        if (string.IsNullOrWhiteSpace(amount.Id))
+                            amount.Id = "A" + SnowflakeId.getSnowId();
 
                     }
                 }
@@ -605,7 +609,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
 
                 double exchange = (double)shopInfo.ExchangeRate;
-                booking.PaymentInfos.Add(new PaymentInfo() { Amount = _amountCaculaterV1.CalculateOrderAmount(booking, exchange), PaidAmount = _amountCaculaterV1.CalculateOrderPaidAmount(booking, exchange) });
+                booking.PaymentInfos.Add(new PaymentInfo() { Amount = _amountCalculaterV1.CalculateOrderAmount(booking, exchange), PaidAmount = _amountCalculaterV1.CalculateOrderPaidAmount(booking, exchange) });
                 booking.CustomerName = user.UserName;
                 booking.CustomerPhone = user.Phone;
                 booking.CustomerEmail = user.Email;
@@ -618,6 +622,38 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
                 return new ResponseModel { msg = "", code = 200, data = newItem };
             }
+        }
+        private async Task<ResponseModel> InitBooking(TrDbRestaurantBooking booking, DbCustomer user)
+        {
+            booking.CustomerName = user.UserName;
+            booking.CustomerPhone = user.Phone;
+            booking.CustomerEmail = user.Email;
+            booking.Created = _dateTimeUtil.GetCurrentTime();
+            bool noPay = true; ;
+            foreach (var item in booking.Details)
+            {
+                if (item.BillInfo.PaymentType != PaymentTypeEnum.PayAtStore)
+                    noPay = false;
+            }
+            if (noPay)
+            {
+                booking.Status = OrderStatusEnum.UnAccepted;
+            }
+
+
+            foreach (var item in booking.Details)
+            {
+                var rest = await _restaurantRepository.GetOneAsync(a => a.Id == item.RestaurantId);
+                item.RestaurantName = rest.StoreName;
+                item.RestaurantEmail = rest.Email;
+                item.RestaurantAddress = rest.Address;
+                item.RestaurantPhone = rest.PhoneNumber;
+                if ((item.SelectDateTime - DateTime.Now).Value.TotalHours < 12)
+                {
+                    return new ResponseModel { msg = "用餐时间少于12个小时", code = 500, data = null };
+                }
+            }
+            return new ResponseModel { msg = "ok", code = 200, data = null };
         }
         private async void SendEmail(TrDbRestaurantBooking booking)
         {
@@ -864,46 +900,26 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
 
 
-        public async Task<ResponseModel> GetBookingItemAmount(bool isBookingModify, string userId, string detailId)
+        public ResponseModel GetBookingItemAmount(List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate)
         {
+            if (paymentType == PaymentTypeEnum.Deposit && payRate <= 0)
+                return new ResponseModel { msg = "payRate should greater than 0", code = 500 };
             decimal amount = 0, payAmount = 0;
-            BookingDetail detail = null;
-            if (isBookingModify)
-            {
-                var Bookings = await _restaurantBookingRepository.GetOneAsync(a => a.Details.Any(d => d.Id == detailId));
-                if (Bookings == null || Bookings.Details == null || Bookings.Details.Count() == 0)
-                {
-                    return new ResponseModel { msg = "detailId can't find in Order list", code = 500, data = new { amount = 0, payAmount = 0 } };
-                }
-                detail = Bookings.Details.FirstOrDefault(a => a.Id == detailId);
-                if (detail == null)
-                    return new ResponseModel { msg = "detailId can't find in Order list", code = 500, data = new { amount = 0, payAmount = 0 } };
-                payAmount = detail.AmountInfos.Sum(a => a.PaidAmount);
-            }
-            else
-            {
-                var User = await _customerRepository.GetOneAsync(a => a.Id == userId);
-                detail = User.CartInfos.FirstOrDefault(a => a.Id == detailId);
-                if (detail == null)
-                    return new ResponseModel { msg = "detailId can't find in cartInfo", code = 500, data = new { amount = 0, payAmount = 0 } };
-                payAmount = _amountCaculaterV1.getItemPayAmount(detail);
-            }
-
-            amount = _amountCaculaterV1.getItemAmount(detail);
-
-
-            return new ResponseModel { msg = "ok", code = 200, data = new { amount = amount, payAmount = payAmount } };
+            BookingDetail detail = new BookingDetail() { Courses = menuItems, BillInfo = new RestaurantBillInfo() { PaymentType = paymentType, PayRate = payRate } };
+            payAmount = _amountCalculaterV1.getItemPayAmount(detail);
+            amount = _amountCalculaterV1.getItemAmount(detail);
+            return new ResponseModel { msg = "ok", code = 200, data = new { amount, payAmount } };
 
         }
         public async Task<ResponseModel> GetBookingAmount(bool isBookingModify, string currency, string userId, double rate, List<string> Ids)
         {
-            decimal EUAmount = 0, UKAmount = 0,EUPayAmount=0,UKPayAmount=0,   totalPayAmount = 0;
+            decimal EUAmount = 0, UKAmount = 0, EUPayAmount = 0, UKPayAmount = 0, totalPayAmount = 0;
             DateTime sdate = DateTime.Now;
             if (isBookingModify)
             {
-                DateTime stime= DateTime.Now;
+                DateTime stime = DateTime.Now;
                 var Bookings = await _restaurantBookingRepository.GetManyAsync(a => a.Details.Any(d => Ids.Contains(d.Id)));
-                Console.WriteLine((DateTime.Now-stime).TotalMilliseconds);
+                Console.WriteLine((DateTime.Now - stime).TotalMilliseconds);
                 if (Bookings == null || Bookings.Count() == 0)
                 {
 
@@ -919,14 +935,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         totalPayAmount += detail.AmountInfos.Sum(a => a.PaidAmount);
                         if (detail.Currency == "UK")
                         {
-                            UKAmount += _amountCaculaterV1.getItemAmount(detail);
+                            UKAmount += _amountCalculaterV1.getItemAmount(detail);
                             UKPayAmount += detail.AmountInfos.Sum(a => a.PaidAmount);
 
 
                         }
                         else
                         {
-                            EUAmount += _amountCaculaterV1.getItemAmount(detail);
+                            EUAmount += _amountCalculaterV1.getItemAmount(detail);
                             EUPayAmount += detail.AmountInfos.Sum(a => a.PaidAmount);
                         }
                     }
@@ -936,7 +952,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 DateTime stime = DateTime.Now;
                 var user = await _customerRepository.GetOneAsync(a => a.Id == userId);
-                Console.WriteLine("cart:"+(DateTime.Now - stime).TotalMilliseconds);
+                Console.WriteLine("cart:" + (DateTime.Now - stime).TotalMilliseconds);
                 var details = user.CartInfos.FindAll(c => Ids.Contains(c.Id));
                 if (details == null || details.Count() == 0)
                 {
@@ -947,32 +963,32 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     if (currency == detail.Currency)
                     {
-                        totalPayAmount += _amountCaculaterV1.getItemPayAmount(detail);
+                        totalPayAmount += _amountCalculaterV1.getItemPayAmount(detail);
                     }
                     else
                     {
                         if (detail.Currency == "UK")
                         {
-                            totalPayAmount += _amountCaculaterV1.getItemPayAmount(detail) * (decimal)rate;
+                            totalPayAmount += _amountCalculaterV1.getItemPayAmount(detail) * (decimal)rate;
                         }
                         else
-                            totalPayAmount += _amountCaculaterV1.getItemPayAmount(detail) / (decimal)rate;
+                            totalPayAmount += _amountCalculaterV1.getItemPayAmount(detail) / (decimal)rate;
                     }
                     if (detail.Currency == "UK")
                     {
-                        UKAmount += _amountCaculaterV1.getItemAmount(detail);
-                        UKPayAmount += _amountCaculaterV1.getItemPayAmount(detail);
+                        UKAmount += _amountCalculaterV1.getItemAmount(detail);
+                        UKPayAmount += _amountCalculaterV1.getItemPayAmount(detail);
                     }
                     else
                     {
-                        EUAmount += _amountCaculaterV1.getItemAmount(detail);
-                        EUPayAmount += _amountCaculaterV1.getItemPayAmount(detail);
+                        EUAmount += _amountCalculaterV1.getItemAmount(detail);
+                        EUPayAmount += _amountCalculaterV1.getItemPayAmount(detail);
                     }
                 }
 
             }
-            Console.WriteLine("Total: "+(DateTime.Now - sdate).TotalMilliseconds);
-            return new ResponseModel { msg = "ok", code = 200, data = new { EUAmount, UKAmount, EUPayAmount, UKPayAmount,   totalPayAmount } };
+            Console.WriteLine("Total: " + (DateTime.Now - sdate).TotalMilliseconds);
+            return new ResponseModel { msg = "ok", code = 200, data = new { EUAmount, UKAmount, EUPayAmount, UKPayAmount, totalPayAmount } };
 
         }
 

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace App.Infrastructure.Utility.Common
 {
-    public interface IAmountCaculaterUtil
+    public interface IAmountCalculaterUtil
     {
         long CalculateOrderAmount(TrDbRestaurantBooking booking, double ExRate);
         long CalculateOrderPaidAmount(TrDbRestaurantBooking booking, double ExRate);
@@ -16,7 +16,7 @@ namespace App.Infrastructure.Utility.Common
         decimal getItemPayAmount(BookingDetail bookingDetail);
     }
 
-    public class AmountCaculaterV1Util : IAmountCaculaterUtil
+    public class AmountCalculaterV1Util : IAmountCalculaterUtil
     {
         public long CalculateOrderAmount(TrDbRestaurantBooking booking, double ExRate)
         {
@@ -100,29 +100,28 @@ namespace App.Infrastructure.Utility.Common
             decimal amount = 0;
             foreach (var item in bookingDetail.Courses)
             {
-                int qty = item.Qty;
+                int totalQty = item.Qty+item.ChildrenQty;
                 if (item.MenuCalculateType == MenuCalculateTypeEnum.WesternFood)//西餐按人头算
                 {
-                    amount += item.Price * qty;
+                    amount += item.Price * item.Qty;
                 }
                 else
                 {
-                    if (item.Price == item.ChildrenPrice)
-                    {//价格相等等于没有儿童价格
-                        qty = qty + item.ChildrenQty;
-                    }
-                    else
-                    {//价格不相等，儿童单价单独计算
-                        amount += item.ChildrenPrice * item.ChildrenQty;
-                    }
+                    //if (item.Price == item.ChildrenPrice)
+                    //{//价格相等等于没有儿童价格
+                    //    qty = qty + item.ChildrenQty;
+                    //}
+                    //else
+                    //{//价格不相等，儿童单价单独计算
+                    //    amount += item.ChildrenPrice * item.ChildrenQty;
+                    //}
 
-                    if (qty < 10)
+                    if (totalQty < 10)
                         amount += item.Price * 10;
                     else
-                        amount += item.Price * qty;
+                        amount += item.Price * totalQty;
 
-
-                    amount -= getDiscount(qty, item.Price);
+                    amount -= getDiscount(totalQty, item.Price);
                 }
             }
 
@@ -132,12 +131,12 @@ namespace App.Infrastructure.Utility.Common
 
         public decimal getItemPayAmount(BookingDetail bookingDetail)
         {
-            decimal amount = getItemAmount(bookingDetail);
-            if (bookingDetail.BillInfo.PaymentType == Domain.TravelMeals.Restaurant.PaymentTypeEnum.Deposit)//付押金
+            decimal amount = getItemAmount(bookingDetail);//付全额
+            if (bookingDetail.BillInfo.PaymentType == PaymentTypeEnum.Deposit)//付押金
             {
                 amount = amount * (decimal)bookingDetail.BillInfo.PayRate;
             }
-            else if (bookingDetail.BillInfo.PaymentType == Domain.TravelMeals.Restaurant.PaymentTypeEnum.PayAtStore)//到店付
+            else if (bookingDetail.BillInfo.PaymentType == PaymentTypeEnum.PayAtStore)//到店付
             {
                 amount = 0;
             }

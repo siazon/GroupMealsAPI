@@ -10,10 +10,19 @@ namespace App.Domain.TravelMeals.Restaurant
         public string MenuItemDescription { get; set; }
         public string MenuItemDescriptionCn { get; set; }
         public int? CategoryId { get; set; }
+        /// <summary>
+        /// 计算时必填
+        /// </summary>
         public MenuCalculateTypeEnum MenuCalculateType { get; set; }
         public string Cuisine { get; set; }
         public string Ingredieent { get; set; }
+        /// <summary>
+        /// 计算时必填
+        /// </summary>
         public decimal Price { get; set; }
+        /// <summary>
+        /// 计算时必填
+        /// </summary>
         public decimal ChildrenPrice { get; set; }
         public decimal PriceIncrease { get; set; }
         public FoodCategoryEnum Category { get; set; }

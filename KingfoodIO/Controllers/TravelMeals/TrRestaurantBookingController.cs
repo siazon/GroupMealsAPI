@@ -32,7 +32,7 @@ namespace KingfoodIO.Controllers.TravelMeals
 
         IMemoryCache _memoryCache;
         ILogManager _logger;
-        IAmountCaculaterUtil _caculaterUtil;
+        IAmountCalculaterUtil _calculaterUtil;
         private readonly IShopServiceHandler _shopServiceHandler;
         /// <summary>
         /// 
@@ -45,13 +45,13 @@ namespace KingfoodIO.Controllers.TravelMeals
         /// <param name="logger"></param>
         public TrRestaurantBookingController(
             IOptions<CacheSettingConfig> cachesettingConfig, IMemoryCache memoryCache, IRedisCache redisCache, ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler,
-            ITrRestaurantServiceHandler restaurantServiceHandler, IAmountCaculaterUtil caculaterUtil, IShopServiceHandler shopServiceHandler, ILogManager logger) :
+            ITrRestaurantServiceHandler restaurantServiceHandler, IAmountCalculaterUtil calculaterUtil, IShopServiceHandler shopServiceHandler, ILogManager logger) :
             base(cachesettingConfig, memoryCache, redisCache, logger)
         {
             _logger = logger;
             _memoryCache = memoryCache;
             _restaurantBookingServiceHandler = restaurantBookingServiceHandler;
-            _caculaterUtil = caculaterUtil;
+            _calculaterUtil = calculaterUtil;
             _shopServiceHandler = shopServiceHandler;
         }
 
@@ -186,22 +186,19 @@ namespace KingfoodIO.Controllers.TravelMeals
 
 
         /// <summary>
-        /// 
+        /// 订单修改时返回的payAmount不可用，应该取amountInfos里真实付了多少钱的Sum(payAmount)。
+        /// Json中menuCalculateType，price，childrenPrice，qty，childrenQty必填
         /// </summary>
-        /// <param name="shopId"></param>
-        /// <param name="isModify"></param>
-        /// <param name="detailId"></param>
-        /// <param name="cache"></param>
+        /// <param name="menuItems"></param>
+        /// <param name="paymentType">支付方式 0:全额,1:支付押金,2:到店支付</param>
+        /// <param name="payRate">支付方式为1时必填，示例：15%押金传0.15</param>
         /// <returns></returns>
-        [HttpGet]
-        [ServiceFilter(typeof(AuthActionFilter))]
+        [HttpPost]
+        //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(ResponseModel), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> CalculateBookingItemAmount(int shopId, bool isModify, string detailId, bool cache = false)
+        public IActionResult CalculateBookingItemAmount([FromBody] List<BookingCourse> menuItems,  PaymentTypeEnum paymentType,double payRate)
         {
-            var authHeader = Request.Headers["Wauthtoken"];
-            var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
-            return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantBookingServiceHandler.GetBookingItemAmount(isModify, user.UserId, detailId));
+            return Ok(_restaurantBookingServiceHandler.GetBookingItemAmount(menuItems, paymentType, payRate));
         }
 
         /// <summary>
@@ -216,7 +213,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpPost]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(ResponseModel), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> CalculateBookingAmount([FromBody]List<string> cartInfoIds,  int shopId, bool isModify,string currency, bool cache = false)
+        public async Task<IActionResult> CalculateBookingAmount([FromBody] List<string> cartInfoIds, int shopId, bool isModify, string currency, bool cache = false)
         {
             DateTime sdate = DateTime.Now;
             var authHeader = Request.Headers["Wauthtoken"];
@@ -225,11 +222,11 @@ namespace KingfoodIO.Controllers.TravelMeals
             if (!isModify)
             {
                 var res = await _shopServiceHandler.GetExchangeRate(shopId);
-                rate= res.Rate;
+                rate = res.Rate;
             }
             Console.WriteLine("controller: " + (DateTime.Now - sdate).TotalMilliseconds);
             return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantBookingServiceHandler.GetBookingAmount(isModify, currency, user.UserId,rate, cartInfoIds));
+                async () => await _restaurantBookingServiceHandler.GetBookingAmount(isModify, currency, user.UserId, rate, cartInfoIds));
         }
 
 
