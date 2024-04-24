@@ -67,9 +67,9 @@ namespace KingfoodIO.Controllers.TravelMeals
         public async Task<IActionResult> RequestTravelMealsBooking([FromBody] TrDbRestaurantBooking booking, int shopId)
         {
             var authHeader = Request.Headers["Wauthtoken"];
-            var temp = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, false,
-                async () => await _restaurantBookingServiceHandler.RequestBooking(booking, shopId, temp.UserId));
+                async () => await _restaurantBookingServiceHandler.RequestBooking(booking, shopId, user));
         }
 
         /// <summary>
