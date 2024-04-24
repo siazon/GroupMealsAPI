@@ -904,16 +904,16 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             if (paymentType == PaymentTypeEnum.Deposit && payRate <= 0)
                 return new ResponseModel { msg = "payRate should greater than 0", code = 500 };
-            decimal amount = 0, payAmount = 0;
+            decimal amount = 0, paidAmount = 0;
             BookingDetail detail = new BookingDetail() { Courses = menuItems, BillInfo = new RestaurantBillInfo() { PaymentType = paymentType, PayRate = payRate } };
-            payAmount = _amountCalculaterV1.getItemPayAmount(detail);
+            paidAmount = _amountCalculaterV1.getItemPayAmount(detail);
             amount = _amountCalculaterV1.getItemAmount(detail);
-            return new ResponseModel { msg = "ok", code = 200, data = new { amount, payAmount } };
+            return new ResponseModel { msg = "ok", code = 200, data = new { amount, paidAmount } };
 
         }
         public async Task<ResponseModel> GetBookingAmount(bool isBookingModify, string currency, string userId, double rate, List<string> Ids)
         {
-            decimal EUAmount = 0, UKAmount = 0, EUPayAmount = 0, UKPayAmount = 0, totalPayAmount = 0;
+            decimal EUAmount = 0, UKAmount = 0, EUPaidAmount = 0, UKPaidAmount = 0, totalPayAmount = 0;
             DateTime sdate = DateTime.Now;
             if (isBookingModify)
             {
@@ -936,14 +936,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         if (detail.Currency == "UK")
                         {
                             UKAmount += _amountCalculaterV1.getItemAmount(detail);
-                            UKPayAmount += detail.AmountInfos.Sum(a => a.PaidAmount);
+                            UKPaidAmount += detail.AmountInfos.Sum(a => a.PaidAmount);
 
 
                         }
                         else
                         {
                             EUAmount += _amountCalculaterV1.getItemAmount(detail);
-                            EUPayAmount += detail.AmountInfos.Sum(a => a.PaidAmount);
+                            EUPaidAmount += detail.AmountInfos.Sum(a => a.PaidAmount);
                         }
                     }
                 }
@@ -977,18 +977,18 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     if (detail.Currency == "UK")
                     {
                         UKAmount += _amountCalculaterV1.getItemAmount(detail);
-                        UKPayAmount += _amountCalculaterV1.getItemPayAmount(detail);
+                        UKPaidAmount += _amountCalculaterV1.getItemPayAmount(detail);
                     }
                     else
                     {
                         EUAmount += _amountCalculaterV1.getItemAmount(detail);
-                        EUPayAmount += _amountCalculaterV1.getItemPayAmount(detail);
+                        EUPaidAmount += _amountCalculaterV1.getItemPayAmount(detail);
                     }
                 }
 
             }
             Console.WriteLine("Total: " + (DateTime.Now - sdate).TotalMilliseconds);
-            return new ResponseModel { msg = "ok", code = 200, data = new { EUAmount, UKAmount, EUPayAmount, UKPayAmount, totalPayAmount } };
+            return new ResponseModel { msg = "ok", code = 200, data = new { EUAmount, UKAmount, EUPaidAmount, UKPaidAmount, totalPayAmount } };
 
         }
 

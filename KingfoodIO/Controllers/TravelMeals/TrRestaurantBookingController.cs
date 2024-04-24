@@ -186,7 +186,7 @@ namespace KingfoodIO.Controllers.TravelMeals
 
 
         /// <summary>
-        /// 订单修改时返回的payAmount不可用，应该取amountInfos里真实付了多少钱的Sum(payAmount)。
+        /// 订单修改时返回的paidAmount不可用，应该取amountInfos里真实付了多少钱的Sum(paidAmount)。
         /// Json中menuCalculateType，price，childrenPrice，qty，childrenQty必填
         /// </summary>
         /// <param name="menuItems"></param>
