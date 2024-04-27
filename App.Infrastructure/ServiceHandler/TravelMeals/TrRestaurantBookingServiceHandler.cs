@@ -49,7 +49,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<object> UpdateAccepted(string bookingId, string subBillId, int acceptType, string operater);
         Task<bool> UpdateAcceptedReason(string bookingId, string subBillId, string reason, string operater);
         Task<bool> CancelBooking(string bookingId, string detailId, int shopId, string userEmail);
-        Task<ResponseModel> RequestBooking(TrDbRestaurantBooking booking, int shopId, DbToken user);
+        Task<ResponseModel> MackBooking(TrDbRestaurantBooking booking, int shopId, DbToken user);
         Task<ResponseModel> ModifyBooking(TrDbRestaurantBooking booking, int shopId, string email);
         Task<bool> DeleteBooking(string bookingId, int shopId);
         Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
@@ -118,6 +118,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 if (item.Id == detailId)
                 {
                     item.Status = OrderStatusEnum.Canceled;
+                    if (item.AcceptStatus == AcceptStatusEnum.Declined) { }//已拒绝不作反应
+                    else if (item.AcceptStatus == AcceptStatusEnum.Accepted)
+                        item.AcceptStatus = AcceptStatusEnum.CanceledAfterAccepted;
+                    else
+                        item.AcceptStatus = AcceptStatusEnum.CanceledBeforeAccepted;
                     SendCancelEmail(booking, item);
                 }
             }
@@ -193,8 +198,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 if (item.Id == subBillId)
                 {
-                    if (item.AcceptStatus == 0)
+                    if (item.AcceptStatus == AcceptStatusEnum.UnAccepted)
+                    {
                         item.AcceptStatus = (AcceptStatusEnum)acceptType;
+                        if (item.AcceptStatus == AcceptStatusEnum.Accepted)
+                            item.Status = OrderStatusEnum.Accepted;
+                        if (item.AcceptStatus == AcceptStatusEnum.Declined)
+                            item.Status = OrderStatusEnum.Canceled;
+                    }
                     else if (item.AcceptStatus == AcceptStatusEnum.Accepted)
                     {
                         return new { code = 1, msg = "订单已接收", data = booking };
@@ -211,7 +222,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //    _stripeUtil.RefundGroupMeals(booking);
             //}
             var opt = new OperationInfo() { Operater = operater, Operation = acceptType == 1 ? "接收预订" : "拒绝预订", UpdateTime = DateTime.Now };
-            booking.Operations.Add(opt);
+            DBbooking.Operations.Add(opt);
             var temp = await _restaurantBookingRepository.UpsertAsync(DBbooking);
             string msg = $"您于{booking.BookingDate} {booking.BookingTime} 提交的订单已被接收，请按时就餐";
             if (acceptType == 2)
@@ -345,7 +356,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     booking.PaymentInfos[0].StripeChargeId = chargeId;
                     booking.PaymentInfos[0].StripeReceiptUrl = receiptUrl;
                     booking.PaymentInfos[0].Paid = true;
+
                     booking.Status = Domain.Enum.OrderStatusEnum.UnAccepted;
+                    booking.Details.ForEach(a => a.Status = OrderStatusEnum.UnAccepted);
                 }
                 _logger.LogInfo("----------------BookingPaid" + booking.Id);
                 var temp = await _restaurantBookingRepository.UpsertAsync(booking);
@@ -407,7 +420,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         item.Modified = true;
                         isChange = true;
                         ModifyInfo modifyInfo = new ModifyInfo();
-                        modifyInfo.ModifyField = 1;
+                        modifyInfo.ModifyField = nameof(item.SelectDateTime);
                         modifyInfo.ModifyLocation = $"{booking.Id}>{item.Id}";
                         modifyInfo.oldValue = item.SelectDateTime.ToString();
                         modifyInfo.newValue = detail.SelectDateTime.ToString();
@@ -419,18 +432,29 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         item.Modified = true;
                         isChange = true;
                         ModifyInfo modifyInfo = new ModifyInfo();
-                        modifyInfo.ModifyField = 2;
+                        modifyInfo.ModifyField = nameof(item.Memo);
                         modifyInfo.ModifyLocation = $"{booking.Id}>{item.Id}";
                         modifyInfo.oldValue = item.Memo;
                         modifyInfo.newValue = detail.Memo;
                         operationInfo.ModifyInfos.Add(modifyInfo);
                         item.Memo = detail.Memo;
                     }
+                    if (detail.GroupRef != item.GroupRef)
+                    {
+                        item.Modified = true;
+                        isChange = true;
+                        ModifyInfo modifyInfo = new ModifyInfo();
+                        modifyInfo.ModifyField = nameof(item.GroupRef);
+                        modifyInfo.ModifyLocation = $"{booking.Id}>{item.Id}";
+                        modifyInfo.oldValue = item.GroupRef;
+                        modifyInfo.newValue = detail.GroupRef;
+                        operationInfo.ModifyInfos.Add(modifyInfo);
+                        item.GroupRef = detail.GroupRef;
+                    }
                     var Oldamount = _amountCalculaterV1.getItemAmount(item);
 
                     foreach (var course in item.Courses)
                     {
-
                         var _course = detail.Courses.FirstOrDefault(c => c.Id == course.Id);
                         if (_course == null) continue;
                         if (course.Price == _course.Price && course.Qty == _course.Qty && course.ChildrenQty == _course.ChildrenQty) continue;
@@ -439,7 +463,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                             item.Modified = true;
                             isChange = true;
                             ModifyInfo modifyInfo = new ModifyInfo();
-                            modifyInfo.ModifyField = 3;
+                            modifyInfo.ModifyField = nameof(course.Qty);
                             modifyInfo.ModifyLocation = $"{booking.Id}>{item.Id}>{course.Id}";
                             modifyInfo.oldValue = course.Qty.ToString();
                             modifyInfo.newValue = _course.Qty.ToString();
@@ -452,7 +476,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                             item.Modified = true;
                             isChange = true;
                             ModifyInfo modifyInfo = new ModifyInfo();
-                            modifyInfo.ModifyField = 5;
+                            modifyInfo.ModifyField = nameof(course.ChildrenQty);
                             modifyInfo.ModifyLocation = $"{booking.Id}>{item.Id}>{course.Id}";
                             modifyInfo.oldValue = course.ChildrenQty.ToString();
                             modifyInfo.newValue = _course.ChildrenQty.ToString();
@@ -460,12 +484,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                             course.ChildrenQty = _course.ChildrenQty;
 
                         }
-                        if (course.Price != _course.Price)
+                        if (course.Id != _course.Id)
                         {
                             item.Modified = true;
                             isChange = true;
                             ModifyInfo modifyInfo = new ModifyInfo();
-                            modifyInfo.ModifyField = 4;
+                            modifyInfo.ModifyField = nameof(course.Price);
                             modifyInfo.ModifyLocation = $"{booking.Id}>{item.Id}>{course.Id}";
                             modifyInfo.oldValue = course.Price.ToString();
                             modifyInfo.newValue = _course.Price.ToString();
@@ -509,7 +533,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
 
 
-        public async Task<ResponseModel> RequestBooking(TrDbRestaurantBooking booking, int shopId, DbToken user)
+        public async Task<ResponseModel> MackBooking(TrDbRestaurantBooking booking, int shopId, DbToken user)
         {
             _logger.LogInfo("RequestBooking" + shopId);
             Guard.NotNull(booking);
@@ -527,6 +551,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (exsitBooking != null)
             {
                 booking.Id = exsitBooking.Id;
+                booking.BookingRef = exsitBooking.BookingRef;
             }
             else
             {
@@ -557,7 +582,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             return new ResponseModel { msg = "", code = 200, data = newItem };
         }
-        private async Task<bool> InitBooking(TrDbRestaurantBooking booking,string userId)
+        private async Task<bool> InitBooking(TrDbRestaurantBooking booking, string userId)
         {
             if (string.IsNullOrWhiteSpace(booking.CustomerEmail))
             {
@@ -567,7 +592,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 booking.CustomerEmail = user.Email;
             }
             booking.Created = _dateTimeUtil.GetCurrentTime();
-            bool noPay = true; 
+            bool noPay = true;
             foreach (var item in booking.Details)
             {
                 if (string.IsNullOrWhiteSpace(item.RestaurantEmail))
@@ -579,15 +604,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     item.RestaurantPhone = rest.PhoneNumber;
                 }
 
-            
+
                 if (string.IsNullOrWhiteSpace(item.Id))
                     item.Id = Guid.NewGuid().ToString();
 
-                foreach (var course in item.Courses)
-                {
-                    if (string.IsNullOrWhiteSpace(course.Id))
-                        course.Id = "C" + SnowflakeId.getSnowId();
-                }
+                //foreach (var course in item.Courses)
+                //{
+                //    if (string.IsNullOrWhiteSpace(course.Id))
+                //        course.Id = "C" + SnowflakeId.getSnowId();
+                //}
 
                 if (item.AmountInfos.Count() == 0)
                 {
@@ -608,11 +633,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
                 if (item.BillInfo.PaymentType != PaymentTypeEnum.PayAtStore)
                     noPay = false;
+
+                if (noPay)
+                    item.Status = OrderStatusEnum.UnAccepted;
             }
             if (noPay)
             {
                 booking.Status = OrderStatusEnum.UnAccepted;
-               
+
             }
             return noPay;
         }
@@ -646,7 +674,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         }
 
-     
+
         public async Task<bool> ResendEmail(string bookingId)
         {
             try

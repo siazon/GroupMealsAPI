@@ -23,7 +23,7 @@ namespace KingfoodIO.Controllers.TravelMeals
 {
     /// <summary>
     /// Status: None=0,UnAccepted=1,Accepted=2,Canceled=3,OpenOrder = 4, Settled=5,
-    /// AcceptStatus: 0:Defult, 1:Accepted, 2:Declined
+    /// AcceptStatus: 0:Defult, 1:Accepted, 2:Declined, 3:HoldOn, 4:CanceledBeforeAccepted, 5:CanceledAfterAccepted
     /// </summary>
     [Route("api/[controller]/[action]")]
     public class TrRestaurantBookingController : BaseController
@@ -69,7 +69,7 @@ namespace KingfoodIO.Controllers.TravelMeals
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, false,
-                async () => await _restaurantBookingServiceHandler.RequestBooking(booking, shopId, user));
+                async () => await _restaurantBookingServiceHandler.MackBooking(booking, shopId, user));
         }
 
         /// <summary>

@@ -40,7 +40,7 @@ namespace App.Domain.TravelMeals
     }
     public class ModifyInfo
     {
-        public int ModifyField { get; set; }//1修改时间，2修改备注，3修改人数，4修改菜单
+        public string ModifyField { get; set; }
         public string ModifyLocation { get; set; }
         public string oldValue { get; set; }
         public string newValue { get; set; }
@@ -89,7 +89,7 @@ namespace App.Domain.TravelMeals
     }
     public enum AcceptStatusEnum
     {
-        DEFAULT, Accepted, Declined
+        UnAccepted, Accepted, Declined, CanceledBeforeAccepted,CanceledAfterAccepted,
     }
     public class BookingCourse : TrDbRestaurantMenuItem
     {

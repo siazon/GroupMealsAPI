@@ -62,7 +62,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpGet]
         //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> GetRestaurant(string Id, int shopId,  bool cache = true)
+        public async Task<IActionResult> GetRestaurant(string Id, int shopId,  bool cache = false)
         {
             return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetRestaurant(Id));
         }
