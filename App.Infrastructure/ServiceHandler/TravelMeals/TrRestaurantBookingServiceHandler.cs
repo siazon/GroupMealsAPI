@@ -739,54 +739,68 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToken = null)
         {
             //settleOrder();
+            List<TrDbRestaurantBooking> res = new List<TrDbRestaurantBooking>();
+            string pageToken = "";
             if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(content))
             {
                 var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted) || a.Details.Any(b => b.RestaurantEmail == email), pageSize, continuationToken);
-                var list = Bookings.Value.ToList();
-                return new ResponseModel { msg = "ok", code = 200, token = Bookings.Key, data = list };
+                res = Bookings.Value.ToList();
+                pageToken = Bookings.Key;
             }
             if (string.IsNullOrWhiteSpace(content))
             {
                 var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted) || a.Details.Any(b => b.RestaurantEmail == email), pageSize, continuationToken);
-                var list = Bookings.Value.ToList().FindAll(a => a.CustomerEmail == email).ToList();
-                return new ResponseModel { msg = "ok", code = 200, token = Bookings.Key, data = list };
-            }
+                res = Bookings.Value.ToList().FindAll(a => a.CustomerEmail == email);
+                pageToken = Bookings.Key;
 
+            }
             else
             {
                 var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted) || a.Details.Any(b => b.RestaurantEmail == email), pageSize, continuationToken);
-                var list = Bookings.Value.ToList().FindAll(a => a.Details.Any(d => d.RestaurantName.ToLower().Contains(content.ToLower()))).ToList();
-                return new ResponseModel { msg = "ok", code = 200, token = Bookings.Key, data = list };
+                res = Bookings.Value.ToList().FindAll(a => a.Details.Any(d => d.RestaurantName.ToLower().Contains(content.ToLower())));
+                pageToken = Bookings.Key;
+
             }
+            res.ForEach(r => { r.Details.OrderByDescending(d => d.SelectDateTime); });
+            var list = res.OrderByDescending(a => a.Details.Max(d => d.SelectDateTime));
+            return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = list };
 
         }
         public async void SettleOrder()
         {
-            DateTime stime = DateTime.Now;
-            var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted));
-            var span = (DateTime.Now - stime).TotalMilliseconds;
-            Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " : " + span);
-            var list = Bookings.ToList();
-            foreach (var item in list)
+            try
             {
-                bool isSettled = true;
-                foreach (var b in item.Details)
+                DateTime stime = DateTime.Now;
+                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted));
+                var span = (DateTime.Now - stime).TotalMilliseconds;
+                Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " : " + span);
+                var list = Bookings.ToList();
+                foreach (var item in list)
                 {
-                    if (b.Status == OrderStatusEnum.Accepted && b.AcceptStatus == AcceptStatusEnum.Accepted && b.SelectDateTime < DateTime.Now)
+                    bool isSettled = true;
+                    foreach (var b in item.Details)
                     {
+                        if (b.Status == OrderStatusEnum.Accepted && b.AcceptStatus == AcceptStatusEnum.Accepted && b.SelectDateTime < DateTime.Now)
+                        {
 
+                        }
+                        else
+                        {
+                            isSettled = false;
+                        }
                     }
-                    else
+                    if (isSettled && item.Status != OrderStatusEnum.Settled)
                     {
-                        isSettled = false;
+                        item.Status = OrderStatusEnum.Settled;
+                        item.Details.ForEach(a => a.Status = OrderStatusEnum.Settled);
+                        await _restaurantBookingRepository.UpsertAsync(item);
                     }
                 }
-                if (isSettled && item.Status != OrderStatusEnum.Settled)
-                {
-                    item.Status = OrderStatusEnum.Settled;
-                    item.Details.ForEach(a => a.Status = OrderStatusEnum.Settled);
-                    await _restaurantBookingRepository.UpsertAsync(item);
-                }
+            }
+            catch (Exception ex)
+            {
+
+                throw;
             }
         }
 

@@ -237,7 +237,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             try
             {
-                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, $"Thank you for your Booking", emailHtml));
+                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, subject, emailHtml));
 
             }
             catch (Exception ex)

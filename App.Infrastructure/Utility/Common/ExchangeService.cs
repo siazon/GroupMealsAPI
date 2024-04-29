@@ -54,6 +54,9 @@ namespace App.Infrastructure.Utility.Common
 #if RELEASE
             using (var scope = _serviceScopeFactory.CreateScope())
             {
+              var _restaurantBookingServiceHandler = scope.ServiceProvider.GetRequiredService<ITrRestaurantBookingServiceHandler>();
+
+                _restaurantBookingServiceHandler.SettleOrder();
                 // 获取需要的服务实例
                 var myService = scope.ServiceProvider.GetRequiredService<IExchangeUtil>();
                 // 在这里执行后台任务
