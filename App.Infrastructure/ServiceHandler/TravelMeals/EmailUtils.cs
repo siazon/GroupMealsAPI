@@ -52,7 +52,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     names.Add(course.MenuItemName);
                 }
                 Detail += $"{string.Join('/',names)} * {qty} 人 <br>";
-                string itemCurrencyStr = item.Currency == "UK" ? "￡" : "€";
+                string itemCurrencyStr = item.Currency == "UK" ? "£" : "€";
                 //_twilioUtil.sendSMS(item.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
                 Detail += $"Amount(金额)：<b>{itemCurrencyStr}{item.AmountInfos.Sum(x => x.Amount)}</b>, <br> Paid(已付)：<b>{itemCurrencyStr}{paidAmount}</b>,<br>";
                 if(amount - paidAmount>0)
@@ -74,7 +74,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         //public static async Task EmailSupport(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger)
         //{
         //    string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
-        //    string currencyStr = booking.PayCurrency == "UK" ? "￡" : "€";
+        //    string currencyStr = booking.PayCurrency == "UK" ? "£" : "€";
         //    foreach (var item in booking.Details)
         //    {
         //        decimal amount = 0;// item.AmountInfos.Sum(x => x.Amount);
@@ -103,7 +103,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         //            Detail += $"{course.MenuItemName} * {course.Qty} 人 {currencyStr}{paidAmount}/{amount}<br>";
         //        }
 
-        //        string itemCurrencyStr = item.Currency == "UK" ? "￡" : "€";
+        //        string itemCurrencyStr = item.Currency == "UK" ? "£" : "€";
         //        //_twilioUtil.sendSMS(booking.Details[0].RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
         //        Detail += $"Amount(金额)：<b>{itemCurrencyStr}{item.AmountInfos.Sum(x => x.Amount)}</b> Paid(已付)：<b>{currencyStr}{paidAmount}</b> UnPaid(待支付)：<b style=\"color: red;\">{currencyStr}{amount - paidAmount}</b>";
         //        var detailstr = new HtmlString(Detail);
@@ -125,7 +125,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string Detail = "";
             decimal totalAmount = 0, totalPaidAmount = 0;
             decimal UKAmount = 0, EUAmount = 0,UKUnPaidAmount=0,EUUnPaidAmount=0;
-            string currencyStr = booking.PayCurrency == "UK" ? "￡" : "€";
+            string currencyStr = booking.PayCurrency == "UK" ? "£" : "€";
             foreach (var item in booking.Details)
             {
                 if (item.Status == OrderStatusEnum.Canceled) continue;
@@ -149,7 +149,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     EUUnPaidAmount += amount-paidAmount;
                 }
 
-                string itemCurrencyStr = item.Currency == "UK" ? "￡" : "€";
+                string itemCurrencyStr = item.Currency == "UK" ? "£" : "€";
                 List<string> names =  new List<string>();
                 int qty = item.Courses.Sum(c=>c.Qty+c.ChildrenQty);
                 foreach (var course in item.Courses)
@@ -167,14 +167,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string AmountStr = "";
 
             if (UKAmount > 0 && EUAmount > 0)
-                AmountStr = $"€{Math.Round(EUAmount, 2)} + ￡{Math.Round(UKAmount, 2)}";
+                AmountStr = $"€{Math.Round(EUAmount, 2)} + £{Math.Round(UKAmount, 2)}";
             else
-                AmountStr = UKAmount > 0 ? $"￡{Math.Round(UKAmount, 2)}" : $"€{Math.Round(EUAmount, 2)}";
+                AmountStr = UKAmount > 0 ? $"£{Math.Round(UKAmount, 2)}" : $"€{Math.Round(EUAmount, 2)}";
 
             if (UKUnPaidAmount > 0 && EUUnPaidAmount > 0)
-                UnpaidAmountStr = $"€{Math.Round(EUUnPaidAmount, 2)} + ￡{Math.Round(UKUnPaidAmount, 2)}";
+                UnpaidAmountStr = $"€{Math.Round(EUUnPaidAmount, 2)} + £{Math.Round(UKUnPaidAmount, 2)}";
             else
-                UnpaidAmountStr = UKUnPaidAmount > 0 ? $"￡{Math.Round(UKUnPaidAmount, 2)}" : $"€{Math.Round(EUUnPaidAmount, 2)}";
+                UnpaidAmountStr = UKUnPaidAmount > 0 ? $"£{Math.Round(UKUnPaidAmount, 2)}" : $"€{Math.Round(EUUnPaidAmount, 2)}";
 
             //Detail += $"Amount(金额)：<b>{currencyStr}{totalAmount}</b> Paid(已付)：<b>{currencyStr}{totalPaidAmount}</b> UnPaid(待支付)：<b style=\"color: red;\">{currencyStr}{totalAmount - totalPaidAmount}</b>";
             var detailstr = new HtmlString(Detail);
@@ -207,7 +207,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";
             decimal totalAmount = 0, totalPaidAmount = 0;
-            string currencyStr = booking.PayCurrency == "UK" ? "￡" : "€";
+            string currencyStr = booking.PayCurrency == "UK" ? "£" : "€";
             foreach (var item in booking.Details)
             {
                 Detail += item.RestaurantName + "       ";
