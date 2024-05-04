@@ -229,7 +229,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             foreach (var r in restaurant.Categories) {
                 foreach (var item in r.MenuItems)
                 {
-                    item.MenuCalculateType = restaurant.MenuCalculateType;
+                    if(string.IsNullOrWhiteSpace(item.Id))
+                        item.Id = Guid.NewGuid().ToString();
                 }
             }
 

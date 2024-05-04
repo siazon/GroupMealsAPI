@@ -17,6 +17,7 @@ using App.Infrastructure.ServiceHandler.Tour;
 using Hangfire;
 using Microsoft.AspNetCore.Hosting;
 using App.Domain.TravelMeals;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 
 namespace App.Infrastructure.ServiceHandler.Common
 {

@@ -158,11 +158,13 @@ namespace KingfoodIO.Controllers.Common
         /// <returns></returns>
         [HttpGet]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
-        //[ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> UpdatePassword(string email, string oldPassword, string password, int shopId)
+        [ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> UpdatePassword( string oldPassword, string password, int shopId)
         {
+            var authHeader = Request.Headers["Wauthtoken"];
+            var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, false,
-                async () => await _customerServiceHandler.UpdatePassword(email, oldPassword, password, shopId));
+                async () => await _customerServiceHandler.UpdatePassword(user.UserEmail, oldPassword, password, shopId));
         }
         /// <summary>
         /// 

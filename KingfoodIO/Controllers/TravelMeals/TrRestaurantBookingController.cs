@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
+using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using Microsoft.VisualBasic;
 
 namespace KingfoodIO.Controllers.TravelMeals
@@ -141,7 +142,9 @@ namespace KingfoodIO.Controllers.TravelMeals
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> SearchBookings([FromBody] string pageToken, int shopId, string email, string content, int pageSize = -1, bool cache = true)
         {
-
+            var authHeader = Request.Headers["Wauthtoken"];
+            var userInfo = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            email = userInfo.UserEmail;
             return await ExecuteAsync(shopId, cache,
                 async () => await _restaurantBookingServiceHandler.SearchBookings(shopId, email, content, pageSize, pageToken));
         }
@@ -159,11 +162,32 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpPost]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> SearchBookingsByRestaurant([FromBody] string pageToken, int shopId, string email, string content, int pageSize = -1, bool cache = true)
+        public async Task<IActionResult> SearchBookingsByRestaurant([FromBody] string pageToken, int shopId,  string content, int pageSize = -1, bool cache = true)
+        {
+            var authHeader = Request.Headers["Wauthtoken"];
+            var userInfo = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+         string   email = userInfo.UserEmail;
+            return await ExecuteAsync(shopId, cache,
+                async () => await _restaurantBookingServiceHandler.SearchBookingsByRestaurant(shopId, email, content, pageSize, pageToken));
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="pageToken"></param>
+        /// <param name="shopId"></param>
+        /// <param name="content"></param>
+        /// <param name="pageSize"></param>
+        /// <param name="cache"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> SearchBookingsByAdmin([FromBody] string pageToken, int shopId, string content, int pageSize = -1, bool cache = true)
         {
 
             return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantBookingServiceHandler.SearchBookingsByRestaurant(shopId, email, content, pageSize, pageToken));
+                async () => await _restaurantBookingServiceHandler.SearchBookingsByAdmin(shopId,  content, pageSize, pageToken));
         }
 
 

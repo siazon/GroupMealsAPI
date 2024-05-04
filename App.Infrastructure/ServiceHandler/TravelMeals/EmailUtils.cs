@@ -45,16 +45,22 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 paidAmount = Math.Round(paidAmount, 2);
                 amount = Math.Round(amount, 2);
                 Detail = "";
+                Detail += item.RestaurantName + " <br> ";
+                Detail += item.RestaurantAddress + " <br> ";
+                Detail += item.RestaurantPhone + "  " + item.RestaurantEmail + " <br> ";
+                Detail += item.SelectDateTime + " <br><br> ";
+                Detail += "团号: " + item.GroupRef + " <br> ";
+                Detail += "联系人: " + item.ContactName +" "+item.ContactPhone+ " <br> ";
+
                 List<string> names=new List<string>();
-                int qty=item.Courses.Sum(c=>c.Qty+c.ChildrenQty);
                 foreach (var course in item.Courses)
                 {
-                    names.Add(course.MenuItemName);
+                    int qty = course.Qty + course.ChildrenQty;
+                    Detail += $"{course.MenuItemName} * {qty} 人 ";
                 }
-                Detail += $"{string.Join('/',names)} * {qty} 人 <br>";
                 string itemCurrencyStr = item.Currency == "UK" ? "£" : "€";
                 //_twilioUtil.sendSMS(item.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
-                Detail += $"Amount(金额)：<b>{itemCurrencyStr}{item.AmountInfos.Sum(x => x.Amount)}</b>, <br> Paid(已付)：<b>{itemCurrencyStr}{paidAmount}</b>,<br>";
+                Detail += $"<br> Amount(金额)：<b>{itemCurrencyStr}{item.AmountInfos.Sum(x => x.Amount)}</b>, <br> Paid(已付)：<b>{itemCurrencyStr}{paidAmount}</b>,<br>";
                 if(amount - paidAmount>0)
                 Detail += $" UnPaid(待支付)：<b style=\"color: red;\">{itemCurrencyStr}{amount - paidAmount}</b>";
                 var detailstr = new HtmlString(Detail);
@@ -132,7 +138,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 Detail += item.RestaurantName +" <br> ";
                 Detail += item.RestaurantAddress + " <br> ";
                 Detail += item.RestaurantPhone + "  " + item.RestaurantEmail + " <br> ";
-                Detail += item.SelectDateTime + " <br> ";
+                Detail += item.SelectDateTime + " <br><br> ";
+                Detail += "团号: " + item.GroupRef+ " <br> ";
+                Detail += "联系人: " + item.ContactName + " " + item.ContactPhone + " <br> ";
                 decimal amount = item.AmountInfos.Sum(x => x.Amount);
                 decimal paidAmount = item.AmountInfos.Sum(x => x.PaidAmount);
 
@@ -151,12 +159,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
                 string itemCurrencyStr = item.Currency == "UK" ? "£" : "€";
                 List<string> names =  new List<string>();
-                int qty = item.Courses.Sum(c=>c.Qty+c.ChildrenQty);
                 foreach (var course in item.Courses)
                 {
-                    names .Add( course.MenuItemName);
+                    int qty = course.Qty + course.ChildrenQty;
+                    Detail += $"{course.MenuItemName} * {qty} 人 ";
                 }
-                Detail += $"{string.Join('/',names)} * {qty}  人 <br> Amount(金额)：{itemCurrencyStr}{Math.Round(amount, 2)}，    Paid(已付){itemCurrencyStr}{Math.Round(paidAmount, 2)}, <br>";
+                Detail += $"<br> Amount(金额)：{itemCurrencyStr}{Math.Round(amount, 2)}，    Paid(已付){itemCurrencyStr}{Math.Round(paidAmount, 2)}, <br>";
                 if (amount - paidAmount>0)
                     Detail += $"UnPaid(待支付)：<b style ='color: red;'>{itemCurrencyStr}{amount - paidAmount}</b> <br>";
 

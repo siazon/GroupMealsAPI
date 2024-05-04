@@ -101,5 +101,10 @@ namespace App.Domain.TravelMeals
         public int TableQty { get; set; }
         public string Memo { get; set; }
         public decimal Amount { get; set; }
+
+        public override string ToString()
+        {
+            return  $"id:{Id},name:{MenuItemName},qty:{Qty},childrenQty:{ChildrenQty},price:{Price},childrenPrice{ChildrenPrice},MenuCalculateType:{MenuCalculateType},Category:{Category}" ;
+        }
     }
 }
