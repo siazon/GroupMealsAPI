@@ -28,6 +28,7 @@ namespace KingfoodIO.Controllers.Common
         AppSettingConfig _appsettingConfig;
         ILogManager logger;
         IMemoryCache _memoryCache;
+        IEncryptionHelper _encryptionHelper;
         /// <summary>
         /// 
         /// </summary>
@@ -38,13 +39,14 @@ namespace KingfoodIO.Controllers.Common
         /// <param name="customerServiceHandler"></param>
         /// <param name="logger"></param>
         public CustomerController(IOptions<CacheSettingConfig> cachesettingConfig, IOptions<AppSettingConfig> appsettingConfig,
-            IMemoryCache memoryCache, IRedisCache redisCache,
+            IMemoryCache memoryCache, IRedisCache redisCache, IEncryptionHelper encryptionHelper,
         ICustomerServiceHandler customerServiceHandler, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
         {
             this.logger = logger;
             _memoryCache = memoryCache;
             _customerServiceHandler = customerServiceHandler;
             _appsettingConfig = appsettingConfig.Value;
+            _encryptionHelper= encryptionHelper;
         }
 
         /// <summary>
@@ -76,10 +78,14 @@ namespace KingfoodIO.Controllers.Common
             string token = "";
             try
             {
+                var passwordEncode = _encryptionHelper.EncryptString(password);
+
                 customer = await _customerServiceHandler.LoginCustomer(email, password, shopId);
                 if (customer == null)
                 {
                     return new { msg = "User not found!(用户不存在)", data = customer, token };
+                } else if (customer.Password!=passwordEncode) {
+                    return new { msg = "Wrong Password!(密码错误)",  };
                 }
                 else if (!customer.IsVerity) {
                     return new { msg = "Email is not verified!(邮箱未验证)", data = customer, token };
@@ -88,7 +94,7 @@ namespace KingfoodIO.Controllers.Common
                 DbToken dbToken = new DbToken()
                 {
                     ShopId = shopId,
-                    ExpiredTime = DateTime.Now.AddYears(1),
+                    ExpiredTime = DateTime.UtcNow.AddDays(14),
                     ServerKey = _appsettingConfig.ShopAuthKey,
                     UserId = customer.Id,
                     UserName = customer.UserName,
@@ -112,6 +118,7 @@ namespace KingfoodIO.Controllers.Common
             }
             catch (Exception ex)
             {
+                Console.WriteLine(ex.Message);
                 logger.LogError(ex.Message);
                 return new { msg = "User name or Password is incorrect!(用户名密码错误)", data = customer, token };
 

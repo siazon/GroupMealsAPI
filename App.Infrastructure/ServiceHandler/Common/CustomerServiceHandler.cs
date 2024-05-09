@@ -91,7 +91,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             Guard.GreaterThanZero(shopId);
             var passwordEncode = _encryptionHelper.EncryptString(password);
             var customer = await _customerRepository.GetOneAsync(r =>
-                r.Email == email && r.Password == passwordEncode && r.IsActive.HasValue && r.IsActive.Value
+                r.Email == email  && r.IsActive.HasValue && r.IsActive.Value
                 && r.ShopId == shopId);
 
             return   customer ;

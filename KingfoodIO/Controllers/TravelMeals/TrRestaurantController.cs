@@ -97,9 +97,10 @@ namespace KingfoodIO.Controllers.TravelMeals
             }
             catch (Exception ex)
             {
-
+                Console.WriteLine(ex.Message);
+                
             }
-            return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetRestaurantInfo(shopId, country, city, content, userInfo, pageSize, pageToken));
+            return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetRestaurants(shopId, country, city, content, userInfo, pageSize, pageToken));
             
         }
 

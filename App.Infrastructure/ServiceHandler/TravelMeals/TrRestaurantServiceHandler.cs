@@ -31,12 +31,14 @@ using Microsoft.Extensions.Caching.Memory;
 using Stripe;
 using System.Linq.Expressions;
 using Quartz.Util;
+using static FluentValidation.Validators.PredicateValidator;
+using System.Reflection;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
     public interface ITrRestaurantServiceHandler
     {
-        Task<ResponseModel> GetRestaurantInfo(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null);
+        Task<ResponseModel> GetRestaurants(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null);
 
 
         Task<ResponseModel> GetRestaurant(string Id);
@@ -94,97 +96,175 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var body = Expression.Equal(member, constant);
             return body;
         }
+        public async Task<ResponseModel> GetRestaurants (int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null)
+        {
+            bool IsAdmin = userInfo.RoleLevel.AuthVerify(7);
+            bool isAllCountry = country == "All";
+            bool isAllCity = city == "All";
+            bool isContentEmpty = string.IsNullOrWhiteSpace(content);
+            List<TrDbRestaurant> data = new List<TrDbRestaurant>();
+            KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage;
 
-        public async Task<ResponseModel> GetRestaurantInfo(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null)
+            //var cacheKey = string.Format("motionmedia-{1}-{0}", shopId, typeof(TrDbRestaurant).Name);
+            //var cacheResult = _memoryCache.Get<KeyValuePair<string, IEnumerable<TrDbRestaurant>>>(cacheKey);
+            //if (cacheResult.Value!=null)
+            //{
+            //    currentPage = cacheResult;
+            //}
+            //currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId, pageSize, continuationToke);
+            //_memoryCache.Set(cacheKey, currentPage);
+
+
+
+            currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId, pageSize, continuationToke);
+            var resdata = currentPage.Value.ToList();
+
+
+            List<Predicate<TrDbRestaurant>> Predicates = new List<Predicate<TrDbRestaurant>>();
+            Predicates.Add(s=>s.ShopId==shopId);
+
+            if (!isContentEmpty)
+            {
+                Predicates.Add( s => s.StoreName.Contains(content)||s.Address.Contains(content)||s.Description.Contains(content)||s.Tags.Any(b => b.Contains(content))||s.Attractions.Any(b => b.Contains(content)));
+
+            }
+
+            if (!IsAdmin)
+            {
+                Predicates.Add(a=>a.IsActive==true);
+            }
+
+            if (!isAllCountry)
+            {
+                Predicates.Add(a => a.Country == country);
+            }
+            if (!isAllCity)
+            {
+                Predicates.Add(a => a.City.Contains(city));
+            }
+           
+            data = resdata.FindAll(Predicates).ClearForOutPut().OrderByDescending(a => a.Created).OrderBy(a => a.SortOrder).ToList();
+
+            continuationToke = currentPage.Key;
+
+            return new ResponseModel { msg = "ok", code = 200, token = continuationToke, data = data };
+
+        }
+
+        public async Task<ResponseModel> GetRestaurantsOld(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null)
         {
             KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage;
             List<TrDbRestaurant> data = new List<TrDbRestaurant>();
             try
             {
 
-           
-            bool IsAdmin = userInfo.RoleLevel.AuthVerify(7);
-            bool isAllCountry = country == "All";
-            bool isAllCity = city == "All";
-            bool isContentEmpty = string.IsNullOrWhiteSpace(content);
-            Expression expr = null;
-            ParameterExpression parameterExp = Expression.Parameter(typeof(TrDbRestaurant));
 
-            Expression memberExpression = null;
-            Expression constantExpression = null;
-            Expression expressionBody = null;
+                bool IsAdmin = userInfo.RoleLevel.AuthVerify(7);
+                bool isAllCountry = country == "All";
+                bool isAllCity = city == "All";
+                bool isContentEmpty = string.IsNullOrWhiteSpace(content);
+                Expression expr = null;
+                ParameterExpression parameterExp = Expression.Parameter(typeof(TrDbRestaurant));
 
-            if (!isContentEmpty)
-            {
-                //content = content.ToLower().Trim();
-                memberExpression = Expression.Property(parameterExp, "StoreName");
-                constantExpression = Expression.Constant(content);
-                expressionBody = Expression.Call(memberExpression, "Contains", Type.EmptyTypes, constantExpression, Expression.Constant(StringComparison.OrdinalIgnoreCase));
+                Expression memberExpression = null;
+                Expression constantExpression = null;
+                Expression expressionBody = null;
+
+                if (!isContentEmpty)
+                {
+                    //content = content.ToLower().Trim();
+                    memberExpression = Expression.Property(parameterExp, "StoreName");
+                    constantExpression = Expression.Constant(content);
+                    expressionBody = Expression.Call(memberExpression, "Contains", Type.EmptyTypes, constantExpression, Expression.Constant(StringComparison.OrdinalIgnoreCase));
+                    if (expr != null)
+                        expr = Expression.And(expr, expressionBody);
+                    else
+                        expr = expressionBody;
+
+                    memberExpression = Expression.Property(parameterExp, "Address");
+                    constantExpression = Expression.Constant(content);
+                    expressionBody = Expression.Call(memberExpression, "Contains", Type.EmptyTypes, constantExpression, Expression.Constant(StringComparison.OrdinalIgnoreCase));
+                    expr = Expression.OrElse(expr, expressionBody);
+
+                    memberExpression = Expression.Property(parameterExp, "Description");
+                    constantExpression = Expression.Constant(content);
+                    expressionBody = Expression.Call(memberExpression, "Contains", Type.EmptyTypes, constantExpression, Expression.Constant(StringComparison.OrdinalIgnoreCase));
+                    expr = Expression.OrElse(expr, expressionBody);
+
+                    memberExpression = Expression.Property(parameterExp, "City");
+                    constantExpression = Expression.Constant(content);
+                    expressionBody = Expression.Call(memberExpression, "Contains", Type.EmptyTypes, constantExpression, Expression.Constant(StringComparison.OrdinalIgnoreCase));
+                    expr = Expression.OrElse(expr, expressionBody);
+
+
+                    memberExpression = Expression.Property(parameterExp, "Tags");
+                    constantExpression = Expression.Constant(content);
+                    expressionBody = Expression.Call(memberExpression, "Contains", Type.EmptyTypes, constantExpression, Expression.Constant(StringComparison.OrdinalIgnoreCase));
+                    expr = Expression.OrElse(expr, expressionBody);
+
+
+                    memberExpression = Expression.Property(parameterExp, "Attractions");
+                    constantExpression = Expression.Constant(content);
+                    expressionBody = Expression.Call(memberExpression, "Contains", Type.EmptyTypes, constantExpression, Expression.Constant(StringComparison.OrdinalIgnoreCase));
+                    expr = Expression.OrElse(expr, expressionBody);
+
+                }
+
+
+                memberExpression = Expression.Property(parameterExp, "ShopId");
+                constantExpression = Expression.Constant(shopId, typeof(int?));
+                expressionBody = Expression.Equal(memberExpression, constantExpression);
                 if (expr != null)
-                    expr = Expression.And(expr, expressionBody);
+                    expr = Expression.AndAlso(expr, expressionBody);
                 else
                     expr = expressionBody;
 
-                memberExpression = Expression.Property(parameterExp, "Address");
-                constantExpression = Expression.Constant(content);
-                expressionBody = Expression.Call(memberExpression, "Contains", Type.EmptyTypes, constantExpression, Expression.Constant(StringComparison.OrdinalIgnoreCase));
-                expr = Expression.OrElse(expr, expressionBody);
-            }
+                if (!IsAdmin)
+                {
+                    memberExpression = Expression.Property(parameterExp, "IsActive");
+                    constantExpression = Expression.Constant(true, typeof(bool?));
+                    expressionBody = Expression.Equal(memberExpression, constantExpression);
+                    expr = Expression.AndAlso(expr, expressionBody);
+                    //expr = Expression.AndAlso(expr, CreateEqualExpression("IsActive", true,typeof(bool?)));
+                }
 
+                if (!isAllCountry)
+                {
+                    memberExpression = Expression.Property(parameterExp, "Country");
+                    constantExpression = Expression.Constant(country, typeof(string));
+                    expressionBody = Expression.Equal(memberExpression, constantExpression);
+                    expr = Expression.AndAlso(expr, expressionBody);
+                    //expr = Expression.AndAlso(expr, CreateEqualExpression("Country", country, typeof(string)));
+                }
+                if (!isAllCity)
+                {
+                    memberExpression = Expression.Property(parameterExp, "City");
+                    constantExpression = Expression.Constant(city);
+                    expressionBody = Expression.Call(memberExpression, "Contains", Type.EmptyTypes, constantExpression, Expression.Constant(StringComparison.OrdinalIgnoreCase));
+                    expr = Expression.AndAlso(expr, expressionBody);
 
-            memberExpression = Expression.Property(parameterExp, "ShopId");
-            constantExpression = Expression.Constant(shopId, typeof(int?));
-            expressionBody = Expression.Equal(memberExpression, constantExpression);
-            if (expr != null)
-                expr = Expression.AndAlso(expr, expressionBody);
-            else
-                expr = expressionBody;
-
-            if (!IsAdmin)
-            {
-                memberExpression = Expression.Property(parameterExp, "IsActive");
-                constantExpression = Expression.Constant(true, typeof(bool?));
-                expressionBody = Expression.Equal(memberExpression, constantExpression);
-                expr = Expression.AndAlso(expr, expressionBody);
-                //expr = Expression.AndAlso(expr, CreateEqualExpression("IsActive", true,typeof(bool?)));
-            }
-
-            if (!isAllCountry)
-            {
-                memberExpression = Expression.Property(parameterExp, "Country");
-                constantExpression = Expression.Constant(country, typeof(string));
-                expressionBody = Expression.Equal(memberExpression, constantExpression);
-                expr = Expression.AndAlso(expr, expressionBody);
-                //expr = Expression.AndAlso(expr, CreateEqualExpression("Country", country, typeof(string)));
-            }
-            if (!isAllCity)
-            {
-                memberExpression = Expression.Property(parameterExp, "City");
-                constantExpression = Expression.Constant(city);
-                expressionBody = Expression.Call(memberExpression, "Contains", Type.EmptyTypes, constantExpression, Expression.Constant(StringComparison.OrdinalIgnoreCase));
-                expr = Expression.AndAlso(expr, expressionBody);
-
-                //expr = Expression.AndAlso(expr, CreateEqualExpression("City", city, typeof(string)));
-            }
+                    //expr = Expression.AndAlso(expr, CreateEqualExpression("City", city, typeof(string)));
+                }
+                Expression<Func<TrDbRestaurant, bool>> lambdaExpr = Expression.Lambda<Func<TrDbRestaurant, bool>>(expr, parameterExp);
 
 
 
+                currentPage = await _restaurantRepository.GetManyAsync(lambdaExpr, pageSize, continuationToke);
 
-            Expression<Func<TrDbRestaurant, bool>> lambdaExpr = Expression.Lambda<Func<TrDbRestaurant, bool>>(expr, parameterExp);
-
-           
-
-            currentPage = await _restaurantRepository.GetManyAsync(lambdaExpr, pageSize, continuationToke);
-
-            data = currentPage.Value.ClearForOutPut().OrderByDescending(a => a.Created).OrderBy(a => a.SortOrder).ToList();
-            continuationToke = currentPage.Key;
+                data = currentPage.Value.ClearForOutPut().OrderByDescending(a => a.Created).OrderBy(a => a.SortOrder).ToList();
+                continuationToke = currentPage.Key;
 
 
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex.Message);
-                Console.WriteLine(ex.StackTrace);
+                Console.WriteLine(ex.StackTrace + ex.Message);
+            }
+            if (data.Count() == 0)
+            {
+                _logger.LogError($"country:{country}, city:{city}, content:{content}, userInfo:{userInfo}");
+                Console.WriteLine($"country:{country}, city:{city}, content:{content}, userInfo:{userInfo}");
             }
 
             return new ResponseModel { msg = "ok", code = 200, token = continuationToke, data = data };
@@ -226,10 +306,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == restaurant.Id);
             if (existingRestaurant == null)
                 throw new ServiceException("Restaurant Not Exists");
-            foreach (var r in restaurant.Categories) {
+            foreach (var r in restaurant.Categories)
+            {
                 foreach (var item in r.MenuItems)
                 {
-                    if(string.IsNullOrWhiteSpace(item.Id))
+                    if (string.IsNullOrWhiteSpace(item.Id))
                         item.Id = Guid.NewGuid().ToString();
                 }
             }
