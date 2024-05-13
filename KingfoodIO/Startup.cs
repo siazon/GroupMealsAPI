@@ -57,7 +57,7 @@ namespace KingfoodIO
             services.AddDistributedMemoryCache();
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "Wiiya", Version = "v1" });
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "Wiiya", Version = $"v1_{DateTime.Now.ToString("yyyyMMddHHmmss")}" });
                 
                 c.AddSecurityDefinition("WAuthToken", new OpenApiSecurityScheme()
                 {

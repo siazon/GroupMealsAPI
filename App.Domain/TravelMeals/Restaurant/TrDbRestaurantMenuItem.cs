@@ -21,6 +21,10 @@ namespace App.Domain.TravelMeals.Restaurant
         /// </summary>
         public decimal Price { get; set; }
         /// <summary>
+        /// 最小人数
+        /// </summary>
+        public int MinQty { get; set; }
+        /// <summary>
         /// 计算时必填
         /// </summary>
         public decimal ChildrenPrice { get; set; }

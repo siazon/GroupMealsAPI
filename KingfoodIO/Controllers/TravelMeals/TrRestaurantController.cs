@@ -25,6 +25,8 @@ namespace KingfoodIO.Controllers.TravelMeals
     /// RestaurantTag: SpecialOffers,GoodStars,New,Halal
     /// MenuCalculateType:  DEFAULT, WesternFood, ChineseFood
     /// PaymentType: Full, Deposit, PayAtStore
+    /// Features: Special offers, 4+ stars, New, Halal, Vegetarian(KeyÎª0µ½4)
+    /// Country: Ireland, UK, France (KeyÎªstring)
     /// </summary>
     [Route("api/[controller]/[action]")]
     public class TrRestaurantController : BaseController
@@ -87,6 +89,7 @@ namespace KingfoodIO.Controllers.TravelMeals
             //return await ExecuteAsync(shopId, cache,
             //    async () => await _restaurantServiceHandler.GetRestaurantInfo(shopId));
 
+
             DbToken userInfo = new DbToken();
             var authHeader = Request.Headers["Wauthtoken"];
             try
@@ -103,6 +106,15 @@ namespace KingfoodIO.Controllers.TravelMeals
             return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetRestaurants(shopId, country, city, content, userInfo, pageSize, pageToken));
             
         }
+
+        [HttpGet]
+        //[ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> GetCitys(int shopId, bool cache = true)
+        {
+            return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetCitys(shopId));
+        }
+
 
         /// <summary>
         /// 

@@ -42,7 +42,7 @@ namespace App.Domain.TravelMeals.Restaurant
         public string OpenHours { get; set; }
         public string GoogleMap { get; set; }
         public MapPosition MapPosition { get; set; }
-        public string Features { get; set; }
+        public List<int> Features { get; set; }
         public string SpecialDiets { get; set; }
         public string ParkingLot { get; set; }
         public string CancelCondition { get; set; }

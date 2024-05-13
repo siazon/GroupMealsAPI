@@ -42,6 +42,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
 
         Task<ResponseModel> GetRestaurant(string Id);
+        Task<ResponseModel> GetCitys(int shopId);
         Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId);
         Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId);
 
@@ -96,7 +97,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var body = Expression.Equal(member, constant);
             return body;
         }
-        public async Task<ResponseModel> GetRestaurants (int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null)
+        public async Task<ResponseModel> GetRestaurants(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null)
         {
             bool IsAdmin = userInfo.RoleLevel.AuthVerify(7);
             bool isAllCountry = country == "All";
@@ -121,17 +122,38 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
 
             List<Predicate<TrDbRestaurant>> Predicates = new List<Predicate<TrDbRestaurant>>();
-            Predicates.Add(s=>s.ShopId==shopId);
+            Predicates.Add(s => s.ShopId == shopId);
+
+            foreach (var item in resdata)
+            {
+                if (item.StoreName == null)
+                {
+                }
+                if (item.Address == null)
+                {
+                }
+                if (item.Description == null)
+                {
+                }
+                if (item.Tags == null)
+                {
+                }
+                if (item.Attractions == null)
+                {
+                }
+            }
+
 
             if (!isContentEmpty)
             {
-                Predicates.Add( s => s.StoreName.Contains(content)||s.Address.Contains(content)||s.Description.Contains(content)||s.Tags.Any(b => b.Contains(content))||s.Attractions.Any(b => b.Contains(content)));
+                string lowContent = content.ToLower();
+                Predicates.Add(s => s.StoreName.ToLower().Contains(lowContent) || s.Address.ToLower().Contains(lowContent) || s.Description.ToLower().Contains(lowContent) || s.Tags.Any(b => b.ToLower().Contains(lowContent)) || s.Attractions.Any(b => b.ToLower().Contains(lowContent)));
 
             }
 
             if (!IsAdmin)
             {
-                Predicates.Add(a=>a.IsActive==true);
+                Predicates.Add(a => a.IsActive == true);
             }
 
             if (!isAllCountry)
@@ -142,7 +164,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 Predicates.Add(a => a.City.Contains(city));
             }
-           
+
             data = resdata.FindAll(Predicates).ClearForOutPut().OrderByDescending(a => a.Created).OrderBy(a => a.SortOrder).ToList();
 
             continuationToke = currentPage.Key;
@@ -275,11 +297,47 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             var existingRestaurant =
                await _restaurantRepository.GetOneAsync(r => r.Id == Id);
+
+
             if (existingRestaurant != null)
                 return new ResponseModel { msg = "ok", code = 200, data = existingRestaurant };
             else
                 return new ResponseModel { msg = "Restaurant Already Exists", code = 501, data = existingRestaurant };
 
+        }
+
+
+        public async Task<ResponseModel> GetCitys(int shopId)
+        {
+            var cacheKey = string.Format("motionmedia-{1}-{0}", shopId, "citys");
+            var cacheResult = _memoryCache.Get<Dictionary<string, List<string>>>(cacheKey);
+            if (cacheResult != null)
+            {
+                return new ResponseModel { msg = "ok", code = 200, data = cacheResult };
+            }
+
+            var existingRestaurants = await _restaurantRepository.GetManyAsync(r => r.ShopId == shopId);
+            if(existingRestaurants==null)
+                return new ResponseModel { msg = "Restaurants can find", code = 501, };
+            var countrys = existingRestaurants.GroupBy(a => a.Country.Trim());
+            var countryList = new List<string>();
+            Dictionary<string, List<string>> cityRes = new Dictionary<string, List<string>>();
+            foreach (var country in countrys)
+            {
+                List<string> temo = new List<string>();
+                var temp = existingRestaurants.Where(a => a.Country.Trim() == country.Key);
+                var citys = temp.GroupBy(a => a.City.Trim());
+                foreach (var city in citys)
+                {
+                    temo.Add(city.Key);
+                }
+                cityRes[country.Key] = temo;
+            }
+
+            _memoryCache.Set(cacheKey, cityRes);
+
+            return new ResponseModel { msg = "ok", code = 200, data = cityRes };
+         
         }
 
         public async Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId)
@@ -302,6 +360,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId)
         {
             Guard.NotNull(restaurant);
+
+            string cacheKey = string.Format("motionmedia-{1}-{0}", shopId, "citys");
+            Dictionary<string, List<string>> cityRes = null;
+            _memoryCache.Set(cacheKey, cityRes);
+
             var existingRestaurant =
                await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == restaurant.Id);
             if (existingRestaurant == null)
@@ -315,10 +378,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
             }
 
-
             restaurant.Updated = _dateTimeUtil.GetCurrentTime();
 
             var savedRestaurant = await _restaurantRepository.UpsertAsync(restaurant);
+
+             cacheKey = string.Format("motionmedia-{1}-{0}", shopId, "citys");
+            _memoryCache.Set(cacheKey, cityRes);
+
             return savedRestaurant;
         }
 
