@@ -172,7 +172,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             {
                 BackgroundJob.Enqueue<ITourBatchServiceHandler>(
                     s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, shopInfo.Email, subject,
-                        emailHtml));
+                        emailHtml,null));
             }
             catch (Exception ex)
             {
@@ -192,7 +192,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             {
                 BackgroundJob.Enqueue<ITourBatchServiceHandler>(
                     s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.Email, $"Thank you for your Booking: {booking.Ref}",
-                        emailHtml));
+                        emailHtml, null));
             }
             catch (Exception ex)
             {
@@ -217,7 +217,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             {
                 BackgroundJob.Enqueue<ITourBatchServiceHandler>(
                     s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.Email, $"Your order has been refunded: {booking.Tour.TourInfo.NameEn}",
-                        emailHtml));
+                        emailHtml,null));
             }
             catch (Exception ex)
             {

@@ -51,7 +51,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<object> UpdateAccepted(string bookingId, string subBillId, int acceptType, string operater);
         Task<bool> UpdateAcceptedReason(string bookingId, string subBillId, string reason, string operater);
         Task<bool> CancelBooking(string bookingId, string detailId, int shopId, string userEmail);
-        Task<ResponseModel> MackBooking(TrDbRestaurantBooking booking, int shopId, DbToken user);
+        Task<ResponseModel> MakeABooking(TrDbRestaurantBooking booking, int shopId, DbToken user);
         Task<ResponseModel> ModifyBooking(TrDbRestaurantBooking booking, int shopId, string email);
         Task<bool> DeleteBooking(string bookingId, int shopId);
         Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
@@ -175,8 +175,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var emailHtml = await _contentBuilder.BuildRazorContent(new { booking, detail, Detail = detailstr, Memo = detail.Courses[0].Memo }, htmlTemp);
             try
             {
-                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, detail.RestaurantEmail, "Order canceled", emailHtml));
-                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, "Order canceled", emailHtml));
+                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, detail.RestaurantEmail, "Order canceled", emailHtml,null));
+                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, "Order canceled", emailHtml, null));
             }
             catch (Exception ex)
             {
@@ -497,15 +497,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             bool isChange = false;
             var newValue = detail.GetType().GetProperty(fieldName).GetValue(detail, null);
             var oldValue = item.GetType().GetProperty(fieldName).GetValue(item, null);
-            if (newValue.ToString() != oldValue.ToString())
+            if (newValue?.ToString() != oldValue?.ToString())
             {
                 item.Modified = true;
                 isChange = true;
                 ModifyInfo modifyInfo = new ModifyInfo();
                 modifyInfo.ModifyField = fieldName;
                 modifyInfo.ModifyLocation = $"{bookingId}>{item.Id}";
-                modifyInfo.oldValue = oldValue.ToString();
-                modifyInfo.newValue = newValue.ToString();
+                modifyInfo.oldValue = oldValue?.ToString();
+                modifyInfo.newValue = newValue?.ToString();
                 operationInfo.ModifyInfos.Add(modifyInfo);
                     item.GetType().GetProperty(fieldName).SetValue(item, newValue);
             }
@@ -516,22 +516,22 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             bool isChange = false;
             var newValue = string.Join(",", (detail.GetType().GetProperty(fieldName).GetValue(detail, null) as List<BookingCourse>));
             var oldValue = string.Join(",", item.GetType().GetProperty(fieldName).GetValue(item, null) as List<BookingCourse>);
-            if (newValue.ToString() != oldValue.ToString())
+            if (newValue?.ToString() != oldValue?.ToString())
             {
                 item.Modified = true;
                 isChange = true;
                 ModifyInfo modifyInfo = new ModifyInfo();
                 modifyInfo.ModifyField = fieldName;
                 modifyInfo.ModifyLocation = $"{bookingId}>{item.Id}";
-                modifyInfo.oldValue = oldValue.ToString();
-                modifyInfo.newValue = newValue.ToString();
+                modifyInfo.oldValue = oldValue?.ToString();
+                modifyInfo.newValue = newValue?.ToString();
                 operationInfo.ModifyInfos.Add(modifyInfo);
             }
             return isChange;
         }
 
 
-        public async Task<ResponseModel> MackBooking(TrDbRestaurantBooking booking, int shopId, DbToken user)
+        public async Task<ResponseModel> MakeABooking(TrDbRestaurantBooking booking, int shopId, DbToken user)
         {
             _logger.LogInfo("RequestBooking" + shopId);
             Guard.NotNull(booking);
@@ -650,10 +650,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
                 throw new ServiceException("Cannot find shop info");
             }
-
+            _twilioUtil.sendSMS("+353874858555", $"你有新的订单: {booking.BookingRef}。 请登录groupmeal.com查看更多");
             EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, "Thank you for your Booking", _contentBuilder, _logger);
             EmailUtils.EmailBoss(booking, shopInfo, "new_meals_restaurant", this._environment.WebRootPath, "New Booking", _twilioUtil, _contentBuilder, _logger);
-            //EmailUtils.EmailSupport(booking, shopInfo, "new_meals_support", this._environment.WebRootPath, "New Booking", _twilioUtil, _contentBuilder, exchange, _logger);
+            //EmailUtils.EmailSupport(booking, shopInfo, "new_meals_support", this._environment.WebRootPath, "New Booking", _twilioUtil, _contentBuilder,  _logger);
 
         }
         private async void SendModifyEmail(TrDbRestaurantBooking booking)
@@ -664,7 +664,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
                 throw new ServiceException("Cannot find shop info");
             }
-
+            _twilioUtil.sendSMS(booking.CustomerPhone, $"你有订单被修改: {booking.BookingRef}。 请登录groupmeal.com查看更多");
 
             EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_modify", this._environment.WebRootPath, "Booking Modified", _contentBuilder, _logger);
 
@@ -681,11 +681,16 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         public async Task<bool> ResendEmail(string bookingId)
         {
+
+
             try
             {
                 TrDbRestaurantBooking booking = await _restaurantBookingRepository.GetOneAsync(r => r.Id == bookingId);
                 if (booking != null)
                 {
+
+                    _twilioUtil.sendSMS("+353874858555", $"你有新的订单: {booking.BookingRef} ");
+
                     var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
                     if (shopInfo == null)
                     {

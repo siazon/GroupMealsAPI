@@ -99,9 +99,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<ResponseModel> GetRestaurants(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null)
         {
+
             bool IsAdmin = userInfo.RoleLevel.AuthVerify(7);
-            bool isAllCountry = country == "All";
-            bool isAllCity = city == "All";
+            bool isAllCountry = country.Trim() == "All" || country.Trim() == "全部";
+            bool isAllCity = city.Trim() == "All" || city.Trim() == "全部";
             bool isContentEmpty = string.IsNullOrWhiteSpace(content);
             List<TrDbRestaurant> data = new List<TrDbRestaurant>();
             KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage;
@@ -124,24 +125,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             List<Predicate<TrDbRestaurant>> Predicates = new List<Predicate<TrDbRestaurant>>();
             Predicates.Add(s => s.ShopId == shopId);
 
-            foreach (var item in resdata)
-            {
-                if (item.StoreName == null)
-                {
-                }
-                if (item.Address == null)
-                {
-                }
-                if (item.Description == null)
-                {
-                }
-                if (item.Tags == null)
-                {
-                }
-                if (item.Attractions == null)
-                {
-                }
-            }
+       
 
 
             if (!isContentEmpty)
@@ -164,6 +148,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 Predicates.Add(a => a.City.Contains(city));
             }
+          
 
             data = resdata.FindAll(Predicates).ClearForOutPut().OrderByDescending(a => a.Created).OrderBy(a => a.SortOrder).ToList();
 
@@ -182,8 +167,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
 
                 bool IsAdmin = userInfo.RoleLevel.AuthVerify(7);
-                bool isAllCountry = country == "All";
-                bool isAllCity = city == "All";
+                bool isAllCountry = country.Trim() == "All" ||country.Trim() == "全部";
+                bool isAllCity = city.Trim() == "All" || city.Trim() =="全部";
                 bool isContentEmpty = string.IsNullOrWhiteSpace(content);
                 Expression expr = null;
                 ParameterExpression parameterExp = Expression.Parameter(typeof(TrDbRestaurant));
@@ -327,6 +312,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 List<string> temo = new List<string>();
                 var temp = existingRestaurants.Where(a => a.Country.Trim() == country.Key);
                 var citys = temp.GroupBy(a => a.City.Trim());
+                temo.Add("全部");
                 foreach (var city in citys)
                 {
                     temo.Add(city.Key);

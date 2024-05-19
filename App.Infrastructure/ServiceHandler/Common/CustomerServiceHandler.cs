@@ -197,7 +197,7 @@ namespace App.Infrastructure.ServiceHandler.Common
          var   emailHtml = await _contentBuilder.BuildRazorContent(new { code = user.ResetCode }, htmlTemp);
             try
             {
-                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, user.Email, subject, emailHtml));
+                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, user.Email, subject, emailHtml, null));
 
             }
             catch (Exception ex)

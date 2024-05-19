@@ -16,7 +16,7 @@ namespace App.Infrastructure.Utility.Common
     public interface IEmailUtil
     {
         Task<bool> SendEmail(List<DbSetting> settings, string fromEmail, string fromEmailDescription, string toEmail, string toEmailDescription, string subject, string body,
-            string bodyHtml, List<string> attachments = null, bool important = true);
+            string bodyHtml, string CCEmail = null, List<string> attachments = null, bool important = true);
 
         Task<bool> SendEventEmail(List<DbSetting> settings, string fromEmail, string fromEmailDescription, List<string> toEmails, string subject, string body,
             string bodyHtml, string description, string location, DateTime startTime, DateTime endTime, int? eventID = null, bool isCancel = false, bool important = true);
@@ -27,7 +27,7 @@ namespace App.Infrastructure.Utility.Common
     public class EmailUtil : IEmailUtil
     {
         public async Task<bool> SendEmail(List<DbSetting> settings, string fromEmail, string fromEmailDescription, string toEmail, string toEmailDescription, 
-            string subject, string body, string bodyHtml, List<string> attachments = null, bool important = true)
+            string subject, string body, string bodyHtml,string CCEmail=null, List<string> attachments = null, bool important = true)
         {
             try
             {
@@ -46,6 +46,8 @@ namespace App.Infrastructure.Utility.Common
                 };
 
                 msg.AddTo(new EmailAddress(toEmail));
+                if(CCEmail!= null) 
+                msg.AddCc(new EmailAddress(toEmail));
 
                 if (string.IsNullOrEmpty(fromEmail))
                     msg.From = new EmailAddress("no-reply@wiiya.com", "Wiiya Ireland");

@@ -70,7 +70,7 @@ namespace KingfoodIO.Controllers.TravelMeals
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, false,
-                async () => await _restaurantBookingServiceHandler.MackBooking(booking, shopId, user));
+                async () => await _restaurantBookingServiceHandler.MakeABooking(booking, shopId, user));
         }
 
         /// <summary>
@@ -199,7 +199,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         /// <param name="cache"></param>
         /// <returns></returns>
         [HttpGet]
-        [ServiceFilter(typeof(AuthActionFilter))]
+        //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> ResendEmail(int shopId, string bookingId, bool cache = false)
         {

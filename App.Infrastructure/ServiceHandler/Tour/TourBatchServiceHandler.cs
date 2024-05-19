@@ -9,7 +9,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
     public interface ITourBatchServiceHandler
     {
         
-        Task<bool> SendEmail(List<DbSetting> settings, string fromEmail,  string toEmail, string subject, string bodyHtml);
+        Task<bool> SendEmail(List<DbSetting> settings, string fromEmail,  string toEmail, string subject, string bodyHtml,string ccEmail);
     }
 
     public class TourBatchServiceHandler : ITourBatchServiceHandler
@@ -24,11 +24,11 @@ namespace App.Infrastructure.ServiceHandler.Tour
         }
 
         public async Task<bool> SendEmail(List<DbSetting> settings, string fromEmail, string toEmail,
-            string subject, string bodyHtml)
+            string subject, string bodyHtml,string ccEmail)
         {
             _logger.LogInfo("--------TourBatchServiceHandler.SendEmail: "+ fromEmail+" + "+ toEmail);
             return await _emailUtil.SendEmail(settings, fromEmail, null, toEmail, null, subject, null,
-                bodyHtml);
+                bodyHtml,ccEmail);
         }
     }
 }

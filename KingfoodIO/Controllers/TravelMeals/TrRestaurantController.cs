@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
+using System.Web;
 using App.Domain.Common;
 using App.Domain.Common.Auth;
 using App.Domain.Common.Customer;
@@ -88,7 +89,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         {
             //return await ExecuteAsync(shopId, cache,
             //    async () => await _restaurantServiceHandler.GetRestaurantInfo(shopId));
-
+           //string _city= HttpUtility.UrlDecode(city);
 
             DbToken userInfo = new DbToken();
             var authHeader = Request.Headers["Wauthtoken"];
