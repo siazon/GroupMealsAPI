@@ -31,6 +31,7 @@ namespace App.Infrastructure.ServiceHandler.Common
 
         Task<object> RegisterAccount(DbCustomer customer, int shopId);
         Task<object> VerityEmail(string email, string id, int shopId);
+        Task<object> SendVerityCode(string phone, int shopId);
 
         Task<object> ResetPassword(string email, string resetCode, string password, int shopId);
         Task<object> UpdatePassword(string email, string oldPassword, string password, int shopId);
@@ -55,11 +56,13 @@ namespace App.Infrastructure.ServiceHandler.Common
         private readonly IDateTimeUtil _dateTimeUtil;
         private readonly IContentBuilder _contentBuilder;
         private readonly IEmailUtil _emailUtil;
+        ITwilioUtil _twilioUtil;
         ILogManager _logger;
         IAmountCalculaterUtil _amountCalculaterV1;
         IHostingEnvironment _environment;
 
-        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, IEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
+        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1,
+        ITwilioUtil twilioUtil, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, IEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
         {
             _customerRepository = customerRepository;
             _encryptionHelper = encryptionHelper;
@@ -68,7 +71,8 @@ namespace App.Infrastructure.ServiceHandler.Common
             _shopContentRepository = shopContentRepository;
             _contentBuilder = contentBuilder;
             _emailUtil = emailUtil;
-            _logger= logger;
+            _emailUtil= emailUtil;
+            _logger = logger;
             _settingRepository = settingRepository;
             _environment = environment;
             _amountCalculaterV1= amountCalculaterV1;
@@ -162,7 +166,44 @@ namespace App.Infrastructure.ServiceHandler.Common
             }
             return new { msg = "ok", data = newItem.ClearForOutPut() };
         }
+        public async Task<object> SendVerityCode(string phone, int shopId)
+        {
 
+            string code = GuidHashUtil.Get6DigitNumber();
+            bool res = _twilioUtil.sendSMS(phone, "你正在注册groupmeals.com,你的验证码为 " + code);
+            if (!res)
+                return new { msg = "error" };
+            DbCustomer customer = await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Phone == phone);
+            if (customer != null)
+            {
+                if (!string.IsNullOrWhiteSpace(customer.Password))
+                {
+                    return new { msg = $"手机号已注册，请使用密码登录，如忘记密码请用邮箱地址{customer.Email}找回密码" };
+                }
+                customer.Id = Guid.NewGuid().ToString();
+                customer.Phone = phone;
+                customer.ShopId = shopId;
+                customer.Created = _dateTimeUtil.GetCurrentTime();
+                customer.Updated = _dateTimeUtil.GetCurrentTime();
+                customer.IsActive = false;
+                customer.IsVerity = true;
+                customer.AuthValue = 159;
+                customer.ResetCode = GuidHashUtil.Get6DigitNumber();
+            }
+            else
+            {
+                customer = new DbCustomer();
+                customer.Updated = _dateTimeUtil.GetCurrentTime();
+                customer.IsActive = false;
+                customer.IsVerity = true;
+                customer.AuthValue = 159;
+                customer.ResetCode = GuidHashUtil.Get6DigitNumber();
+            }
+            var newItem = await _customerRepository.UpsertAsync(customer);
+
+            return new { msg = "ok", customerId = newItem.Id };
+
+        }
         public async Task<object> VerityEmail(string email, string id, int shopId) {
             var customer = await _customerRepository.GetOneAsync(c => c.Id == id);
             customer.IsVerity=true;

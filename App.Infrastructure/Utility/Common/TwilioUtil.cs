@@ -10,7 +10,7 @@ namespace App.Infrastructure.Utility.Common
 {
     public interface ITwilioUtil
     {
-        void sendSMS(string phone, string content);
+        bool sendSMS(string phone, string content);
     }
     public class TwilioUtil : ITwilioUtil
     {
@@ -19,10 +19,11 @@ namespace App.Infrastructure.Utility.Common
         {
             _logger = logger;
         }
-        public void sendSMS(string phone, string content)
+        public bool sendSMS(string phone, string content)
         {
 
-//#if RELEASE
+            //#if RELEASE
+            bool res = false;
             try
             {
                 string accountSid = "AC2edbf7ebba55ff47906bab408e8d5e1d"; //Environment.GetEnvironmentVariable("AC0d14be935864d72c96a971861b1ef75b");
@@ -35,11 +36,13 @@ namespace App.Infrastructure.Utility.Common
                     from: new Twilio.Types.PhoneNumber("+15713215092"),
                     to: new Twilio.Types.PhoneNumber(phone)
                 );
+                res=true;
             }
             catch (Exception e)
             {
                 _logger.LogError("sendSMS: " + e.Message + e.StackTrace);
             }
+            return res;
 //#endif
         }
     }

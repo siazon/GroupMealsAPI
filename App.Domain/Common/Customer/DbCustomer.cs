@@ -96,6 +96,7 @@ namespace App.Domain.Common.Customer
         {
             source.Password = "";
             source.ResetCode = "";
+            source.PinCode = "";
             return source;
         }
 
@@ -105,6 +106,7 @@ namespace App.Domain.Common.Customer
             {
                 item.Password = "";
                 item.ResetCode = "";
+                item.PinCode = "";
             }
             return source;
         }
