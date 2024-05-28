@@ -689,7 +689,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 if (booking != null)
                 {
 
-                    _twilioUtil.sendSMS("+353874858555", $"你有新的订单: {booking.BookingRef} ");
+                    //_twilioUtil.sendSMS("+353874858555", $"你有新的订单: {booking.BookingRef} ");
 
                     var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
                     if (shopInfo == null)

@@ -50,7 +50,7 @@ namespace App.Infrastructure.Utility.Common
                 msg.AddCc(new EmailAddress(toEmail));
 
                 if (string.IsNullOrEmpty(fromEmail))
-                    msg.From = new EmailAddress("no-reply@wiiya.com", "Wiiya Ireland");
+                    msg.From = new EmailAddress("noreply@groupmeals.com", "Groupmeals.com");
 
                 if (important)
                 {
