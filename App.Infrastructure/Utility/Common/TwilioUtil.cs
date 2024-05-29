@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Twilio;
 using Twilio.Rest.Api.V2010.Account;
+using Twilio.Rest.Verify.V2.Service;
 
 namespace App.Infrastructure.Utility.Common
 {
@@ -21,6 +22,27 @@ namespace App.Infrastructure.Utility.Common
         }
         public bool sendSMS(string phone, string content)
         {
+
+
+            //try
+            //{
+            //    string accountSid = "AC2edbf7ebba55ff47906bab408e8d5e1d";
+            //    string authToken = "5ded5c76459b4aa5363bac49b9b849fb";
+
+            //    TwilioClient.Init(accountSid, authToken);
+
+
+            //    var verification = VerificationResource.Create(
+            //        to: "+353870647175",
+            //        channel: "sms",
+            //        pathServiceSid: "VA0d18e5e0b9b2f5846334087d6d692cab"
+            //    );
+            //}
+            //catch (Exception ex)
+            //{
+
+            //}
+
 
             //#if RELEASE
             bool res = false;

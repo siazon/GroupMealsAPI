@@ -48,7 +48,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 Detail += item.RestaurantName + " <br> ";
                 Detail += item.RestaurantAddress + " <br> ";
                 Detail += item.RestaurantPhone + "  " + item.RestaurantEmail + " <br> ";
-                Detail += item.SelectDateTime + " <br><br> ";
+                Detail += item.SelectDateTime.Value.ToLocalTime() + " <br><br> ";
                 Detail += "团号: " + item.GroupRef + " <br> ";
                 Detail += "联系人: " + item.ContactName +" "+item.ContactPhone+ " <br> ";
 
@@ -138,7 +138,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 Detail += item.RestaurantName +" <br> ";
                 Detail += item.RestaurantAddress + " <br> ";
                 Detail += item.RestaurantPhone + "  " + item.RestaurantEmail + " <br> ";
-                Detail += item.SelectDateTime + " <br><br> ";
+                Detail += item.SelectDateTime.Value.ToLocalTime() + " <br><br> ";
                 Detail += "团号: " + item.GroupRef+ " <br> ";
                 Detail += "联系人: " + item.ContactName + " " + item.ContactPhone + " <br> ";
                 decimal amount = item.AmountInfos.Sum(x => x.Amount);
