@@ -114,24 +114,24 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
                 var cacheKey = string.Format("motionmedia-{1}-{0}", shopId, typeof(TrDbRestaurant).Name);
                 var cacheResult = _memoryCache.Get<KeyValuePair<string, IEnumerable<TrDbRestaurant>>>(cacheKey);
-                if (cacheResult.Value != null)
+                if (cacheResult.Value != null&& cacheResult.Value.Count()>0)
                 {
                     currentPage = cacheResult;
+                    _logger.LogInfo($"GetRestaurants._memoryCache.get");
                 }
+
+                _logger.LogInfo($"GetRestaurants.BeforGetManyAsync");
                 currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId, pageSize, continuationToke);
+
+                _logger.LogInfo($"GetRestaurants.GetManyAsync");
                 _memoryCache.Set(cacheKey, currentPage);
+                _logger.LogInfo($"GetRestaurants._memoryCache.set");
 
-
-
-                currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId, pageSize, continuationToke);
                 var resdata = currentPage.Value.ToList();
 
 
                 List<Predicate<TrDbRestaurant>> Predicates = new List<Predicate<TrDbRestaurant>>();
                 Predicates.Add(s => s.ShopId == shopId);
-
-
-
 
                 if (!isContentEmpty)
                 {
@@ -154,14 +154,16 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     Predicates.Add(a => a.City.Contains(city));
                 }
 
+                _logger.LogInfo($"GetRestaurants.Predicates");
 
                 data = resdata.FindAll(Predicates).ClearForOutPut().OrderByDescending(a => a.Created).OrderBy(a => a.SortOrder).ToList();
 
+                _logger.LogInfo($"GetRestaurants.FindAll");
                 continuationToke = currentPage.Key;
             }
             catch (Exception ex)
             {
-                _logger.LogInfo($"GetRestaurants"+ex.Message);
+                _logger.LogInfo($"GetRestaurants.error" + ex.Message);
                 _logger.LogError(ex.Message);
                 Console.WriteLine(ex.Message);
             }
