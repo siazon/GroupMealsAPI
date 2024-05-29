@@ -753,8 +753,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (string.IsNullOrWhiteSpace(content))
             {
                 var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted), pageSize, continuationToken);
-                res = Bookings.Value.ToList().FindAll(a => a.CustomerEmail == email);
+                res = Bookings.Value.ToList();//.FindAll(a => a.CustomerEmail == email);
                 pageToken = Bookings.Key;
+            
 
             }
             else
@@ -766,6 +767,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             res.ForEach(r => { r.Details.OrderByDescending(d => d.SelectDateTime); });
             var list = res.OrderByDescending(a => a.Details.Max(d => d.SelectDateTime)).ToList();
+            foreach (var item in list)
+            {
+                foreach (var de in item.Details)
+                {
+                    de.SelectDateTime = de.SelectDateTime.Value.ToLocalTime();
+                }
+            }
             return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = list };
 
         }
@@ -836,7 +844,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     item.Details.AddRange(rest.Details.FindAll(a => rest.Id == item.Id && a.RestaurantEmail == email));
                 }
             }
-
+            foreach (var item in res)
+            {
+                foreach (var de in item.Details)
+                {
+                    de.SelectDateTime = de.SelectDateTime.Value.ToLocalTime();
+                }
+            }
             return new ResponseModel { msg = "ok", code = 200, token = token, data = res };
         }
 
@@ -858,6 +872,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             res.ForEach(r => { r.Details.OrderByDescending(d => d.SelectDateTime); });
             var list = res.OrderByDescending(a => a.Details.Max(d => d.SelectDateTime)).ToList();
+            foreach (var item in list)
+            {
+                foreach (var de in item.Details)
+                {
+                    de.SelectDateTime = de.SelectDateTime.Value.ToLocalTime();
+                }
+            }
             return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = list };
         }
 

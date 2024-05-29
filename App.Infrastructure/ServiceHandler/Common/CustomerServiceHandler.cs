@@ -18,6 +18,9 @@ using Hangfire;
 using Microsoft.AspNetCore.Hosting;
 using App.Domain.TravelMeals;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Twilio;
+using Twilio.Rest.Chat.V2;
+using Twilio.Rest.Verify.V2.Service;
 
 namespace App.Infrastructure.ServiceHandler.Common
 {
@@ -61,7 +64,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         IAmountCalculaterUtil _amountCalculaterV1;
         IHostingEnvironment _environment;
 
-        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1,
+        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1,  
         ITwilioUtil twilioUtil, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, IEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
         {
             _customerRepository = customerRepository;
@@ -71,7 +74,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             _shopContentRepository = shopContentRepository;
             _contentBuilder = contentBuilder;
             _emailUtil = emailUtil;
-            _emailUtil= emailUtil;
+            _twilioUtil = twilioUtil;
             _logger = logger;
             _settingRepository = settingRepository;
             _environment = environment;
@@ -168,6 +171,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         }
         public async Task<object> SendVerityCode(string phone, int shopId)
         {
+           
 
             string code = GuidHashUtil.Get6DigitNumber();
             bool res = _twilioUtil.sendSMS(phone, "你正在注册groupmeals.com,你的验证码为 " + code);
@@ -206,6 +210,8 @@ namespace App.Infrastructure.ServiceHandler.Common
         }
         public async Task<object> VerityEmail(string email, string id, int shopId) {
             var customer = await _customerRepository.GetOneAsync(c => c.Id == id);
+            if(customer==null)
+                return new { msg = "用户不存在" };
             customer.IsVerity=true;
             var savedCustomer = await _customerRepository.UpsertAsync(customer);
             if (savedCustomer != null)

@@ -114,16 +114,18 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
                 var cacheKey = string.Format("motionmedia-{1}-{0}", shopId, typeof(TrDbRestaurant).Name);
                 var cacheResult = _memoryCache.Get<KeyValuePair<string, IEnumerable<TrDbRestaurant>>>(cacheKey);
-                if (cacheResult.Value != null)
+                if (cacheResult.Value != null&&cacheResult.Value.Count()>0)
                 {
                     currentPage = cacheResult;
                 }
-                currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId, pageSize, continuationToke);
-                _memoryCache.Set(cacheKey, currentPage);
+                else
+                {
+                    currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId, pageSize, continuationToke);
+                    _memoryCache.Set(cacheKey, currentPage);
+                }
 
 
-
-                currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId, pageSize, continuationToke);
+                //currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId, pageSize, continuationToke);
                 var resdata = currentPage.Value.ToList();
 
 
