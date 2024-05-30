@@ -106,7 +106,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
 
 
-                bool IsAdmin = userInfo.RoleLevel.AuthVerify(7);
+                bool IsAdmin = userInfo.RoleLevel.AuthVerify(8);
                 bool isAllCountry = country.Trim() == "All" || country.Trim() == "全部";
                 bool isAllCity = city.Trim() == "All" || city.Trim() == "全部";
                 bool isContentEmpty = string.IsNullOrWhiteSpace(content);
