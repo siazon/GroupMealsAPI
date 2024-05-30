@@ -366,10 +366,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             Guard.NotNull(restaurant);
 
-            string cacheKey = string.Format("motionmedia-{1}-{0}", shopId, "citys");
-            Dictionary<string, List<string>> cityRes = null;
+            string cacheKey = string.Format("motionmedia-{1}-{0}", shopId, typeof(TrDbRestaurant).Name);
+            KeyValuePair<string, IEnumerable<TrDbRestaurant>> cityRes = new KeyValuePair<string, IEnumerable<TrDbRestaurant>>();
             _memoryCache.Set(cacheKey, cityRes);
 
+            var citycacheKey = string.Format("motionmedia-{1}-{0}", shopId, "citys");
+            string k = null;
+            _memoryCache.Set(citycacheKey, k);
             var existingRestaurant =
                await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == restaurant.Id);
             if (existingRestaurant == null)
@@ -387,8 +390,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             var savedRestaurant = await _restaurantRepository.UpsertAsync(restaurant);
 
-            cacheKey = string.Format("motionmedia-{1}-{0}", shopId, "citys");
+           
             _memoryCache.Set(cacheKey, cityRes);
+            _memoryCache.Set(citycacheKey, k);
 
             return savedRestaurant;
         }
