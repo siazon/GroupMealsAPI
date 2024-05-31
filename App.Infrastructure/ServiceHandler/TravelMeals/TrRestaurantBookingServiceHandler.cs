@@ -538,6 +538,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             Guard.AreEqual(booking.ShopId.Value, shopId);
             foreach (var item in booking.Details)
             {
+                _logger.LogInfo(" Make a booking.time: " + item.SelectDateTime);
                 if ((item.SelectDateTime - DateTime.Now).Value.TotalHours < 12)
                 {
                     return new ResponseModel { msg = "用餐时间少于12个小时", code = 200, data = null };
