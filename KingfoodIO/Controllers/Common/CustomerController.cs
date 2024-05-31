@@ -255,12 +255,15 @@ namespace KingfoodIO.Controllers.Common
         /// <param name="shopId"></param>
         /// <returns></returns>
         [ServiceFilter(typeof(AdminAuthFilter))]
-        [HttpDelete]
+        [HttpPost]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> Delete(DbCustomer item, int shopId)
+        public async Task<IActionResult> Delete([FromBody] DbCustomer item,string pwd, int shopId)
         {
+            var authHeader = Request.Headers["Wauthtoken"];
+            var userInfo = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            string email = userInfo.UserEmail;
             return await ExecuteAsync(shopId, false,
-                async () => await _customerServiceHandler.Delete(item, shopId));
+                async () => await _customerServiceHandler.Delete(item, email,pwd, shopId));
         }
 
         /// <summary>

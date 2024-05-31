@@ -754,7 +754,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (string.IsNullOrWhiteSpace(content))
             {
                 var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted), pageSize, continuationToken);
-                res = Bookings.Value.ToList();//.FindAll(a => a.CustomerEmail == email);
+                res = Bookings.Value.ToList().FindAll(a => a.CustomerEmail == email);
                 pageToken = Bookings.Key;
             
 
