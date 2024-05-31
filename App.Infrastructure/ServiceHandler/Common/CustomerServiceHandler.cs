@@ -46,7 +46,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         Task<object> UpdateCart(List<BookingDetail> cartInfos,string UserId, int shopId);
         Task<object> GetCart(string UserId, int shopId);
 
-        Task<DbCustomer> Delete(DbCustomer item, int shopId);
+        Task<object> Delete(DbCustomer item,string email,string pwd, int shopId);
     }
 
     public class CustomerServiceHandler : ICustomerServiceHandler
@@ -86,7 +86,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             Guard.GreaterThanZero(shopId);
             var customers = await _customerRepository.GetManyAsync(r => r.ShopId == shopId);
 
-            var returnCustomers = customers.OrderByDescending(r => r.Updated).Take(2000);
+            var returnCustomers = customers.OrderByDescending(r => r.Created).Take(2000);
 
             return returnCustomers.ToList().ClearForOutPut();
         }
@@ -377,9 +377,18 @@ namespace App.Infrastructure.ServiceHandler.Common
 
             return new { msg = "ok", data = existingCustomer .CartInfos};
         }
-        public async Task<DbCustomer> Delete(DbCustomer item, int shopId)
+        public async Task<object> Delete(DbCustomer item, string email, string pwd, int shopId)
         {
             Guard.NotNull(item);
+            if(item.Email== email)
+                return new { msg = "无法删除你自己的账号", };
+            var passwordEncode = _encryptionHelper.EncryptString(pwd);
+            var customer = await _customerRepository.GetOneAsync(r =>
+                r.Email == email && r.IsActive.HasValue && r.IsActive.Value
+                && r.ShopId == shopId);
+            if (customer.Password != passwordEncode) {
+                return new { msg = "密码错误",  };
+            }
 
             var existingItem = await _customerRepository.GetOneAsync(r => r.Id == item.Id && r.ShopId == shopId);
             if (existingItem == null)
@@ -387,7 +396,9 @@ namespace App.Infrastructure.ServiceHandler.Common
 
             item = await _customerRepository.DeleteAsync(item);
 
-            return item;
+            return new { msg = "ok", };
         }
+
+        
     }
 }
