@@ -47,7 +47,7 @@ namespace App.Infrastructure.Utility.Common
 
                 msg.AddTo(new EmailAddress(toEmail));
                 if(CCEmail!= null) 
-                msg.AddCc(new EmailAddress(toEmail));
+                msg.AddCc(new EmailAddress(CCEmail));
 
                 if (string.IsNullOrEmpty(fromEmail))
                     msg.From = new EmailAddress("noreply@groupmeals.com", "Groupmeals.com");
