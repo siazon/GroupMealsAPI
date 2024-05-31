@@ -134,10 +134,10 @@ namespace KingfoodIO.Controllers.Common
         [HttpGet]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         //[ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> ForgetPassword(string email, int shopId)
+        public async Task<IActionResult> SendForgetPasswordVerifyCode(string email, int shopId)
         {
             return await ExecuteAsync(shopId, false,
-                async () => await _customerServiceHandler.ForgetPassword(email, shopId));
+                async () => await _customerServiceHandler.SendForgetPasswordVerifyCode(email, shopId));
         }
         /// <summary>
         /// 
@@ -156,13 +156,19 @@ namespace KingfoodIO.Controllers.Common
                 async () => await _customerServiceHandler.ResetPassword(email, resetCode, password, shopId));
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="email"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpGet]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         //[ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> SendVerityCode(string phone,  int shopId)
+        public async Task<IActionResult> SendRegistrationVerityCode(string email,  int shopId)
         {
             return await ExecuteAsync(shopId, false,
-                async () => await _customerServiceHandler.SendVerityCode(phone,   shopId));
+                async () => await _customerServiceHandler.SendRegistrationVerityCode(email,   shopId));
         }
 
         /// <summary>

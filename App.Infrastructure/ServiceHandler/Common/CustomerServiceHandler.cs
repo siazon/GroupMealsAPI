@@ -21,6 +21,11 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Twilio;
 using Twilio.Rest.Chat.V2;
 using Twilio.Rest.Verify.V2.Service;
+using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.Caching.Memory;
+using App.Domain.TravelMeals.Restaurant;
+using System.Threading;
+using Stripe;
 
 namespace App.Infrastructure.ServiceHandler.Common
 {
@@ -30,11 +35,11 @@ namespace App.Infrastructure.ServiceHandler.Common
 
         Task<DbCustomer> LoginCustomer(string email, string password, int shopId);
 
-        Task<object> ForgetPassword(string email, int shopId);
+        Task<object> SendForgetPasswordVerifyCode(string email, int shopId);
 
         Task<object> RegisterAccount(DbCustomer customer, int shopId);
         Task<object> VerityEmail(string email, string id, int shopId);
-        Task<object> SendVerityCode(string phone, int shopId);
+        Task<object> SendRegistrationVerityCode(string email, int shopId);
 
         Task<object> ResetPassword(string email, string resetCode, string password, int shopId);
         Task<object> UpdatePassword(string email, string oldPassword, string password, int shopId);
@@ -43,7 +48,7 @@ namespace App.Infrastructure.ServiceHandler.Common
 
         Task<DbCustomer> UpdatePassword(DbCustomer customer, int shopId);
         Task<DbCustomer> UpdateFavorite(DbCustomer customer, int shopId);
-        Task<object> UpdateCart(List<BookingDetail> cartInfos,string UserId, int shopId);
+        Task<object> UpdateCart(List<BookingDetail> cartInfos, string UserId, int shopId);
         Task<object> GetCart(string UserId, int shopId);
 
         Task<DbCustomer> Delete(DbCustomer item, int shopId);
@@ -63,8 +68,9 @@ namespace App.Infrastructure.ServiceHandler.Common
         ILogManager _logger;
         IAmountCalculaterUtil _amountCalculaterV1;
         IHostingEnvironment _environment;
+        IMemoryCache _memoryCache;
 
-        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1,  
+        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1, IMemoryCache memoryCache,
         ITwilioUtil twilioUtil, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, IEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
         {
             _customerRepository = customerRepository;
@@ -75,10 +81,11 @@ namespace App.Infrastructure.ServiceHandler.Common
             _contentBuilder = contentBuilder;
             _emailUtil = emailUtil;
             _twilioUtil = twilioUtil;
+            _memoryCache = memoryCache;
             _logger = logger;
             _settingRepository = settingRepository;
             _environment = environment;
-            _amountCalculaterV1= amountCalculaterV1;
+            _amountCalculaterV1 = amountCalculaterV1;
         }
 
         public async Task<List<DbCustomer>> List(int shopId)
@@ -93,126 +100,98 @@ namespace App.Infrastructure.ServiceHandler.Common
 
         public async Task<DbCustomer> LoginCustomer(string email, string password, int shopId)
         {
-            
-            _logger.LogInfo("+++++LoginCustomer: " + email+" : "+ password);
+
+            _logger.LogInfo("+++++LoginCustomer: " + email + " : " + password);
             Guard.GreaterThanZero(shopId);
             var passwordEncode = _encryptionHelper.EncryptString(password);
             var customer = await _customerRepository.GetOneAsync(r =>
-                r.Email == email  && r.IsActive.HasValue && r.IsActive.Value
+                r.Email == email && r.IsActive.HasValue && r.IsActive.Value
                 && r.ShopId == shopId);
 
-            return   customer ;
+            return customer;
         }
 
-        public async Task<object> ForgetPassword(string email, int shopId)
+        public async Task<object> SendForgetPasswordVerifyCode(string email, int shopId)
         {
             Guard.NotNull(email);
             Guard.GreaterThanZero(shopId);
             var customer = await _customerRepository.GetOneAsync(r =>
                 r.Email == email && r.IsActive.HasValue && r.IsActive.Value && r.ShopId == shopId);
             if (customer == null)
-                return new { msg = "用户不存在", data = new { } };
+                return new { msg = "用户不存在",  };
 
-            //Email customer ResetCode
-            customer.ResetCode = GuidHashUtil.Get6DigitNumber();
-            var updatedCustomer = await _customerRepository.UpsertAsync(customer);
+          string code= GuidHashUtil.Get6DigitNumber();
+            var cacheKey = string.Format("SendForgetPasswordVerifyCode-{1}-{0}", shopId, email);
+            _memoryCache.Set(cacheKey, code);
             var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
-            EmailForgetPWDSender(updatedCustomer, shopInfo, "Fotget password");
-
-            return new { msg = "ok", data = updatedCustomer.ClearForOutPut() };
+            await EmailVerifyCodeSender(email, code, shopInfo, "来自Groupmeals.com的验证码", "Forgot Password", "忘记密码");
+            Task.Run(() => {
+                Thread.Sleep(60 * 5000);
+                resetCode(cacheKey);
+            });
+            return new { msg = "ok", };
         }
 
         public async Task<object> RegisterAccount(DbCustomer customer, int shopId)
         {
             Guard.NotNull(customer);
-            if(customer.Email.Length<3)
+            if (customer.Email.Length < 3)
                 return new { msg = "Email invalid" };
             var newItem = customer.Clone();
             var existingCustomer =
                await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Email == customer.Email);
-            if (existingCustomer != null && existingCustomer.IsVerity)
-                return new { msg = "Customer Already Exists" };
-            else if (existingCustomer != null && !existingCustomer.IsVerity) {
-                newItem = existingCustomer;
-                if (newItem != null)
-                {
-                    var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
-                    EmailVerifySender(newItem, shopInfo, "Email Verify");
-                    return new { msg = "ok", data = newItem.ClearForOutPut() };
-                }
-            }
-
+            if (existingCustomer != null)
+                return new { msg = "用户已注册，请使用密码登录" };
+            var cacheKey = string.Format("SendRegistrationVerityCode-{1}-{0}", shopId, customer.Email);
+            string code = _memoryCache.Get(cacheKey)?.ToString();
+            if (customer.ResetCode != code)
+                return new { msg = "验证码错误或者已过期" };
+            newItem.Id=Guid.NewGuid().ToString();
             newItem.ShopId = shopId;
             newItem.Created = _dateTimeUtil.GetCurrentTime();
             newItem.Updated = _dateTimeUtil.GetCurrentTime();
             newItem.IsActive = true;
+            newItem.IsVerity = true;
             newItem.AuthValue = 159;
             var passwordEncode = _encryptionHelper.EncryptString(customer.Password);
             newItem.Password = passwordEncode;
             newItem.ResetCode = null;
             newItem.PinCode = GuidHashUtil.Get6DigitNumber();
-            if (existingCustomer != null)
-            {
-                newItem.Id = existingCustomer.Id;
-                await _customerRepository.UpsertAsync(newItem);
-            }
-            else
-            {
-                newItem.Id= Guid.NewGuid().ToString();
-                newItem = await _customerRepository.UpsertAsync(newItem);
-            
-            }
-            if (newItem != null)
-            {
-                var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
-                EmailVerifySender(newItem, shopInfo, "Email Verify");
-            }
+            await _customerRepository.UpsertAsync(newItem);
+
             return new { msg = "ok", data = newItem.ClearForOutPut() };
         }
-        public async Task<object> SendVerityCode(string phone, int shopId)
+        public async Task<object> SendRegistrationVerityCode(string email, int shopId)
         {
-           
+            var existingCustomer =
+              await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Email == email);
+            if (existingCustomer != null)
+                return new { msg = "用户已注册，请使用密码登录" };
 
             string code = GuidHashUtil.Get6DigitNumber();
-            bool res = _twilioUtil.sendSMS(phone, "你正在注册groupmeals.com,你的验证码为 " + code);
-            if (!res)
-                return new { msg = "error" };
-            DbCustomer customer = await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Phone == phone);
-            if (customer != null)
-            {
-                if (!string.IsNullOrWhiteSpace(customer.Password))
-                {
-                    return new { msg = $"手机号已注册，请使用密码登录，如忘记密码请用邮箱地址{customer.Email}找回密码" };
-                }
-                customer.Id = Guid.NewGuid().ToString();
-                customer.Phone = phone;
-                customer.ShopId = shopId;
-                customer.Created = _dateTimeUtil.GetCurrentTime();
-                customer.Updated = _dateTimeUtil.GetCurrentTime();
-                customer.IsActive = false;
-                customer.IsVerity = true;
-                customer.AuthValue = 159;
-                customer.ResetCode = GuidHashUtil.Get6DigitNumber();
-            }
-            else
-            {
-                customer = new DbCustomer();
-                customer.Updated = _dateTimeUtil.GetCurrentTime();
-                customer.IsActive = false;
-                customer.IsVerity = true;
-                customer.AuthValue = 159;
-                customer.ResetCode = GuidHashUtil.Get6DigitNumber();
-            }
-            var newItem = await _customerRepository.UpsertAsync(customer);
-
-            return new { msg = "ok", customerId = newItem.Id };
+            var cacheKey = string.Format("SendRegistrationVerityCode-{1}-{0}", shopId, email);
+            _memoryCache.Set(cacheKey, code);
+            var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
+            await EmailVerifyCodeSender(email, code, shopInfo, "来自Groupmeals.com的验证码", "Verity Code", "注册验证码");
+             //BackgroundJob.Schedule(() => resetCode(cacheKey), TimeSpan.FromMinutes(1));
+            Task.Run(() => {
+                Thread.Sleep(60*5000);
+                resetCode(cacheKey);
+            });
+            return new { msg = "ok", };
 
         }
-        public async Task<object> VerityEmail(string email, string id, int shopId) {
+        private void resetCode(string cacheKey)
+        {
+            string code = "";
+            _memoryCache.Set(cacheKey, code);
+        }
+        public async Task<object> VerityEmail(string email, string id, int shopId)
+        {
             var customer = await _customerRepository.GetOneAsync(c => c.Id == id);
-            if(customer==null)
+            if (customer == null)
                 return new { msg = "用户不存在" };
-            customer.IsVerity=true;
+            customer.IsVerity = true;
             var savedCustomer = await _customerRepository.UpsertAsync(customer);
             if (savedCustomer != null)
             {
@@ -221,57 +200,38 @@ namespace App.Infrastructure.ServiceHandler.Common
             else
                 return new { msg = "error" };
         }
-        private async Task EmailVerifySender(DbCustomer user, DbShop shopInfo, string subject)
+
+
+        private async Task EmailVerifyCodeSender(string email, string code, DbShop shopInfo, string subject, string title, string titleCN)
         {
             string wwwPath = this._environment.WebRootPath;
-            string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "email_verify");
+            string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "verify_code");
 
+            var emailHtml = await _contentBuilder.BuildRazorContent(new { code, title, titleCN }, htmlTemp);
             try
             {
-                BackgroundJob.Enqueue<IContentBuilder>(
-                    s => s.SendEmail(user, htmlTemp,shopInfo.ShopSettings, shopInfo.Email, user.Email, subject
-                        ));
-            }
-            catch (Exception ex)
-            {
-            }
-        }
-        private async Task EmailForgetPWDSender(DbCustomer user, DbShop shopInfo, string subject)
-        {
-            string wwwPath = this._environment.WebRootPath;
-            string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "reset_password");
-
-         var   emailHtml = await _contentBuilder.BuildRazorContent(new { code = user.ResetCode }, htmlTemp);
-            try
-            {
-                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, user.Email, subject, emailHtml, null));
+                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, email, subject, emailHtml, null));
 
             }
             catch (Exception ex)
             {
                 _logger.LogError($"EmailCustomer Email Customer Error {ex.Message} -{ex.StackTrace} ");
             }
-
-            //try
-            //{
-            //    BackgroundJob.Enqueue<IContentBuilder>(
-            //        s => s.SendEmail(new {code= user.ResetCode}, htmlTemp, shopInfo.ShopSettings, shopInfo.Email, user.Email, subject
-            //            ));
-            //}
-            //catch (Exception ex)
-            //{
-            //}
         }
+
         public async Task<object> ResetPassword(string email, string resetCode, string password, int shopId)
         {
             Guard.NotNull(email);
             Guard.GreaterThanZero(shopId);
             var customer = await _customerRepository.GetOneAsync(r =>
-                r.Email == email  && r.IsActive.HasValue && r.IsActive.Value && r.ShopId == shopId);
+                r.Email == email && r.IsActive.HasValue && r.IsActive.Value && r.ShopId == shopId);
             if (customer == null)
                 return new { msg = "用户不存在", };
-            else if(customer.ResetCode!=resetCode)
-                return new { msg = "验证码错误", };
+            var cacheKey = string.Format("SendForgetPasswordVerifyCode-{1}-{0}", shopId, email);
+            string code = _memoryCache.Get(cacheKey)?.ToString();
+
+             if (code != resetCode)
+                return new { msg = "验证码错误或已过期", };
 
             customer.Password = _encryptionHelper.EncryptString(password);
             var updatedCustomer = await _customerRepository.UpsertAsync(customer);
@@ -285,7 +245,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             var customer = await _customerRepository.GetOneAsync(r =>
                 r.Email == email && r.Password == passwordEncode && r.IsActive.HasValue && r.IsActive.Value && r.ShopId == shopId);
             if (customer == null)
-                return new { msg = "用户不存在，或原密码错误",  };
+                return new { msg = "用户不存在，或原密码错误", };
 
             customer.Password = _encryptionHelper.EncryptString(password);
             var updatedCustomer = await _customerRepository.UpsertAsync(customer);
@@ -326,7 +286,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         }
 
         public async Task<DbCustomer> UpdateFavorite(DbCustomer customer, int shopId)
-            {
+        {
             Guard.NotNull(customer);
             var existingCustomer =
                 await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == customer.Id);
@@ -340,23 +300,24 @@ namespace App.Infrastructure.ServiceHandler.Common
 
             return savedCustomer.ClearForOutPut();
         }
-        public async Task<object> UpdateCart(List<BookingDetail> cartInfos,string userId, int shopId)
+        public async Task<object> UpdateCart(List<BookingDetail> cartInfos, string userId, int shopId)
         {
             var existingCustomer =
                 await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == userId);
             if (existingCustomer == null)
                 return new { msg = "User not found!(用户不存在)", };
 
-            if (cartInfos != null) {
+            if (cartInfos != null)
+            {
                 foreach (var item in cartInfos)
                 {
-                    
-                    if(string.IsNullOrWhiteSpace( item.Id))
-                        item.Id= Guid.NewGuid().ToString();
+
+                    if (string.IsNullOrWhiteSpace(item.Id))
+                        item.Id = Guid.NewGuid().ToString();
                     if (item.AmountInfos == null)
                         item.AmountInfos = new List<AmountInfo>();
                     item.AmountInfos?.Clear();
-                    AmountInfo amountInfo = new AmountInfo() {  Amount= _amountCalculaterV1.getItemAmount(item),PaidAmount= _amountCalculaterV1.getItemPayAmount(item) };
+                    AmountInfo amountInfo = new AmountInfo() { Amount = _amountCalculaterV1.getItemAmount(item), PaidAmount = _amountCalculaterV1.getItemPayAmount(item) };
                     item.AmountInfos.Add(amountInfo);
                 }
             }
@@ -372,10 +333,10 @@ namespace App.Infrastructure.ServiceHandler.Common
             var existingCustomer =
                 await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == userId);
             if (existingCustomer == null)
-                return new { msg = "User not found!(用户不存在)",  };
+                return new { msg = "User not found!(用户不存在)", };
 
 
-            return new { msg = "ok", data = existingCustomer .CartInfos};
+            return new { msg = "ok", data = existingCustomer.CartInfos };
         }
         public async Task<DbCustomer> Delete(DbCustomer item, int shopId)
         {

@@ -323,7 +323,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 List<string> temo = new List<string>();
                 var temp = existingRestaurants.Where(a => a.Country.Trim() == country.Key);
                 var citys = temp.GroupBy(a => a.City.Trim());
-                temo.Add("È«²¿");
                 foreach (var city in citys)
                 {
                     temo.Add(city.Key);
