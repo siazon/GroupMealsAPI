@@ -208,7 +208,15 @@ namespace KingfoodIO.Controllers.TravelMeals
                 async () => await _restaurantBookingServiceHandler.ResendEmail(bookingId));
         }
 
+        [HttpGet]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> DoRebate(int shopId,string bookingId, double rebate, bool cache = false)
+        {
 
+            return await ExecuteAsync(shopId, cache,
+                async () => await _restaurantBookingServiceHandler.DoRebate(bookingId,rebate));
+        }
         /// <summary>
         /// 订单修改时返回的paidAmount不可用，应该取amountInfos里真实付了多少钱的Sum(paidAmount)。
         /// Json中menuCalculateType，price，childrenPrice，qty，childrenQty必填

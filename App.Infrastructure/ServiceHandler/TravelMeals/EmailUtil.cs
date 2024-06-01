@@ -16,7 +16,7 @@ using System.Threading.Tasks;
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
 
-    public interface IEmailUtils
+    public interface ISendEmailUtil
     {
         Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, ILogManager _logger);
         //Task EmailSupport(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger);
@@ -26,9 +26,20 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
 
     }
-    public class EmailUtils
+    public class SendEmailUtil: ISendEmailUtil
     {
-        public static async Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, ILogManager _logger)
+
+        private readonly IEmailUtil _emailUtil; ILogManager _logger;
+
+        public SendEmailUtil(IEmailUtil emailUtil, ILogManager logger)
+        {
+            _emailUtil = emailUtil;
+            _logger = logger;
+
+        }
+
+
+        public  async Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, ILogManager _logger)
         {
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";
@@ -48,7 +59,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 Detail += item.RestaurantName + " <br> ";
                 Detail += item.RestaurantAddress + " <br> ";
                 Detail += item.RestaurantPhone + "  " + item.RestaurantEmail + " <br> ";
-                Detail += item.SelectDateTime.Value.ToLocalTime() + " <br><br> ";
+                int hour = item.RestaurantCountry == "France" ?2:1;
+                Detail += item.SelectDateTime.Value.AddHours(hour) + " <br><br> ";
+                //Detail +="时区："+ TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now).Hours + " : " + TimeZone.CurrentTimeZone.GetUtcOffset(item.SelectDateTime.Value).Hours;
                 Detail += "团号: " + item.GroupRef + " <br> ";
                 Detail += "联系人: " + item.ContactName +" "+item.ContactPhone+ " <br> ";
 
@@ -67,7 +80,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 var emailHtml = await _contentBuilder.BuildRazorContent(new { booking = booking, bookingDetail = item, AmountStr = amount, PaidAmountStr = paidAmount, UnpaidAmountStr = amount - paidAmount, Detail = detailstr, Memo = item.Courses[0].Memo }, htmlTemp);
                 try
                 {
-                    BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, item.RestaurantEmail, subject, emailHtml,null));
+                    //_emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email,null, "siazonchen@gmail.com",null, subject,null, emailHtml, "dev@groupmeals.com");
+
+                    BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, item.RestaurantEmail, subject, emailHtml,"sales.ie@groupmeals.com"));
                     //BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, item.SupporterEmail, subject, emailHtml));
                 }
                 catch (Exception ex)
@@ -77,7 +92,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
         }
 
-        //public static async Task EmailSupport(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger)
+        //public  async Task EmailSupport(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger)
         //{
         //    string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
         //    string currencyStr = booking.PayCurrency == "UK" ? "£" : "€";
@@ -125,7 +140,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         //    }
         //}
 
-        public static async Task EmailCustomerTotal(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, IContentBuilder _contentBuilder,  ILogManager _logger)
+        public  async Task EmailCustomerTotal(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, IContentBuilder _contentBuilder,  ILogManager _logger)
         {
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";
@@ -210,7 +225,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
 
         }
-        public static async Task EmailCustomer(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, IContentBuilder _contentBuilder, ILogManager _logger)
+        public  async Task EmailCustomer(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, IContentBuilder _contentBuilder, ILogManager _logger)
         {
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";

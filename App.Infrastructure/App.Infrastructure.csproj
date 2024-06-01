@@ -18,6 +18,7 @@
     <Compile Remove="InfrastructureModule.cs" />
     <Compile Remove="Repository\DbRepository.cs" />
     <Compile Remove="Utility\Common\GoogleMapUtil.cs" />
+    <Compile Remove="Utility\Common\QuartzTask.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Builders\IreHoliday\" />

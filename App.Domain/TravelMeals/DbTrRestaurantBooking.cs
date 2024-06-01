@@ -25,6 +25,7 @@ namespace App.Domain.TravelMeals
         public string BookingNotes { get; set; }
         public string PayCurrency { get; set; }
         public string Creater { get; set; }
+        public double Rebate { get; set; }
         public List<BookingDetail> Details { get; set; } = new List<BookingDetail>();
         public List<OperationInfo> Operations { get; set; } = new List<OperationInfo>();
         public List<PaymentInfo> PaymentInfos { get; set; } = new List<PaymentInfo>();
