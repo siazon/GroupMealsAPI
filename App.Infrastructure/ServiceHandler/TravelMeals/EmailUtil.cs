@@ -80,9 +80,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 var emailHtml = await _contentBuilder.BuildRazorContent(new { booking = booking, bookingDetail = item, AmountStr = amount, PaidAmountStr = paidAmount, UnpaidAmountStr = amount - paidAmount, Detail = detailstr, Memo = item.Courses[0].Memo }, htmlTemp);
                 try
                 {
-                    //_emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email,null, "siazonchen@gmail.com",null, subject,null, emailHtml, "dev@groupmeals.com");
+                    _logger.LogInfo($"_emailUtil.SendEmailto:{item.RestaurantEmail}" + booking.BookingRef);
+                    _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email,null, item.RestaurantEmail, null, subject,null, emailHtml, "sales.ie@groupmeals.com");
 
-                    BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, item.RestaurantEmail, subject, emailHtml,"sales.ie@groupmeals.com"));
+                    _logger.LogInfo("_emailUtil.SendEmailend:" + booking.BookingRef);
+                    //BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, item.RestaurantEmail, subject, emailHtml,"sales.ie@groupmeals.com"));
                     //BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, item.SupporterEmail, subject, emailHtml));
                 }
                 catch (Exception ex)
@@ -153,9 +155,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 Detail += item.RestaurantName +" <br> ";
                 Detail += item.RestaurantAddress + " <br> ";
                 Detail += item.RestaurantPhone + "  " + item.RestaurantEmail + " <br> ";
-                Detail += item.SelectDateTime.Value.ToLocalTime() + " <br><br> ";
+                int hour = item.RestaurantCountry == "France" ? 2 : 1;
+                Detail += item.SelectDateTime.Value.AddHours(hour) + " <br><br> ";
                 Detail += "团号: " + item.GroupRef+ " <br> ";
                 Detail += "联系人: " + item.ContactName + " " + item.ContactPhone + " <br> ";
+                Detail += "紧急: "+item.EmergencyPhone;
                 decimal amount = item.AmountInfos.Sum(x => x.Amount);
                 decimal paidAmount = item.AmountInfos.Sum(x => x.PaidAmount);
 
@@ -216,8 +220,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             try
             {
-                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, subject, emailHtml,null));
-
+                _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, null, booking.CustomerEmail, null, subject, null, emailHtml, null);
+                //BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, subject, emailHtml,null));
             }
             catch (Exception ex)
             {

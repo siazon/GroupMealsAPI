@@ -200,29 +200,36 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             TrDbRestaurantBooking DBbooking = GetBooking(billId).Result;
             TrDbRestaurantBooking booking = JsonConvert.DeserializeObject<TrDbRestaurantBooking>(JsonConvert.SerializeObject(DBbooking));// JsonConvert.DeserializeObject< TrDbRestaurantBooking >(JsonConvert.SerializeObject(DBbooking));
+           if(booking.IsDeleted)
+                return new { code = 1, msg = "Order Deleted(无效操作，订单已删除)",  };
             foreach (var item in DBbooking.Details)
             {
                 if (item.Id == subBillId)
                 {
-                    if (item.AcceptStatus == AcceptStatusEnum.UnAccepted)
+                    switch (item.AcceptStatus)
                     {
-                        //if(DBbooking.Operations.FirstOrDefault(a=>a.ModifyType==4)!=null)
-                        //    return new { code = 1, msg = "Order Modified, Please check the latest Email(订单已修改，请查看最新的邮件)",  };
+                        case AcceptStatusEnum.UnAccepted:
+                            item.AcceptStatus = (AcceptStatusEnum)acceptType;
+                            if (item.AcceptStatus == AcceptStatusEnum.Accepted)
+                                item.Status = OrderStatusEnum.Accepted;
+                            if (item.AcceptStatus == AcceptStatusEnum.Declined)
+                                item.Status = OrderStatusEnum.Canceled;
+                            break;
+                        case AcceptStatusEnum.Accepted:
+                            return new { code = 1, msg = "Order Accepted(无效操作，订单已接收)",  };
+                            break;
+                        case AcceptStatusEnum.Declined:
+                            return new { code = 2, msg = "Order Declined(无效操作，订单已被拒绝)", };
+                            break;
+                        case AcceptStatusEnum.CanceledBeforeAccepted:
+                        case AcceptStatusEnum.CanceledAfterAccepted:
 
-                        item.AcceptStatus = (AcceptStatusEnum)acceptType;
-                        if (item.AcceptStatus == AcceptStatusEnum.Accepted)
-                            item.Status = OrderStatusEnum.Accepted;
-                        if (item.AcceptStatus == AcceptStatusEnum.Declined)
-                            item.Status = OrderStatusEnum.Canceled;
+                            return new { code = 2, msg = "Order Declined(无效操作，订单已取消)",  };
+                            break;
+                        default:
+                            break;
                     }
-                    else if (item.AcceptStatus == AcceptStatusEnum.Accepted)
-                    {
-                        return new { code = 1, msg = "Order Accepted(订单已接收)", data = booking };
-                    }
-                    else if (item.AcceptStatus == AcceptStatusEnum.Declined)
-                    {
-                        return new { code = 2, msg = "Order Declined(订单已被拒绝)", data = booking };
-                    }
+                  
                 }
             }
             if (booking == null) return false;
@@ -604,6 +611,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     item.RestaurantEmail = rest.Email;
                     item.RestaurantAddress = rest.Address;
                     item.RestaurantPhone = rest.PhoneNumber;
+                    item.EmergencyPhone = rest.ContactPhone;
                 }
 
 
@@ -695,7 +703,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         public async Task<bool> ResendEmail(string bookingId)
         {
-
+            _logger.LogInfo("ResendEmail.bookingid:" + bookingId);
 
             try
             {
@@ -703,6 +711,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 if (booking != null)
                 {
 
+                    _logger.LogInfo("ResendEmail.BookingRef:" + booking.BookingRef);
                     //_twilioUtil.sendSMS("+353874858555", $"你有新的订单: {booking.BookingRef} ");
 
                     var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
@@ -755,7 +764,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<bool> DeleteBooking(string bookingId, int shopId)
         {
             var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
-            booking.IsDeleted = true; booking.Updated = _dateTimeUtil.GetCurrentTime();
+            booking.IsDeleted = true;
+            booking.Updated = _dateTimeUtil.GetCurrentTime();
             var savedRestaurant = await _restaurantBookingRepository.UpsertAsync(booking);
             return savedRestaurant != null;
         }
@@ -782,13 +792,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             res.ForEach(r => { r.Details.OrderByDescending(d => d.SelectDateTime); });
             var list = res.OrderByDescending(a => a.Details.Max(d => d.SelectDateTime)).ToList();
 
-            //foreach (var item in list)
-            //{
-            //    foreach (var de in item.Details)
-            //    {
-            //        de.SelectDateTime = de.SelectDateTime.Value.ToLocalTime();
-            //    }
-            //}
             return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = list };
 
         }
@@ -859,13 +862,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     item.Details.AddRange(rest.Details.FindAll(a => rest.Id == item.Id && a.RestaurantEmail == email));
                 }
             }
-            //foreach (var item in res)
-            //{
-            //    foreach (var de in item.Details)
-            //    {
-            //        de.SelectDateTime = de.SelectDateTime.Value.ToLocalTime();
-            //    }
-            //}
+          
             return new ResponseModel { msg = "ok", code = 200, token = token, data = res };
         }
 
@@ -875,26 +872,19 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string pageToken = "";
             if (string.IsNullOrWhiteSpace(content))
             {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted), pageSize, continuationToken);
+                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None ), pageSize, continuationToken);
                 res = Bookings.Value.ToList();
                 pageToken = Bookings.Key;
             }
             else
             {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted), pageSize, continuationToken);
+                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None  ), pageSize, continuationToken);
                 res = Bookings.Value.ToList().FindAll(a => a.Details.Any(d => d.RestaurantName.ToLower().Contains(content.ToLower())));
                 pageToken = Bookings.Key;
             }
             res.ForEach(r => { r.Details.OrderByDescending(d => d.SelectDateTime); });
             var list = res.OrderByDescending(a => a.Details.Max(d => d.SelectDateTime)).ToList();
-            pageToken += TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now).Hours + " : " + TimeZone.CurrentTimeZone.GetUtcOffset(list[0].Details[0].SelectDateTime.Value).Hours;
-            //foreach (var item in list)
-            //{ 
-            //    foreach (var de in item.Details)
-            //    {
-            //        de.SelectDateTime = de.SelectDateTime.Value.ToLocalTime();
-            //    }
-            //}
+          
             return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = list };
         }
 
@@ -966,10 +956,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     {
                         if (detail.Currency == "UK")
                         {
-                            totalPayAmount += _amountCalculaterV1.getItemPayAmount(detail) * (decimal)rate;
+                            totalPayAmount += _amountCalculaterV1.getItemPayAmount(detail) / (decimal)rate;
                         }
                         else
-                            totalPayAmount += _amountCalculaterV1.getItemPayAmount(detail) / (decimal)rate;
+                            totalPayAmount += _amountCalculaterV1.getItemPayAmount(detail) * (decimal)rate;
                     }
                     if (detail.Currency == "UK")
                     {

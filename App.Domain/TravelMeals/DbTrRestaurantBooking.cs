@@ -63,6 +63,7 @@ namespace App.Domain.TravelMeals
         public string RestaurantId { get; set; }
         public string RestaurantName { get; set; }
         public string RestaurantPhone { get; set; }
+        public string EmergencyPhone { get; set; }
         public string RestaurantEmail { get; set; }
         public string RestaurantCountry { get; set; }
         public string SupporterEmail { get; set; }
