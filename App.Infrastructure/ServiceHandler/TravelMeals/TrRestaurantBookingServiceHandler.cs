@@ -782,7 +782,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             res.ForEach(r => { r.Details.OrderByDescending(d => d.SelectDateTime); });
             var list = res.OrderByDescending(a => a.Details.Max(d => d.SelectDateTime)).ToList();
 
-            pageToken += TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now).Hours+" : " + TimeZone.CurrentTimeZone.GetUtcOffset(list[0].Details[0].SelectDateTime.Value);
             //foreach (var item in list)
             //{
             //    foreach (var de in item.Details)
