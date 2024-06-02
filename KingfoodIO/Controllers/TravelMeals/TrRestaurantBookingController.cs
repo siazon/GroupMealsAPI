@@ -107,9 +107,49 @@ namespace KingfoodIO.Controllers.TravelMeals
             var authHeader = Request.Headers["Wauthtoken"];
             var temp = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantBookingServiceHandler.CancelBooking(bookingId, detailId, shopId, temp.UserEmail));
+                async () => await _restaurantBookingServiceHandler.CancelBooking(bookingId, detailId,  temp.UserEmail));
+        }
+      
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="shopId"></param>
+        /// <param name="bookingId"></param>
+        /// <param name="detailId"></param>
+        /// <param name="cache"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> SettleBooking(int shopId, string bookingId, string detailId, bool cache = false)
+        {
+
+            var authHeader = Request.Headers["Wauthtoken"];
+            var temp = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            return await ExecuteAsync(shopId, cache,
+                async () => await _restaurantBookingServiceHandler.SettleBooking(bookingId, detailId,  temp.UserEmail));
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="shopId"></param>
+        /// <param name="bookingId"></param>
+        /// <param name="detailId"></param>
+        /// <param name="remark"></param>
+        /// <param name="cache"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> UpsetBookingRemark(int shopId, string bookingId, string detailId,string remark, bool cache = false)
+        {
+
+            var authHeader = Request.Headers["Wauthtoken"];
+            var temp = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            return await ExecuteAsync(shopId, cache,
+                async () => await _restaurantBookingServiceHandler.UpsetBookingRemark(bookingId, detailId, remark, temp.UserEmail));
+        }
 
         /// <summary>
         /// 

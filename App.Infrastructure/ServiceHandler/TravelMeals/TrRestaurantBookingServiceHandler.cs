@@ -36,6 +36,7 @@ using App.Domain.Common.Auth;
 using Twilio.TwiML.Voice;
 using Hangfire.Dashboard;
 using Microsoft.Azure.Cosmos.Linq;
+using App.Infrastructure.Extensions;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -51,7 +52,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<bool> DoRebate(string bookingId, double rebate);
         Task<object> UpdateAccepted(string bookingId, string subBillId, int acceptType, string operater);
         Task<bool> UpdateAcceptedReason(string bookingId, string subBillId, string reason, string operater);
-        Task<bool> CancelBooking(string bookingId, string detailId, int shopId, string userEmail);
+        Task<object> CancelBooking(string bookingId, string detailId, string userEmail);
+        Task<object> SettleBooking(string bookingId, string detailId, string userEmail);
+
+        Task<object> UpsetBookingRemark(string bookingId, string detailId, string remark, string userEmail);
         Task<ResponseModel> MakeABooking(TrDbRestaurantBooking booking, int shopId, DbToken user);
         Task<ResponseModel> ModifyBooking(TrDbRestaurantBooking booking, int shopId, string email);
         Task<bool> DeleteBooking(string bookingId, int shopId);
@@ -115,22 +119,69 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var Booking = await _restaurantBookingRepository.GetOneAsync(r => r.Id == id);
             return Booking;
         }
-
-        public async Task<bool> CancelBooking(string bookingId, string detailId, int shopId, string userEmail)
+        public async Task<object> SettleBooking(string bookingId, string detailId, string userEmail)
         {
             var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
             foreach (var item in booking.Details)
             {
-                if (item.Status == OrderStatusEnum.Canceled) continue;
                 if (item.Id == detailId)
                 {
-                    item.Status = OrderStatusEnum.Canceled;
-                    if (item.AcceptStatus == AcceptStatusEnum.Declined) { }//已拒绝不作反应
-                    else if (item.AcceptStatus == AcceptStatusEnum.Accepted)
-                        item.AcceptStatus = AcceptStatusEnum.CanceledAfterAccepted;
+                    item.Status = OrderStatusEnum.Settled;
+                    item.AcceptStatus = AcceptStatusEnum.SettledByAdmin;
+                }
+            }
+            booking.Status= OrderStatusEnum.Settled;
+            await _restaurantBookingRepository.UpsertAsync(booking);
+            return new { code = 0, msg = "ok", };
+        }
+        public async Task<object> UpsetBookingRemark(string bookingId, string detailId, string remark, string userEmail)
+        {
+            var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
+            foreach (var item in booking.Details)
+            {
+                if (item.Id == detailId)
+                {
+                    item.Remark=remark;
+                }
+            }
+
+            booking.Updater = userEmail;
+            booking.Updated = DateTime.UtcNow;
+            await _restaurantBookingRepository.UpsertAsync(booking);
+            return new { code = 0, msg = "ok", };
+        }
+        public async Task<object> CancelBooking(string bookingId, string detailId, string userEmail)
+        {//Europe/Dublin Europe/London Europe/Paris
+
+
+            var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
+            foreach (var item in booking.Details)
+            {
+                if (item.Id == detailId)
+                {
+                    if (item.Status == OrderStatusEnum.Canceled)
+                        return new { code = 0, msg = "订单已取消", };
                     else
-                        item.AcceptStatus = AcceptStatusEnum.CanceledBeforeAccepted;
-                    SendCancelEmail(booking, item);
+                    {
+                        if ((item.SelectDateTime.Value.GetLocaTimeByIANACode("Europe/Dublin") - DateTime.UtcNow.GetLocaTimeByIANACode("Europe/Dublin")).TotalHours < 24)
+                        {
+                            return new { code = 0, msg = "距离用餐时间24小时内取消请联系客服人员：微信：groupmeals", };
+                        }
+                    }
+
+                    if (item.Status == OrderStatusEnum.Canceled) continue;
+
+
+                    if (item.Id == detailId)
+                    {
+                        item.Status = OrderStatusEnum.Canceled;
+                        if (item.AcceptStatus == AcceptStatusEnum.Declined) { }//已拒绝不作反应
+                        else if (item.AcceptStatus == AcceptStatusEnum.Accepted)
+                            item.AcceptStatus = AcceptStatusEnum.CanceledAfterAccepted;
+                        else
+                            item.AcceptStatus = AcceptStatusEnum.CanceledBeforeAccepted;
+                        SendCancelEmail(booking, item);
+                    }
                 }
             }
             booking.Status = OrderStatusEnum.Canceled;
@@ -141,7 +192,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             var savedRestaurant = await _restaurantBookingRepository.UpsertAsync(booking);
 
-            return savedRestaurant != null;
+            return new { code = 0, msg = "ok", };
+
         }
         private async void SendCancelEmail(TrDbRestaurantBooking booking, BookingDetail detail)
         {
@@ -228,6 +280,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
                             return new { code = 2, msg = "Order Declined(无效操作，订单已取消)", };
                             break;
+                        case AcceptStatusEnum.Settled:
+                        case AcceptStatusEnum.SettledByAdmin:
+                            return new { code = 2, msg = "Order Settled(无效操作，已结单)", };
                         default:
                             break;
                     }
@@ -820,7 +875,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     if (isSettled && item.Status != OrderStatusEnum.Settled)
                     {
                         item.Status = OrderStatusEnum.Settled;
-                        item.Details.ForEach(a => a.Status = OrderStatusEnum.Settled);
+                        item.Details.ForEach(a => { a.Status = OrderStatusEnum.Settled; a.AcceptStatus = AcceptStatusEnum.Settled; });
                         await _restaurantBookingRepository.UpsertAsync(item);
                     }
                 }

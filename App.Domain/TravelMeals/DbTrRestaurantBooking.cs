@@ -82,6 +82,7 @@ namespace App.Domain.TravelMeals
         public string ContactInfos { get; set; }
         public string GroupRef { get; set; }
         public bool IsDeleted { get; set; }
+        public string Remark { get; set; }
 
         public RestaurantBillInfo BillInfo { get; set; } = new RestaurantBillInfo();
         public List<BookingCourse> Courses { get; set; } = new List<BookingCourse>();
@@ -93,7 +94,7 @@ namespace App.Domain.TravelMeals
     }
     public enum AcceptStatusEnum
     {
-        UnAccepted, Accepted, Declined, CanceledBeforeAccepted,CanceledAfterAccepted,
+        UnAccepted, Accepted, Declined, CanceledBeforeAccepted,CanceledAfterAccepted, Settled, SettledByAdmin
     }
     public class BookingCourse : TrDbRestaurantMenuItem
     {

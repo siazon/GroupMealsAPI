@@ -1,6 +1,7 @@
 ﻿using App.Domain.Config;
 using Microsoft.Extensions.Options;
 using System;
+using System.Collections.Generic;
 using TimeZoneConverter;
 
 namespace App.Infrastructure.Utility.Common
@@ -8,6 +9,7 @@ namespace App.Infrastructure.Utility.Common
     public interface IDateTimeUtil
     {
         DateTime GetCurrentTime();
+        DateTime GetNowByIANACode(string IANACode);
         DateTime? GetMinDateTime(DateTime? dateA, DateTime? dateB);
         DateTime? GetMaxDateTime(DateTime? dateA, DateTime? dateB);
         DateTime? CovertDaysOfWeekTime(DateTime? specialDayShopCollectionStartTime, string toString);
@@ -25,11 +27,21 @@ namespace App.Infrastructure.Utility.Common
 
         public DateTime GetCurrentTime()
         {
+
+
             var timezoneInfo = TZConvert.GetTimeZoneInfo(_appsettingConfig.TimeZoneId);
             return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
                 timezoneInfo);
         }
+        public DateTime GetNowByIANACode(string IANACode)
+        {
 
+            var time = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                TZConvert.GetTimeZoneInfo(IANACode));
+
+            return time;
+        }
+     
         public DateTime? GetMinDateTime(DateTime? dateA, DateTime? dateB)
         {
             return dateA > dateB ? dateB : dateA;
@@ -69,5 +81,31 @@ namespace App.Infrastructure.Utility.Common
         {
             return timeToCompare.Value.Ticks >= fromTime.Value.Ticks && timeToCompare.Value.Ticks <= toTime.Value.Ticks;
         }
+    }
+
+
+    public static class ExtensionMethods
+    {
+
+        public static DateTime GetLocaTimeByIANACode(this DateTime dateTime, string IANACode)
+        {
+         
+
+          
+            var time = DateTime.Now;
+            try
+            {
+
+                time = TimeZoneInfo.ConvertTimeFromUtc(dateTime,
+                 TZConvert.GetTimeZoneInfo(IANACode));
+            }
+            catch (Exception ex)
+            {
+
+                throw;
+            }
+            return time;
+        }
+
     }
 }
