@@ -48,13 +48,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<bool> UpdateStripeClientKey(string bookingId, string paymentId, string customerId, string secertKey);
         Task<TrDbRestaurantBooking> BindingPayInfoToTourBooking(TrDbRestaurantBooking gpBooking, string PaymentId, string stripeClientSecretKey, bool isSetupPay);
         Task<bool> ResendEmail(string bookingId);
-        Task<bool> DoRebate(string bookingId,double rebate);
+        Task<bool> DoRebate(string bookingId, double rebate);
         Task<object> UpdateAccepted(string bookingId, string subBillId, int acceptType, string operater);
         Task<bool> UpdateAcceptedReason(string bookingId, string subBillId, string reason, string operater);
         Task<bool> CancelBooking(string bookingId, string detailId, int shopId, string userEmail);
         Task<ResponseModel> MakeABooking(TrDbRestaurantBooking booking, int shopId, DbToken user);
         Task<ResponseModel> ModifyBooking(TrDbRestaurantBooking booking, int shopId, string email);
         Task<bool> DeleteBooking(string bookingId, int shopId);
+        Task<bool> DeleteBookingDetail(string bookingId, string detailId, int shopId);
         Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
         Task<ResponseModel> SearchBookingsByRestaurant(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
         Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, int pageSize = -1, string continuationToke = null);
@@ -95,7 +96,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _customerRepository = customerRepository;
             _contentBuilder = contentBuilder;
             _emailUtil = emailUtil;
-            _sendEmailUtil= sendEmailUtil;
+            _sendEmailUtil = sendEmailUtil;
             _logger = logger;
             _twilioUtil = twilioUtil;
             _environment = environment;
@@ -178,8 +179,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var emailHtml = await _contentBuilder.BuildRazorContent(new { booking, detail, Detail = detailstr, Memo = detail.Courses[0].Memo }, htmlTemp);
             try
             {
-                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, detail.RestaurantEmail, "Order canceled", emailHtml,null));
-                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, "Order canceled", emailHtml, null));
+                _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, null, detail.RestaurantEmail, null, "Order canceled", null, emailHtml, "sales.ie@groupmeals.com");
+                _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, null, booking.CustomerEmail, null, "Order canceled", null, emailHtml, "sales.ie@groupmeals.com");
+
             }
             catch (Exception ex)
             {
@@ -200,8 +202,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             TrDbRestaurantBooking DBbooking = GetBooking(billId).Result;
             TrDbRestaurantBooking booking = JsonConvert.DeserializeObject<TrDbRestaurantBooking>(JsonConvert.SerializeObject(DBbooking));// JsonConvert.DeserializeObject< TrDbRestaurantBooking >(JsonConvert.SerializeObject(DBbooking));
-           if(booking.IsDeleted)
-                return new { code = 1, msg = "Order Deleted(无效操作，订单已删除)",  };
+            if (booking.IsDeleted)
+                return new { code = 1, msg = "Order Deleted(无效操作，订单已删除)", };
             foreach (var item in DBbooking.Details)
             {
                 if (item.Id == subBillId)
@@ -216,7 +218,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                                 item.Status = OrderStatusEnum.Canceled;
                             break;
                         case AcceptStatusEnum.Accepted:
-                            return new { code = 1, msg = "Order Accepted(无效操作，订单已接收)",  };
+                            return new { code = 1, msg = "Order Accepted(无效操作，订单已接收)", };
                             break;
                         case AcceptStatusEnum.Declined:
                             return new { code = 2, msg = "Order Declined(无效操作，订单已被拒绝)", };
@@ -224,12 +226,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         case AcceptStatusEnum.CanceledBeforeAccepted:
                         case AcceptStatusEnum.CanceledAfterAccepted:
 
-                            return new { code = 2, msg = "Order Declined(无效操作，订单已取消)",  };
+                            return new { code = 2, msg = "Order Declined(无效操作，订单已取消)", };
                             break;
                         default:
                             break;
                     }
-                  
+
                 }
             }
             if (booking == null) return false;
@@ -281,41 +283,17 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
 
             TrDbRestaurantBooking bookingCopy = JsonConvert.DeserializeObject<TrDbRestaurantBooking>(JsonConvert.SerializeObject(booking));
-            bookingCopy.Details.Clear();
-            foreach (var item in booking.Details)
+            bookingCopy?.Details?.Clear();
+            foreach (var item in booking?.Details)
             {
                 if (item.Id == subId)
                 {
-                    bookingCopy.Details.Add(item);
+                    bookingCopy?.Details.Add(item);
                 }
             }
 
-            _sendEmailUtil.EmailCustomer(bookingCopy, shopInfo, tempName, wwwPath, subject, _contentBuilder, _logger);
+            _sendEmailUtil?.EmailCustomer(bookingCopy, shopInfo, tempName, wwwPath, subject, _contentBuilder, _logger);
 
-            //var schedulerFactory = new StdSchedulerFactory();
-            //var scheduler = await schedulerFactory.GetScheduler();
-            //await scheduler.Start();
-
-            ////创建作业和触发器
-            //var jobDetail = JobBuilder.Create<QuartzTask>().SetJobData(new JobDataMap() {
-            //                    new KeyValuePair<string, object>("BookingID", booking.Id),
-            //                    new KeyValuePair<string, object>("ShopInfo", shopInfo),
-            //                    new KeyValuePair<string, object>("TempName", tempName),
-            //                    new KeyValuePair<string, object>("Subject", subject),
-            //                    new KeyValuePair<string, object>("WwwPath", wwwPath),
-            //                    new KeyValuePair<string, object>("ContentBuilder", _contentBuilder),
-            //                    new KeyValuePair<string, object>("Logger", _logger),
-            //                    new KeyValuePair<string, object>("RestaurantBookingRepository", _restaurantBookingRepository),
-            //                }).Build();
-            //var trigger = TriggerBuilder.Create()
-            //                            .WithSimpleSchedule(m =>
-            //                            {
-            //                                m.WithRepeatCount(0).WithIntervalInSeconds(10);
-            //                            }).StartAt(new DateTimeOffset(DateTime.Now.AddSeconds(20)))
-            //                            .Build();
-
-            ////添加调度
-            //await scheduler.ScheduleJob(jobDetail, trigger);
 
         }
         public async Task<bool> UpdateAcceptedReason(string billId, string subBillId, string reason, string operater)
@@ -470,7 +448,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     res = UpdateField(operationInfo, booking.Id, item, detail, "ContactInfos");
                     if (res) isChange++;
 
-                  
+
                     var Oldamount = _amountCalculaterV1.getItemAmount(item);
                     var amount = _amountCalculaterV1.getItemAmount(detail);
                     if (amount != Oldamount)
@@ -517,7 +495,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 modifyInfo.oldValue = oldValue?.ToString();
                 modifyInfo.newValue = newValue?.ToString();
                 operationInfo.ModifyInfos.Add(modifyInfo);
-                    item.GetType().GetProperty(fieldName).SetValue(item, newValue);
+                item.GetType().GetProperty(fieldName).SetValue(item, newValue);
             }
             return isChange;
         }
@@ -689,16 +667,17 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //EmailUtils.EmailSupport(booking, shopInfo, "new_modify", this._environment.WebRootPath, "Booking Modified", _twilioUtil, _contentBuilder, exchange, _logger);
 
         }
-        public async Task<bool> DoRebate(string bookingId, double rebate) {
+        public async Task<bool> DoRebate(string bookingId, double rebate)
+        {
 
             TrDbRestaurantBooking booking = await _restaurantBookingRepository.GetOneAsync(r => r.Id == bookingId);
             if (booking != null)
-            { 
-            booking.Rebate=rebate;
+            {
+                booking.Rebate = rebate;
                 await _restaurantBookingRepository.UpsertAsync(booking);
             }
 
-                return true;
+            return true;
         }
 
         public async Task<bool> ResendEmail(string bookingId)
@@ -769,6 +748,26 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var savedRestaurant = await _restaurantBookingRepository.UpsertAsync(booking);
             return savedRestaurant != null;
         }
+
+        public async Task<bool> DeleteBookingDetail(string bookingId, string detailId, int shopId)
+        {
+            var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
+            bool isAllDeleted = true;
+            foreach (var bookingDetail in booking.Details)
+            {
+                if (bookingDetail.Id == detailId)
+                {
+                    bookingDetail.IsDeleted = true;
+                }
+                if (!bookingDetail.IsDeleted)
+                    isAllDeleted = false;
+            }
+            if (isAllDeleted)
+                booking.IsDeleted = true;
+            booking.Updated = _dateTimeUtil.GetCurrentTime();
+            var savedRestaurant = await _restaurantBookingRepository.UpsertAsync(booking);
+            return savedRestaurant != null;
+        }
         public async Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToken = null)
         {
             //SettleOrder();
@@ -779,7 +778,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted), pageSize, continuationToken);
                 res = Bookings.Value.ToList().FindAll(a => a.CustomerEmail == email);
                 pageToken = Bookings.Key;
-            
+
 
             }
             else
@@ -862,7 +861,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     item.Details.AddRange(rest.Details.FindAll(a => rest.Id == item.Id && a.RestaurantEmail == email));
                 }
             }
-          
+
             return new ResponseModel { msg = "ok", code = 200, token = token, data = res };
         }
 
@@ -872,19 +871,19 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string pageToken = "";
             if (string.IsNullOrWhiteSpace(content))
             {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None ), pageSize, continuationToken);
+                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None), pageSize, continuationToken);
                 res = Bookings.Value.ToList();
                 pageToken = Bookings.Key;
             }
             else
             {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None  ), pageSize, continuationToken);
+                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None), pageSize, continuationToken);
                 res = Bookings.Value.ToList().FindAll(a => a.Details.Any(d => d.RestaurantName.ToLower().Contains(content.ToLower())));
                 pageToken = Bookings.Key;
             }
-            res.ForEach(r => { r.Details.OrderByDescending(d => d.SelectDateTime); });
-            var list = res.OrderByDescending(a => a.Details.Max(d => d.SelectDateTime)).ToList();
-          
+            //res.ForEach(r => { r.Details.OrderByDescending(d => d.SelectDateTime); });
+            var list = res.OrderByDescending(a => a.Created).ToList();
+
             return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = list };
         }
 

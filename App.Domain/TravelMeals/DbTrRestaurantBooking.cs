@@ -81,6 +81,7 @@ namespace App.Domain.TravelMeals
         public string ContactWechat { get; set; }
         public string ContactInfos { get; set; }
         public string GroupRef { get; set; }
+        public bool IsDeleted { get; set; }
 
         public RestaurantBillInfo BillInfo { get; set; } = new RestaurantBillInfo();
         public List<BookingCourse> Courses { get; set; } = new List<BookingCourse>();

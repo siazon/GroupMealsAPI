@@ -173,7 +173,6 @@ namespace App.Infrastructure.ServiceHandler.Common
             _memoryCache.Set(cacheKey, code);
             var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
             await EmailVerifyCodeSender(email, code, shopInfo, "来自Groupmeals.com的验证码", "Verity Code", "注册验证码");
-             //BackgroundJob.Schedule(() => resetCode(cacheKey), TimeSpan.FromMinutes(1));
             Task.Run(() => {
                 Thread.Sleep(60*5000);
                 resetCode(cacheKey);
@@ -210,8 +209,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             var emailHtml = await _contentBuilder.BuildRazorContent(new { code, title, titleCN }, htmlTemp);
             try
             {
-                BackgroundJob.Enqueue<ITourBatchServiceHandler>(s => s.SendEmail(shopInfo.ShopSettings, shopInfo.Email, email, subject, emailHtml, null));
-
+                _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, null,email,null, subject,null, emailHtml, null);
             }
             catch (Exception ex)
             {
