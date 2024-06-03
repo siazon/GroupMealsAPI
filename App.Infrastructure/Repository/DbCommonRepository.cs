@@ -18,14 +18,8 @@ namespace App.Infrastructure.Repository
         {
             DbConfig = dbConfig.Value;
             CollectionId = typeof(T).Name;
-            DatabaseId = DbConfig.DocumentDbName;
-
-            //Client = new DocumentClient(new Uri(DbConfig.DocumentDbEndPoint),
-            //    DbConfig.DocumentDbAuthKey, new ConnectionPolicy { EnableEndpointDiscovery = false });
-          
-
-            _client = new CosmosClient(DbConfig.DocumentDbEndPoint, DbConfig.DocumentDbAuthKey);
-            container = getContainer(DatabaseId);
+      
+            container = getContainer(DbConfig.DocumentDbName, DbConfig.DocumentDbEndPoint, DbConfig.DocumentDbAuthKey);
         }
     }
 }

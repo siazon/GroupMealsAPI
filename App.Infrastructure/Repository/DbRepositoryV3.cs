@@ -36,32 +36,26 @@ namespace App.Infrastructure.Repository
 
         //Task CreateDatabaseIfNotExists();
 
-        void SetUpConnection(string documentDbEndPoint, string documentDbAuthKey, string documentDbName);
     }
 
     public class DbRepositoryV3<T>
         : IDbRepositoryV3<T> where T : DbEntity
     {
-        protected CosmosClient _client;
         protected string CollectionId;
-        protected string DatabaseId;
         protected DocumentDbConfig DbConfig;
         protected Container container;
-        public Container getContainer(string databaseId)
+        public Container getContainer(string databaseId,string endPoint,string authKey)
         {
+            CosmosInstance.GetInstance(endPoint, authKey);
+            CosmosClient _client = CosmosInstance._client;  // new CosmosClient(DbConfig.DocumentDbEndPoint, DbConfig.DocumentDbAuthKey);
+
             return _client.GetDatabase(databaseId).GetContainer(typeof(T).Name);
         }
 
-        public void SetUpConnection(string documentDbEndPoint, string documentDbAuthKey, string documentDbName)
-        {
-            _client = new CosmosClient(documentDbEndPoint, documentDbAuthKey);
-            CollectionId = typeof(T).Name;
-            container = getContainer(documentDbName);
-        }
-
-
         public async Task<T> GetOneAsync(Expression<Func<T, bool>> predicate)
         {
+
+            
             try
             {
                 List<T> results = new List<T>();
