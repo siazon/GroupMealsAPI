@@ -754,7 +754,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         throw new ServiceException("Cannot find shop info");
                     }
                     _sendEmailUtil.EmailBoss(booking, shopInfo, "new_meals_restaurant", this._environment.WebRootPath, "New Booking", _twilioUtil, _contentBuilder, _logger);
-                    //EmailUtils.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, "New Booking", _contentBuilder, 1, _logger);
+                    //_sendEmailUtil.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, "New Booking", _contentBuilder,  _logger);
                     //EmailUtils.EmailBoss(booking, shopInfo, "new Order", this._environment.WebRootPath, _twilioUtil, _contentBuilder, _logger);
                 }
             }
@@ -923,6 +923,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, int pageSize = -1, string continuationToken = null)
         {
             List<TrDbRestaurantBooking> res = new List<TrDbRestaurantBooking>();
+
+
             string pageToken = "";
             if (string.IsNullOrWhiteSpace(content))
             {

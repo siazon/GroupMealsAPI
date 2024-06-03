@@ -100,6 +100,24 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<ResponseModel> GetRestaurants(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null)
         {
+            for (int i = 0; i < 10; i++)
+            {
+                DateTime stime = DateTime.Now;
+                var temp = await _restaurantRepository.GetManyAsync(a => a.Email == "siazonchen@gmail.com");
+                var usetime = (DateTime.Now - stime).TotalMilliseconds;
+                Console.WriteLine(i+" Y " + usetime);
+                _logger.LogInfo(i + " Y " + usetime);
+                stime = DateTime.Now;
+                var temp1 = await _restaurantRepository.GetManyAsync(a => 1 == 1);
+                var usetime1 = (DateTime.Now - stime).TotalMilliseconds;
+                Console.WriteLine(i + " N " + usetime1);
+                _logger.LogInfo(i + " N " + usetime1);
+                _logger.LogInfo("----------------");
+            }
+           
+
+
+            return new ResponseModel { msg = "ok", code = 200, token = continuationToke,  };
             _logger.LogInfo($"GetRestaurants");
             List<TrDbRestaurant> data = new List<TrDbRestaurant>();
             try

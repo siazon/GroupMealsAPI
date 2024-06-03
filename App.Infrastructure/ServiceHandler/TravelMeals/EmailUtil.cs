@@ -59,8 +59,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 Detail += item.RestaurantName + " <br> ";
                 Detail += item.RestaurantAddress + " <br> ";
                 Detail += item.RestaurantPhone + "  " + item.RestaurantEmail + " <br> ";
-                int hour = item.RestaurantCountry == "France" ?2:1;
-                item.SelectDateTime = item.SelectDateTime.Value.AddHours(hour);
+                item.SelectDateTime = item.SelectDateTime.Value.GetLocaTimeByIANACode("Europe/Dublin");
                 Detail += item.SelectDateTime.Value + " <br><br> ";
                 //Detail +="时区："+ TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now).Hours + " : " + TimeZone.CurrentTimeZone.GetUtcOffset(item.SelectDateTime.Value).Hours;
                 Detail += "团号: " + item.GroupRef + " <br> ";
@@ -154,7 +153,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 Detail += item.RestaurantAddress + " <br> ";
                 Detail += item.RestaurantPhone + "  " + item.RestaurantEmail + " <br> ";
                 int hour = item.RestaurantCountry == "France" ? 2 : 1;
-                item.SelectDateTime = item.SelectDateTime.Value.AddHours(hour);
+                item.SelectDateTime = item.SelectDateTime.Value.GetLocaTimeByIANACode("Europe/Dublin");
                 Detail += item.SelectDateTime.Value + " <br><br> ";
                 Detail += "团号: " + item.GroupRef+ " <br> ";
                 Detail += "联系人: " + item.ContactName + " " + item.ContactPhone + " <br> ";
