@@ -105,9 +105,10 @@ namespace KingfoodIO.Controllers.TravelMeals
         {
 
             var authHeader = Request.Headers["Wauthtoken"];
-            var temp = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            bool IsAdmin = user.RoleLevel.AuthVerify(8);
             return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantBookingServiceHandler.CancelBooking(bookingId, detailId,  temp.UserEmail));
+                async () => await _restaurantBookingServiceHandler.CancelBooking(bookingId, detailId, user.UserEmail, IsAdmin));
         }
       
         /// <summary>

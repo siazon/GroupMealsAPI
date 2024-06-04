@@ -37,6 +37,7 @@ using Twilio.TwiML.Voice;
 using Hangfire.Dashboard;
 using Microsoft.Azure.Cosmos.Linq;
 using App.Infrastructure.Extensions;
+using Microsoft.IdentityModel.Clients.ActiveDirectory;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -52,7 +53,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<bool> DoRebate(string bookingId, double rebate);
         Task<object> UpdateAccepted(string bookingId, string subBillId, int acceptType, string operater);
         Task<bool> UpdateAcceptedReason(string bookingId, string subBillId, string reason, string operater);
-        Task<object> CancelBooking(string bookingId, string detailId, string userEmail);
+        Task<object> CancelBooking(string bookingId, string detailId, string userEmail, bool isAdmin);
         Task<object> SettleBooking(string bookingId, string detailId, string userEmail);
 
         Task<object> UpsetBookingRemark(string bookingId, string detailId, string remark, string userEmail);
@@ -150,7 +151,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             await _restaurantBookingRepository.UpsertAsync(booking);
             return new { code = 0, msg = "ok", };
         }
-        public async Task<object> CancelBooking(string bookingId, string detailId, string userEmail)
+        public async Task<object> CancelBooking(string bookingId, string detailId, string userEmail,bool isAdmin)
         {//Europe/Dublin Europe/London Europe/Paris
 
 
@@ -163,7 +164,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         return new { code = 0, msg = "订单已取消", };
                     else
                     {
-                        if ((item.SelectDateTime.Value.GetLocaTimeByIANACode("Europe/Dublin") - DateTime.UtcNow.GetLocaTimeByIANACode("Europe/Dublin")).TotalHours < 24)
+                      
+                        if (!isAdmin&&(item.SelectDateTime.Value.GetLocaTimeByIANACode("Europe/Dublin") - DateTime.UtcNow.GetLocaTimeByIANACode("Europe/Dublin")).TotalHours < 24)
                         {
                             return new { code = 0, msg = "距离用餐时间24小时内取消请联系客服人员：微信：groupmeals", };
                         }

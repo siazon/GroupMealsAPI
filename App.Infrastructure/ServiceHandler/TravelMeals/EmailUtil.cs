@@ -26,7 +26,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
 
     }
-    public class SendEmailUtil: ISendEmailUtil
+    public class SendEmailUtil : ISendEmailUtil
     {
 
         private readonly IEmailUtil _emailUtil; ILogManager _logger;
@@ -39,7 +39,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
 
 
-        public  async Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, ILogManager _logger)
+        public async Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, ILogManager _logger)
         {
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";
@@ -59,13 +59,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 Detail += item.RestaurantName + " <br> ";
                 Detail += item.RestaurantAddress + " <br> ";
                 Detail += item.RestaurantPhone + "  " + item.RestaurantEmail + " <br> ";
-                item.SelectDateTime = item.SelectDateTime.Value.GetLocaTimeByIANACode("Europe/Dublin");
-                Detail += item.SelectDateTime.Value + " <br><br> ";
-                //Detail +="时区："+ TimeZone.CurrentTimeZone.GetUtcOffset(DateTime.Now).Hours + " : " + TimeZone.CurrentTimeZone.GetUtcOffset(item.SelectDateTime.Value).Hours;
-                Detail += "团号: " + item.GroupRef + " <br> ";
-                Detail += "联系人: " + item.ContactName +" "+item.ContactPhone+ " <br> ";
+                string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode("Europe/Dublin").ToString("yyyy-MM-dd HH:mm:ss");
+                Detail += selectDateTimeStr + " <br><br> ";
 
-                List<string> names=new List<string>();
+                Detail += "团号: " + item.GroupRef + " <br> ";
+                Detail += "联系人: " + item.ContactName + " " + item.ContactPhone + " " + item.ContactWechat + " <br> ";
+
+                List<string> names = new List<string>();
                 foreach (var course in item.Courses)
                 {
                     int qty = course.Qty + course.ChildrenQty;
@@ -74,21 +74,32 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 string itemCurrencyStr = item.Currency == "UK" ? "£" : "€";
                 //_twilioUtil.sendSMS(item.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
                 Detail += $"<br> Amount(金额)：<b>{itemCurrencyStr}{item.AmountInfos.Sum(x => x.Amount)}</b>, <br> Paid(已付)：<b>{itemCurrencyStr}{paidAmount}</b>,<br>";
-                if(amount - paidAmount>0)
-                Detail += $" UnPaid(待支付)：<b style=\"color: red;\">{itemCurrencyStr}{amount - paidAmount}</b>";
+                if (amount - paidAmount > 0)
+                    Detail += $" UnPaid(待支付)：<b style=\"color: red;\">{itemCurrencyStr}{amount - paidAmount}</b>";
                 var detailstr = new HtmlString(Detail);
-                var emailHtml = await _contentBuilder.BuildRazorContent(new { booking = booking, bookingDetail = item, AmountStr = amount, PaidAmountStr = paidAmount, UnpaidAmountStr = amount - paidAmount, Detail = detailstr, Memo = item.Courses[0].Memo }, htmlTemp);
-                try
+                Task.Run(async () =>
                 {
-                    _logger.LogInfo($"_emailUtil.SendEmailto:{item.RestaurantEmail}" + booking.BookingRef);
-                    _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email,null, item.RestaurantEmail, null, subject,null, emailHtml, "sales.ie@groupmeals.com");
+                    string emailHtml = "";
+                    try
+                    {
+                         emailHtml = await _contentBuilder.BuildRazorContent(new { selectDateTimeStr, booking = booking, bookingDetail = item, AmountStr = amount, PaidAmountStr = paidAmount, UnpaidAmountStr = amount - paidAmount, Detail = detailstr, Memo = item.Courses[0].Memo }, htmlTemp);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError($"------EmailBoss--------{tempName}-{subject}-emailHtml---error" + ex.Message);
+                    }
+                    try
+                    {
+                      _logger.LogInfo($"_emailUtil.SendEmailto:{item.RestaurantEmail}" + booking.BookingRef);
+                        _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, null, item.RestaurantEmail, null, subject, null, emailHtml, "sales.ie@groupmeals.com");
 
-                    _logger.LogInfo("_emailUtil.SendEmailend:" + booking.BookingRef);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError($"EmailBossError {ex.Message} -{ex.StackTrace} ");
-                }
+                        _logger.LogInfo("_emailUtil.SendEmailend:" + booking.BookingRef);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError($"EmailBossError {ex.Message} -{ex.StackTrace} ");
+                    }
+                });
             }
         }
 
@@ -139,50 +150,49 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         //    }
         //}
 
-        public  async Task EmailCustomerTotal(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, IContentBuilder _contentBuilder,  ILogManager _logger)
+        public async Task EmailCustomerTotal(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, IContentBuilder _contentBuilder, ILogManager _logger)
         {
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";
             decimal totalAmount = 0, totalPaidAmount = 0;
-            decimal UKAmount = 0, EUAmount = 0,UKUnPaidAmount=0,EUUnPaidAmount=0;
+            decimal UKAmount = 0, EUAmount = 0, UKUnPaidAmount = 0, EUUnPaidAmount = 0;
             string currencyStr = booking.PayCurrency == "UK" ? "£" : "€";
             foreach (var item in booking.Details)
             {
                 if (item.Status == OrderStatusEnum.Canceled) continue;
-                Detail += item.RestaurantName +" <br> ";
+                Detail += item.RestaurantName + " <br> ";
                 Detail += item.RestaurantAddress + " <br> ";
                 Detail += item.RestaurantPhone + "  " + item.RestaurantEmail + " <br> ";
                 int hour = item.RestaurantCountry == "France" ? 2 : 1;
-                item.SelectDateTime = item.SelectDateTime.Value.GetLocaTimeByIANACode("Europe/Dublin");
-                Detail += item.SelectDateTime.Value + " <br><br> ";
-                Detail += "团号: " + item.GroupRef+ " <br> ";
+                Detail += item.SelectDateTime.Value.GetLocaTimeByIANACode("Europe/Dublin").ToString("yyyy-MM-dd HH:mm:ss") + " <br><br> ";
+                Detail += "团号: " + item.GroupRef + " <br> ";
                 Detail += "联系人: " + item.ContactName + " " + item.ContactPhone + " <br> ";
-                Detail += "紧急: "+item.EmergencyPhone;
+                Detail += "紧急: " + item.EmergencyPhone;
                 decimal amount = item.AmountInfos.Sum(x => x.Amount);
                 decimal paidAmount = item.AmountInfos.Sum(x => x.PaidAmount);
 
 
                 totalPaidAmount += paidAmount;
-                 if (item.Currency == "UK")
+                if (item.Currency == "UK")
                 {
-                    UKAmount += amount ;
-                    UKUnPaidAmount += amount-paidAmount;
+                    UKAmount += amount;
+                    UKUnPaidAmount += amount - paidAmount;
                 }
                 else
                 {
                     EUAmount += amount;
-                    EUUnPaidAmount += amount-paidAmount;
+                    EUUnPaidAmount += amount - paidAmount;
                 }
 
                 string itemCurrencyStr = item.Currency == "UK" ? "£" : "€";
-                List<string> names =  new List<string>();
+                List<string> names = new List<string>();
                 foreach (var course in item.Courses)
                 {
                     int qty = course.Qty + course.ChildrenQty;
                     Detail += $"{course.MenuItemName} * {qty} 人 ";
                 }
                 Detail += $"<br> Amount(金额)：{itemCurrencyStr}{Math.Round(amount, 2)}，    Paid(已付){itemCurrencyStr}{Math.Round(paidAmount, 2)}, <br>";
-                if (amount - paidAmount>0)
+                if (amount - paidAmount > 0)
                     Detail += $"UnPaid(待支付)：<b style ='color: red;'>{itemCurrencyStr}{amount - paidAmount}</b> <br>";
 
                 Detail += "<br>";
@@ -204,34 +214,38 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //Detail += $"Amount(金额)：<b>{currencyStr}{totalAmount}</b> Paid(已付)：<b>{currencyStr}{totalPaidAmount}</b> UnPaid(待支付)：<b style=\"color: red;\">{currencyStr}{totalAmount - totalPaidAmount}</b>";
             var detailstr = new HtmlString(Detail);
             var emailHtml = "";
-            try
+            Task.Run(async () =>
             {
-                emailHtml = await _contentBuilder.BuildRazorContent(new { booking, bookingDetail = booking.Details[0], AmountStr, PaidAmountStr, UnpaidAmountStr, Detail = detailstr }, htmlTemp);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("----------------emailHtml---error" + ex.Message);
-            }
-            if (string.IsNullOrWhiteSpace(emailHtml))
-            {
-                return;
-            }
-            try
-            {
-                _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, null, booking.CustomerEmail, null, subject, null, emailHtml, null);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"EmailCustomer Email Customer Error {ex.Message} -{ex.StackTrace} ");
-            }
+                try
+                {
+                    emailHtml = await _contentBuilder.BuildRazorContent(new { booking, bookingDetail = booking.Details[0], AmountStr, PaidAmountStr, UnpaidAmountStr, Detail = detailstr }, htmlTemp);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"------EmailCustomerTotal--------{tempName}-{subject}-emailHtml---error" + ex.Message);
+                }
+                if (string.IsNullOrWhiteSpace(emailHtml))
+                {
+                    return;
+                }
+                try
+                {
+                    _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, null, booking.CustomerEmail, null, subject, null, emailHtml, null);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"EmailCustomer Email Customer Error {ex.Message} -{ex.StackTrace} ");
+                }
+            });
 
         }
-        public  async Task EmailCustomer(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, IContentBuilder _contentBuilder, ILogManager _logger)
+        public async Task EmailCustomer(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, IContentBuilder _contentBuilder, ILogManager _logger)
         {
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";
             decimal totalAmount = 0, totalPaidAmount = 0;
             string currencyStr = booking.PayCurrency == "UK" ? "£" : "€";
+            string selectDateTimeStr = "";
             foreach (var item in booking.Details)
             {
                 Detail += item.RestaurantName + "       ";
@@ -239,6 +253,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 totalAmount += amount;
                 decimal paidAmount = item.AmountInfos.Sum(x => x.PaidAmount);
                 totalPaidAmount += paidAmount;
+                 selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode("Europe/Dublin").ToString("yyyy-MM-dd HH:mm:ss");
                 foreach (var course in item.Courses)
                 {
                     Detail += $"{course.MenuItemName} * {course.Qty}  人  {currencyStr}{paidAmount}/{amount}<br>";
@@ -249,7 +264,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var emailHtml = "";
             try
             {
-                emailHtml = await _contentBuilder.BuildRazorContent(new { booking, bookingDetail = booking.Details[0], Detail = detailstr }, htmlTemp);
+                emailHtml = await _contentBuilder.BuildRazorContent(new { selectDateTimeStr, booking, bookingDetail = booking.Details[0], Detail = detailstr }, htmlTemp);
             }
             catch (Exception ex)
             {

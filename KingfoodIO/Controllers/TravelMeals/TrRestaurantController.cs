@@ -146,7 +146,17 @@ namespace KingfoodIO.Controllers.TravelMeals
             return await ExecuteAsync(shopId, false,
                 async () => await _restaurantServiceHandler.UpdateRestaurant(restaurant, shopId));
         }
-     
-      
+
+        [ServiceFilter(typeof(AdminAuthFilter))]
+        [HttpGet]
+        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> DeleteRestaurant(string id, string pwd, int shopId)
+        {
+            var authHeader = Request.Headers["Wauthtoken"];
+            var userInfo = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            string email = userInfo.UserEmail;
+            return await ExecuteAsync(shopId, false,
+                async () => await _restaurantServiceHandler.DeleteRestaurant(id, email, pwd, shopId));
+        }
     }
 }

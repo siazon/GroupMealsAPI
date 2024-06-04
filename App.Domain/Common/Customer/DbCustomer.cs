@@ -73,7 +73,6 @@ namespace App.Domain.Common.Customer
         {
             source.UserName = copyValue.UserName;
             source.Email = copyValue.Email;
-            //source.ContactName = copyValue.ContactName;
             source.WeChat = copyValue.WeChat;
             source.Phone = copyValue.Phone;
             source.Latitude = copyValue.Latitude;
