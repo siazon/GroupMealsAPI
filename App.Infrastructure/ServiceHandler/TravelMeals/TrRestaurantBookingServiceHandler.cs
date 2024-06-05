@@ -337,19 +337,27 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async void _sendEmail(string bookingId, string subId, DbShop shopInfo, string tempName, string wwwPath, string subject)
         {
-            var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
-
-            TrDbRestaurantBooking bookingCopy = JsonConvert.DeserializeObject<TrDbRestaurantBooking>(JsonConvert.SerializeObject(booking));
-            bookingCopy?.Details?.Clear();
-            foreach (var item in booking?.Details)
+            try
             {
-                if (item.Id == subId)
-                {
-                    bookingCopy?.Details.Add(item);
-                }
-            }
+                var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
 
-            _sendEmailUtil?.EmailCustomer(bookingCopy, shopInfo, tempName, wwwPath, subject, _contentBuilder, _logger);
+                TrDbRestaurantBooking bookingCopy = JsonConvert.DeserializeObject<TrDbRestaurantBooking>(JsonConvert.SerializeObject(booking));
+                bookingCopy?.Details?.Clear();
+                foreach (var item in booking?.Details)
+                {
+                    if (item?.Id == subId)
+                    {
+                        bookingCopy?.Details?.Add(item);
+                    }
+                }
+
+                _sendEmailUtil?.EmailCustomer(bookingCopy, shopInfo, tempName, wwwPath, subject, _contentBuilder, _logger);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+            }
+        
 
 
         }
