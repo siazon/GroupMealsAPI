@@ -26,6 +26,8 @@ using Microsoft.Extensions.Caching.Memory;
 using App.Domain.TravelMeals.Restaurant;
 using System.Threading;
 using Stripe;
+using App.Infrastructure.ServiceHandler.TravelMeals;
+using App.Domain.Common.Email;
 
 namespace App.Infrastructure.ServiceHandler.Common
 {
@@ -63,7 +65,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         private readonly IEncryptionHelper _encryptionHelper;
         private readonly IDateTimeUtil _dateTimeUtil;
         private readonly IContentBuilder _contentBuilder;
-        private readonly IEmailUtil _emailUtil;
+        private readonly  ISendEmailUtil _emailUtil;
         ITwilioUtil _twilioUtil;
         ILogManager _logger;
         IAmountCalculaterUtil _amountCalculaterV1;
@@ -71,7 +73,8 @@ namespace App.Infrastructure.ServiceHandler.Common
         IMemoryCache _memoryCache;
 
         public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1, IMemoryCache memoryCache,
-        ITwilioUtil twilioUtil, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, IEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
+        ITwilioUtil twilioUtil, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil,
+        IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, ISendEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
         {
             _customerRepository = customerRepository;
             _encryptionHelper = encryptionHelper;
@@ -124,7 +127,8 @@ namespace App.Infrastructure.ServiceHandler.Common
             var cacheKey = string.Format("SendForgetPasswordVerifyCode-{1}-{0}", shopId, email);
             _memoryCache.Set(cacheKey, code);
             var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
-            await EmailVerifyCodeSender(email, code, shopInfo, "来自Groupmeals.com的验证码", "Forgot Password", "忘记密码");
+            var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.VerifyCode];
+            _emailUtil.EmailVerifyCode(email, code, shopInfo, emailParams.TemplateName, _environment.WebRootPath, emailParams.Subject, "Forgot Password", "忘记密码");
             Task.Run(() => {
                 Thread.Sleep(60 * 5000);
                 resetCode(cacheKey);
@@ -172,7 +176,8 @@ namespace App.Infrastructure.ServiceHandler.Common
             var cacheKey = string.Format("SendRegistrationVerityCode-{1}-{0}", shopId, email);
             _memoryCache.Set(cacheKey, code);
             var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
-            await EmailVerifyCodeSender(email, code, shopInfo, "来自Groupmeals.com的验证码", "Verity Code", "注册验证码");
+            var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.VerifyCode];
+            _emailUtil.EmailVerifyCode(email, code, shopInfo, emailParams.TemplateName, _environment.WebRootPath, emailParams.Subject, "Verity Code", "注册验证码");
             Task.Run(() => {
                 Thread.Sleep(60*5000);
                 resetCode(cacheKey);
@@ -198,23 +203,6 @@ namespace App.Infrastructure.ServiceHandler.Common
             }
             else
                 return new { msg = "error" };
-        }
-
-
-        private async Task EmailVerifyCodeSender(string email, string code, DbShop shopInfo, string subject, string title, string titleCN)
-        {
-            string wwwPath = this._environment.WebRootPath;
-            string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, "verify_code");
-
-            var emailHtml = await _contentBuilder.BuildRazorContent(new { code, title, titleCN }, htmlTemp);
-            try
-            {
-                _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, null,email,null, subject,null, emailHtml, null);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"EmailCustomer Email Customer Error {ex.Message} -{ex.StackTrace} ");
-            }
         }
 
         public async Task<object> ResetPassword(string email, string resetCode, string password, int shopId)

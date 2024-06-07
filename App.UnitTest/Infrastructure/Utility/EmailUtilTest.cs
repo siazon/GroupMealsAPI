@@ -22,7 +22,7 @@ namespace App.UnitTest.Infrastructure.Utility
             settings.Add(new DbSetting() { SettingKey = ServerSettingEnum.AppEmailApiKey, SettingValue = "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", });
 
             var result = emailutil.SendEmail(settings, "bingliangchan@hotmail.com", "sample from", "bingliangchan@gmail.com", "sample to",
-                "test subject", "", "test content", null,null, true).Result;
+                "test subject", "", "test content", null,null).Result;
 
             Assert.IsTrue(result);
         }

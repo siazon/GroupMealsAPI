@@ -39,7 +39,7 @@
 			overflow: hidden;
 		}
 
-		.image_block img+div {
+		.image_block img + div {
 			display: none;
 		}
 
@@ -54,9 +54,9 @@
 				text-align: center;
 			}
 
-			.icons-inner td {
-				margin: 0 auto;
-			}
+				.icons-inner td {
+					margin: 0 auto;
+				}
 
 			.image_block img.big,
 			.row-content {
@@ -133,8 +133,8 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:20px;padding-right:10px;">
 																<div style="font-family: sans-serif">
 																	<div class style="font-size: 12px; font-family: Oswald, Arial, Helvetica Neue, Helvetica, sans-serif; mso-line-height-alt: 14.399999999999999px; color: #f08619; line-height: 1.2;">
-																		<p style="margin: 0; font-size: 14px; text-align: center; mso-line-height-alt: 16.8px;"><span style="font-size:30px;"><strong>Order submission is successful, we will respond to your order within 24 hours of update!</strong></span></p>
-																		<p style="margin: 0; font-size: 14px; text-align: center; mso-line-height-alt: 16.8px;"><span style="font-size:30px;"><strong>订单提交成功，我们将在24小时内回复您订单的后续情况!</strong></span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: center; mso-line-height-alt: 16.8px;"><span style="font-size:50px;"><strong>You Accepted an Order!</strong></span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: center; mso-line-height-alt: 16.8px;"><span style="font-size:40px;"><strong>您刚接收的订单的详细信息!</strong></span></p>
 																	</div>
 																</div>
 															</td>
@@ -180,8 +180,8 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Roboto Slab', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 21px;"><span style="color:#f08619;"><span style="font-size:20px;">Booking Ref:</span></span></p>
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 21px;"><span style="color:#f08619;"><span style="font-size:20px;">订单号:</span></span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 21px;"><span style="color:#f08619;"><span style="font-size:20px;">Restaurant Name:</span></span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 21px;"><span style="color:#f08619;"><span style="font-size:20px;">餐厅名称:</span></span></p>
 																	</div>
 																</div>
 															</td>
@@ -194,7 +194,10 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 12px; mso-line-height-alt: 33px;"><span style="font-size:22px;">@Model.booking.BookingRef</span></p>
+																		<p style="margin: 0; font-size: 12px; mso-line-height-alt: 33px;"><span style="font-size:22px;">@Model.bookingDetail.RestaurantName</span></p>
+																		<p style="margin: 0; font-size: 12px; mso-line-height-alt: 33px;"><span style="font-size:22px;">@Model.bookingDetail.RestaurantAddress</span></p>
+																		<p style="margin: 0; font-size: 12px; mso-line-height-alt: 33px;"><span style="font-size:22px;">@Model.bookingDetail.RestaurantPhone</span> 
+																																		  <span style="font-size:22px;">@Model.bookingDetail.RestaurantEmail</span></p>
 																	</div>
 																</div>
 															</td>
@@ -237,7 +240,6 @@
 							</tr>
 						</tbody>
 					</table>
-
 					<table class="row row-6" align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #f3f7f2;">
 						<tbody>
 							<tr>
@@ -251,8 +253,8 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Roboto Slab', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;color:#f08619;">Paid:</span></p>
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;color:#f08619;">支付金额:</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;color:#f08619;">Meal Time:</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;color:#f08619;">用餐时间:</span></p>
 																	</div>
 																</div>
 															</td>
@@ -265,7 +267,7 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;">@Model.PaidAmountStr</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;">@Model.selectDateTimeStr</span></p>
 																	</div>
 																</div>
 															</td>
@@ -308,77 +310,7 @@
 							</tr>
 						</tbody>
 					</table>
-					<table class="row row-8" align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #f3f7f2;">
-						<tbody>
-							<tr>
-								<td>
-									<table class="row-content stack" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #ffffff; color: #000000; width: 680px;" width="680">
-										<tbody>
-											<tr>
-												<td class="column column-1" width="33.333333333333336%" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; font-weight: 400; text-align: left;  vertical-align: top; border-top: 0px; border-right: 0px; border-bottom: 0px; border-left: 0px;">
-													<table class="text_block block-1" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; word-break: break-word;">
-														<tr>
-															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
-																<div style="font-family: Arial, sans-serif">
-																	<div class style="font-size: 12px; font-family: 'Roboto Slab', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;color:#f08619;">Unpaid:</span></p>
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;color:#f08619;">待支付金额:</span></p>
-																	</div>
-																</div>
-															</td>
-														</tr>
-													</table>
-												</td>
-												<td class="column column-2" width="66.66666666666667%" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; font-weight: 400; text-align: left;  vertical-align: top; border-top: 0px; border-right: 0px; border-bottom: 0px; border-left: 0px;">
-													<table class="text_block block-1" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; word-break: break-word;">
-														<tr>
-															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
-																<div style="font-family: Arial, sans-serif">
-																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size: 17px; color: red;">@Model.UnpaidAmountStr</span></p>
-																	</div>
-																</div>
-															</td>
-														</tr>
-													</table>
-												</td>
-											</tr>
-										</tbody>
-									</table>
-								</td>
-							</tr>
-						</tbody>
-					</table>
-					<table class="row row-9" align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #f3f7f2;">
-						<tbody>
-							<tr>
-								<td>
-									<table class="row-content stack" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #ffffff; color: #000000; width: 680px;" width="680">
-										<tbody>
-											<tr>
-												<td class="column column-1" width="100%" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; font-weight: 400; text-align: left; padding-bottom: 5px;  vertical-align: top; border-top: 0px; border-right: 0px; border-bottom: 0px; border-left: 0px;">
-													<table class="divider_block block-1" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
-														<tr>
-															<td class="pad" style="padding-bottom:10px;">
-																<div class="alignment" align="center">
-																	<table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
-																		<tr>
-																			<td class="divider_inner" style="font-size: 1px; line-height: 1px; border-top: 1px solid #DFDFDF;"><span>&#8202;</span></td>
-																		</tr>
-																	</table>
-																</div>
-															</td>
-														</tr>
-													</table>
-												</td>
-											</tr>
-										</tbody>
-									</table>
-								</td>
-							</tr>
-						</tbody>
-					</table>
-
+				
 					<table class="row row-12" align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #f3f7f2;">
 						<tbody>
 							<tr>
@@ -406,7 +338,7 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 24px;"><span style="font-size: 16px; white-space: pre-line">@Model.Detail</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 24px;"><span style="font-size:16px;">@Model.Detail</span></p>
 																	</div>
 																</div>
 															</td>
@@ -448,75 +380,6 @@
 								</td>
 							</tr>
 						</tbody>
-					</table>	<table class="row row-6" align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #f3f7f2;">
-						<tbody>
-							<tr>
-								<td>
-									<table class="row-content stack" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #ffffff; color: #000000; width: 680px;" width="680">
-										<tbody>
-											<tr>
-												<td class="column column-1" width="33.333333333333336%" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; font-weight: 400; text-align: left;  vertical-align: top; border-top: 0px; border-right: 0px; border-bottom: 0px; border-left: 0px;">
-													<table class="text_block block-1" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; word-break: break-word;">
-														<tr>
-															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
-																<div style="font-family: Arial, sans-serif">
-																	<div class style="font-size: 12px; font-family: 'Roboto Slab', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;color:#f08619;">Amount:</span></p>
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;color:#f08619;">订单总金额:</span></p>
-																	</div>
-																</div>
-															</td>
-														</tr>
-													</table>
-												</td>
-												<td class="column column-2" width="66.66666666666667%" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; font-weight: 400; text-align: left;  vertical-align: top; border-top: 0px; border-right: 0px; border-bottom: 0px; border-left: 0px;">
-													<table class="text_block block-1" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; word-break: break-word;">
-														<tr>
-															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
-																<div style="font-family: Arial, sans-serif">
-																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;">@Model.AmountStr</span></p>
-																	</div>
-																</div>
-															</td>
-														</tr>
-													</table>
-												</td>
-											</tr>
-										</tbody>
-									</table>
-								</td>
-							</tr>
-						</tbody>
-					</table>
-					<table class="row row-7" align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #f3f7f2;">
-						<tbody>
-							<tr>
-								<td>
-									<table class="row-content stack" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #ffffff; color: #000000; width: 680px;" width="680">
-										<tbody>
-											<tr>
-												<td class="column column-1" width="100%" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; font-weight: 400; text-align: left; padding-bottom: 5px;  vertical-align: top; border-top: 0px; border-right: 0px; border-bottom: 0px; border-left: 0px;">
-													<table class="divider_block block-1" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
-														<tr>
-															<td class="pad" style="padding-bottom:10px;">
-																<div class="alignment" align="center">
-																	<table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
-																		<tr>
-																			<td class="divider_inner" style="font-size: 1px; line-height: 1px; border-top: 1px solid #DFDFDF;"><span>&#8202;</span></td>
-																		</tr>
-																	</table>
-																</div>
-															</td>
-														</tr>
-													</table>
-												</td>
-											</tr>
-										</tbody>
-									</table>
-								</td>
-							</tr>
-						</tbody>
 					</table>
 					<table class="row row-12" align="center" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; background-color: #f3f7f2;">
 						<tbody>
@@ -531,8 +394,8 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Roboto Slab', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;color:#f08619;">Memo：</span></p>
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;color:#f08619;">备注</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;color:#f08619;">Remarks：</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;color:#f08619;">备注：</span></p>
 																	</div>
 																</div>
 															</td>
@@ -555,6 +418,7 @@
 											</tr>
 										</tbody>
 									</table>
+									
 								</td>
 							</tr>
 						</tbody>
@@ -646,7 +510,7 @@
 															<td class="pad" style="padding-bottom:10px;padding-left:10px;padding-right:10px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Roboto Slab', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #808080; line-height: 1.5;">
-																			<p style="margin: 0; font-size: 14px; text-align: center; mso-line-height-alt: 21px;"><span style="font-size:14px;color:#ffffff;">Contact Us: <a href="mailto:info@groupmeals.com">info@groupmeals.com</a></span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: center; mso-line-height-alt: 21px;"><span style="font-size:14px;color:#ffffff;">Contact Us: <a href="mailto:info@groupmeals.com">info@groupmeals.com</a></span></p>
 																		<p style="margin: 0; font-size: 14px; text-align: center; mso-line-height-alt: 21px;"><span style="font-size:14px;color:#ffffff;">Address: Ireland, Dublin1, D01 X368	</span></p>
 																	</div>
 																</div>
@@ -656,7 +520,7 @@
 													<table class="button_block block-4" width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
 														<tr>
 															<td class="pad" style="padding-bottom:20px;padding-left:10px;padding-right:10px;padding-top:10px;text-align:center;">
-																<div class="alignment" align="center"><!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="http://www.example.com/" style="height:68px;width:237px;v-text-anchor:middle;" arcsize="52%" strokeweight="1.5pt" strokecolor="#FFFFFF" fillcolor="#f08619"><w:anchorlock/><v:textbox inset="0px,0px,0px,0px"><center style="color:#e8f4dc; font-family:Arial, sans-serif; font-size:22px"><![endif]--><a href="https://www.ireholidays.com/" target="_blank" style="text-decoration:none;display:inline-block;color:#e8f4dc;background-color:#f08619;border-radius:35px;width:auto;border-top:2px solid #FFFFFF;font-weight:undefined;border-right:2px solid #FFFFFF;border-bottom:2px solid #FFFFFF;border-left:2px solid #FFFFFF;padding-top:10px;padding-bottom:10px;font-family:Oswald, Arial, Helvetica Neue, Helvetica, sans-serif;font-size:22px;text-align:center;mso-border-alt:none;word-break:keep-all;"><span style="padding-left:45px;padding-right:45px;font-size:22px;display:inline-block;letter-spacing:normal;"><span dir="ltr" style="word-break:break-word;"><span style="line-height: 44px;" dir="ltr" data-mce-style>VISIT IN WEBSITE</span></span></span></a><!--[if mso]></center></v:textbox></v:roundrect><![endif]--></div>
+																<div class="alignment" align="center"><!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="http://www.example.com/" style="height:68px;width:237px;v-text-anchor:middle;" arcsize="52%" strokeweight="1.5pt" strokecolor="#FFFFFF" fillcolor="#f08619"><w:anchorlock/><v:textbox inset="0px,0px,0px,0px"><center style="color:#e8f4dc; font-family:Arial, sans-serif; font-size:22px"><![endif]--><a href="https://www.groupmeals.com/" target="_blank" style="text-decoration:none;display:inline-block;color:#e8f4dc;background-color:#f08619;border-radius:35px;width:auto;border-top:2px solid #FFFFFF;font-weight:undefined;border-right:2px solid #FFFFFF;border-bottom:2px solid #FFFFFF;border-left:2px solid #FFFFFF;padding-top:10px;padding-bottom:10px;font-family:Oswald, Arial, Helvetica Neue, Helvetica, sans-serif;font-size:22px;text-align:center;mso-border-alt:none;word-break:keep-all;"><span style="padding-left:45px;padding-right:45px;font-size:22px;display:inline-block;letter-spacing:normal;"><span dir="ltr" style="word-break:break-word;"><span style="line-height: 44px;" dir="ltr" data-mce-style>VISIT IN WEBSITE</span></span></span></a><!--[if mso]></center></v:textbox></v:roundrect><![endif]--></div>
 															</td>
 														</tr>
 													</table>
@@ -677,13 +541,25 @@
 											<tr>
 												<td class="column column-1" width="100%" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; font-weight: 400; text-align: left; padding-bottom: 30px; vertical-align: top; border-top: 0px; border-right: 0px; border-bottom: 0px; border-left: 0px;">
 
-												
+													<table class="divider_block block-2" width="100%" border="0" cellpadding="10" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+														<tr>
+															<td class="pad">
+																<div class="alignment" align="center">
+																	<table border="0" cellpadding="0" cellspacing="0" role="presentation" width="100%" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt;">
+																		<tr>
+																			<td class="divider_inner" style="font-size: 1px; line-height: 1px; border-top: 1px solid #E0E0E0;"><span>&#8202;</span></td>
+																		</tr>
+																	</table>
+																</div>
+															</td>
+														</tr>
+													</table>
 													<table class="text_block block-3" width="100%" border="0" cellpadding="10" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; word-break: break-word;">
 														<tr>
 															<td class="pad">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Roboto Slab', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #a6a4a2; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: center; mso-line-height-alt: 18px;"><span style="font-size:12px;">This message was sent to <a style="text-decoration: none; color: #a6a4a2;" title="email@example.com" href="mailto:email@example.com">email@example.com</a></span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: center; mso-line-height-alt: 18px;"><span style="font-size:12px;">This message was sent to <a style="text-decoration: none; color: #a6a4a2;" title="info@wiiya.com" href="mailto:info@wiiya.com">email@example.com</a></span></p>
 																		<p style="margin: 0; font-size: 14px; text-align: center; mso-line-height-alt: 18px;"><span style="font-size:12px;">If you no longer wish to receive e-mails from us, <u><a style="text-decoration: none; color: #a6a4a2;" href="http://www.example.com/" target="_blank" rel="noopener">unsubscribe</a></u></span></p>
 																	</div>
 																</div>

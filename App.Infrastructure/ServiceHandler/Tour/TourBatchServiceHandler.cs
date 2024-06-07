@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using App.Domain.Common.Setting;
 using App.Infrastructure.Utility.Common;
@@ -28,7 +29,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
         {
             _logger.LogInfo("--------TourBatchServiceHandler.SendEmail: "+ fromEmail+" + "+ toEmail);
             return await _emailUtil.SendEmail(settings, fromEmail, null, toEmail, null, subject, null,
-                bodyHtml,ccEmail);
+                bodyHtml,null,true,ccEmail);
         }
     }
 }

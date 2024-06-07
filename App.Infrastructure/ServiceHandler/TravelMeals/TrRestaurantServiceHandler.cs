@@ -375,8 +375,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _memoryCache.Set(cacheKey, cityRes);
 
             var citycacheKey = string.Format("motionmedia-{1}-{0}", shopId, "citys");
-            string k = null;
-            _memoryCache.Set(citycacheKey, k);
+            _memoryCache.Set<string>(citycacheKey, null);
 
 
             var existingRestaurant =
@@ -398,7 +397,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
 
             _memoryCache.Set(cacheKey, cityRes);
-            _memoryCache.Set(citycacheKey, k);
+
+            _memoryCache.Set<DbShop>(string.Format("motionmedia-{1}-{0}", shopId, typeof(DbShop).Name), null);
+            _memoryCache.Set<string>(citycacheKey, null);
 
             return savedRestaurant;
         }
@@ -410,8 +411,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _memoryCache.Set(cacheKey, cityRes);
 
             var citycacheKey = string.Format("motionmedia-{1}-{0}", shopId, "citys");
-            string k = null;
-            _memoryCache.Set(citycacheKey, k);
+            _memoryCache.Set<string>(citycacheKey, null);
 
             var passwordEncode = _encryptionHelper.EncryptString(pwd);
             var customer = await _customerRepository.GetOneAsync(r =>
@@ -428,7 +428,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             var item = await _restaurantRepository.DeleteAsync(existingItem);
             _memoryCache.Set(cacheKey, cityRes);
-            _memoryCache.Set(citycacheKey, k);
+            _memoryCache.Set<string>(citycacheKey, null);
+            _memoryCache.Set<DbShop>(string.Format("motionmedia-{1}-{0}", shopId, typeof(DbShop).Name), null);
             return new ResponseModel { msg = "ok", code = 200 };
         }
     }

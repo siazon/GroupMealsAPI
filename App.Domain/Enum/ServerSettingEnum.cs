@@ -8,7 +8,8 @@
         public const string AppSmtpServer = "app.smtpserver";
         public const string AppAllowEmailClient = "app.allowemailclient";
         public const string AppAllowEmailShop = "app.allowemailshop";
-        public const string AppStripKey = "app.stripkey";
+        public const string AppStripeKey = "app.stripekey";
+        public const string AppStripeWebHookKey = "app.stripe.webhookkey";
         public const string AppPublicKey = "app.publickey";
 
         public const string AppPrintName = "app.printer.name";

@@ -70,7 +70,7 @@ namespace App.Infrastructure.Builders.Common
                 Id = Guid.NewGuid().ToString(),
                 Created = DateTime.UtcNow,
                 Updated = DateTime.UtcNow,
-                SettingKey = ServerSettingEnum.AppStripKey,
+                SettingKey = ServerSettingEnum.AppStripeKey,
                 SettingValue = "sk_test_666n3dIJQIHoqChmChkAar5L",
                 IsServer = true
             });

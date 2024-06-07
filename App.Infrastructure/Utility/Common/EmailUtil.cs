@@ -10,13 +10,15 @@ using App.Domain.Common.Setting;
 using App.Infrastructure.Extensions.Entity;
 using SendGrid;
 using SendGrid.Helpers.Mail;
+using Twilio.TwiML.Messaging;
 
 namespace App.Infrastructure.Utility.Common
 {
     public interface IEmailUtil
     {
+        Task<bool> SendEmail(List<DbSetting> settings, string fromEmail, string toEmail, string subject, string bodyHtml, params string[] ccEmail);
         Task<bool> SendEmail(List<DbSetting> settings, string fromEmail, string fromEmailDescription, string toEmail, string toEmailDescription, string subject, string body,
-            string bodyHtml, string CCEmail = null, List<string> attachments = null, bool important = true);
+            string bodyHtml, List<string> attachments = null, bool important = true, params string[] CCEmail);
 
         Task<bool> SendEventEmail(List<DbSetting> settings, string fromEmail, string fromEmailDescription, List<string> toEmails, string subject, string body,
             string bodyHtml, string description, string location, DateTime startTime, DateTime endTime, int? eventID = null, bool isCancel = false, bool important = true);
@@ -26,8 +28,13 @@ namespace App.Infrastructure.Utility.Common
 
     public class EmailUtil : IEmailUtil
     {
-        public async Task<bool> SendEmail(List<DbSetting> settings, string fromEmail, string fromEmailDescription, string toEmail, string toEmailDescription, 
-            string subject, string body, string bodyHtml,string CCEmail=null, List<string> attachments = null, bool important = true)
+        public async Task<bool> SendEmail(List<DbSetting> settings, string fromEmail, string toEmail, string subject, string bodyHtml, params string[] ccEmail)
+        {
+            return await SendEmail(settings, fromEmail, null, toEmail, null,
+                 subject, null, bodyHtml, null, true, ccEmail);
+        }
+        public async Task<bool> SendEmail(List<DbSetting> settings, string fromEmail, string fromEmailDescription, string toEmail, string toEmailDescription,
+            string subject, string body, string bodyHtml, List<string> attachments = null, bool important = true, params string[] CCEmail)
         {
             try
             {
@@ -46,8 +53,16 @@ namespace App.Infrastructure.Utility.Common
                 };
 
                 msg.AddTo(new EmailAddress(toEmail));
-                if(CCEmail!= null) 
-                msg.AddCc(new EmailAddress(CCEmail));
+                if (CCEmail != null && CCEmail.Length > 0)
+                {
+                    for (int i = 0; i < CCEmail.Length; i++)
+                    {
+                        if (toEmail == CCEmail[i]) continue;
+                        msg.AddCc(new EmailAddress(CCEmail[i]));
+                    }
+
+                }
+
 
                 if (string.IsNullOrEmpty(fromEmail))
                     msg.From = new EmailAddress("noreply@groupmeals.com", "Groupmeals.com");

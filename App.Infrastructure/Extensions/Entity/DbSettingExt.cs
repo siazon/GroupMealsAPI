@@ -15,7 +15,7 @@ namespace App.Infrastructure.Extensions.Entity
 
         public static string GetSettingPaymentApiKey(this List<DbSetting> source)
         {
-            return GetSettingByKey(source, ServerSettingEnum.AppStripKey);
+            return GetSettingByKey(source, ServerSettingEnum.AppStripeKey);
         }
 
         public static bool GetEmailSettingsAllowEmailClient(this List<DbSetting> source)

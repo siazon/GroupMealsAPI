@@ -38,6 +38,7 @@ using Hangfire.Dashboard;
 using Microsoft.Azure.Cosmos.Linq;
 using App.Infrastructure.Extensions;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
+using App.Domain.Common.Email;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -78,7 +79,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private readonly IDbCommonRepository<DbCustomer> _customerRepository;
         private readonly IShopServiceHandler _shopServiceHandler;
         private readonly IContentBuilder _contentBuilder;
-        private readonly IEmailUtil _emailUtil;
         ISendEmailUtil _sendEmailUtil;
         ILogManager _logger;
         ITwilioUtil _twilioUtil;
@@ -93,14 +93,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public TrRestaurantBookingServiceHandler(ITwilioUtil twilioUtil, IDbCommonRepository<TrDbRestaurant> restaurantRepository, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository, IDbCommonRepository<DbCustomer> customerRepository,
             IDbCommonRepository<DbShop> shopRepository, ICustomerServiceHandler customerServiceHandler, IHostingEnvironment environment, IStripeUtil stripeUtil, IMemoryCache memoryCache, IShopServiceHandler shopServiceHandler,
             IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, IDateTimeUtil dateTimeUtil, IAmountCalculaterUtil amountCalculaterV1, ISendEmailUtil sendEmailUtil,
-        ILogManager logger, IContentBuilder contentBuilder, IEmailUtil emailUtil)
+        ILogManager logger, IContentBuilder contentBuilder)
         {
             _restaurantRepository = restaurantRepository;
             _restaurantBookingRepository = restaurantBookingRepository;
             _stripeCheckoutSeesionRepository = stripeCheckoutSeesionRepository;
             _customerRepository = customerRepository;
             _contentBuilder = contentBuilder;
-            _emailUtil = emailUtil;
             _sendEmailUtil = sendEmailUtil;
             _logger = logger;
             _twilioUtil = twilioUtil;
@@ -131,7 +130,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     item.AcceptStatus = AcceptStatusEnum.SettledByAdmin;
                 }
             }
-            booking.Status= OrderStatusEnum.Settled;
+            booking.Status = OrderStatusEnum.Settled;
             await _restaurantBookingRepository.UpsertAsync(booking);
             return new { code = 0, msg = "ok", };
         }
@@ -142,7 +141,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 if (item.Id == detailId)
                 {
-                    item.Remark=remark;
+                    item.Remark = remark;
                 }
             }
 
@@ -151,7 +150,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             await _restaurantBookingRepository.UpsertAsync(booking);
             return new { code = 0, msg = "ok", };
         }
-        public async Task<object> CancelBooking(string bookingId, string detailId, string userEmail,bool isAdmin)
+        public async Task<object> CancelBooking(string bookingId, string detailId, string userEmail, bool isAdmin)
         {//Europe/Dublin Europe/London Europe/Paris
 
 
@@ -164,8 +163,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         return new { code = 0, msg = "订单已取消", };
                     else
                     {
-                      
-                        if (!isAdmin&&(item.SelectDateTime.Value.GetLocaTimeByIANACode("Europe/Dublin") - DateTime.UtcNow.GetLocaTimeByIANACode("Europe/Dublin")).TotalHours < 24)
+
+                        if (!isAdmin && (item.SelectDateTime.Value.GetLocaTimeByIANACode("Europe/Dublin") - DateTime.UtcNow.GetLocaTimeByIANACode("Europe/Dublin")).TotalHours < 24)
                         {
                             return new { code = 0, msg = "距离用餐时间24小时内取消请联系客服人员：微信：groupmeals", };
                         }
@@ -182,7 +181,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                             item.AcceptStatus = AcceptStatusEnum.CanceledAfterAccepted;
                         else
                             item.AcceptStatus = AcceptStatusEnum.CanceledBeforeAccepted;
-                        SendCancelEmail(booking, item);
+                        var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
+                        if (shopInfo == null)
+                        {
+                            _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
+                            throw new ServiceException("Cannot find shop info");
+                        }
+                        var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealCancelled];
+                        _sendEmailUtil.SendCancelEmail(shopInfo, booking, item, _environment.WebRootPath, emailParams.TemplateName, emailParams.Subject, emailParams.CCEmail.ToArray());
                     }
                 }
             }
@@ -197,52 +203,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return new { code = 0, msg = "ok", };
 
         }
-        private async void SendCancelEmail(TrDbRestaurantBooking booking, BookingDetail detail)
-        {
-            var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
-            if (shopInfo == null)
-            {
-                _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
-                throw new ServiceException("Cannot find shop info");
-            }
-            string currencyStr = booking.PayCurrency == "UK" ? "￡" : "€";
-            decimal exRate = (decimal)((double)shopInfo.ExchangeRate);
-            decimal amount = 0;
-            decimal paidAmount = 0; detail.AmountInfos.Sum(x => x.PaidAmount);
-
-            paidAmount = detail.AmountInfos.Sum(x => x.PaidAmount);
-            if (booking.PayCurrency == detail.Currency)
-            {
-                amount = detail.AmountInfos.Sum(x => x.Amount);
-            }
-            else if (booking.PayCurrency == "UK")
-                amount = detail.AmountInfos.Sum(x => x.Amount) * exRate;
-            else
-                amount = detail.AmountInfos.Sum(x => x.Amount) / exRate;
-            paidAmount = Math.Round(paidAmount, 2);
-            amount = Math.Round(amount, 2);
-            string Detail = "";
-            foreach (var course in detail.Courses)
-            {
-                Detail += $"{course.MenuItemName} * {course.Qty} 人 {currencyStr}{paidAmount}/{amount}<br>";
-            }
-            //_twilioUtil.sendSMS(detail.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
-            Detail += $"Amount(金额)：<b>{currencyStr}{amount}</b>, Paid(已付)：<b>{currencyStr}{paidAmount}</b>, UnPaid(待支付)：<b style=\"color: red;\">{currencyStr}{amount - paidAmount}</b>";
-            var detailstr = new HtmlString(Detail);
-            string htmlTemp = EmailTemplateUtil.ReadTemplate(this._environment.WebRootPath, "cancel_meals_restaurant");
-            var emailHtml = await _contentBuilder.BuildRazorContent(new { booking, detail, Detail = detailstr, Memo = detail.Courses[0].Memo }, htmlTemp);
-            try
-            {
-                _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, null, detail.RestaurantEmail, null, "Order canceled", null, emailHtml, "sales.ie@groupmeals.com");
-                _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, null, booking.CustomerEmail, null, "Order canceled", null, emailHtml, "sales.ie@groupmeals.com");
-
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"SendCancelEmail {ex.Message} -{ex.StackTrace} ");
-            }
-
-        }
         public async Task<bool> UpdateBooking(string billId, string productId, string priceId)
         {
             TrDbRestaurantBooking booking = GetBooking(billId).Result;
@@ -254,11 +214,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<object> UpdateAccepted(string billId, string subBillId, int acceptType, string operater)
         {
-            TrDbRestaurantBooking DBbooking = GetBooking(billId).Result;
-            TrDbRestaurantBooking booking = JsonConvert.DeserializeObject<TrDbRestaurantBooking>(JsonConvert.SerializeObject(DBbooking));// JsonConvert.DeserializeObject< TrDbRestaurantBooking >(JsonConvert.SerializeObject(DBbooking));
+            TrDbRestaurantBooking booking = GetBooking(billId).Result;
             if (booking.IsDeleted)
                 return new { code = 1, msg = "Order Deleted(无效操作，订单已删除)", };
-            foreach (var item in DBbooking.Details)
+            foreach (var item in booking.Details)
             {
                 if (item.Id == subBillId)
                 {
@@ -272,19 +231,18 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                                 item.Status = OrderStatusEnum.Canceled;
                             break;
                         case AcceptStatusEnum.Accepted:
-                            return new { code = 1, msg = "Order Accepted(无效操作，订单已接收)", };
+                            return new { code = 1, msg = "Order Accepted(订单已接受，如需修改请联系客服)", };
                             break;
                         case AcceptStatusEnum.Declined:
-                            return new { code = 2, msg = "Order Declined(无效操作，订单已被拒绝)", };
+                            return new { code = 2, msg = "Order Declined(订单已被拒绝，如需修改请联系客服)", };
                             break;
                         case AcceptStatusEnum.CanceledBeforeAccepted:
                         case AcceptStatusEnum.CanceledAfterAccepted:
-
-                            return new { code = 2, msg = "Order Declined(无效操作，订单已取消)", };
+                            return new { code = 2, msg = "Order Declined(订单已取消，如需修改请联系客服)", };
                             break;
                         case AcceptStatusEnum.Settled:
                         case AcceptStatusEnum.SettledByAdmin:
-                            return new { code = 2, msg = "Order Settled(无效操作，已结单)", };
+                            return new { code = 2, msg = "Order Settled(已结单，如需修改请联系客服)", };
                         default:
                             break;
                     }
@@ -297,8 +255,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //    _stripeUtil.RefundGroupMeals(booking);
             //}
             var opt = new OperationInfo() { Operater = operater, Operation = acceptType == 1 ? "接收预订" : "拒绝预订", UpdateTime = DateTime.Now };
-            DBbooking.Operations.Add(opt);
-            var temp = await _restaurantBookingRepository.UpsertAsync(DBbooking);
+            booking.Operations.Add(opt);
+            var temp = await _restaurantBookingRepository.UpsertAsync(booking);
             string msg = $"您于{booking.BookingDate} {booking.BookingTime} 提交的订单已被接收，请按时就餐";
             if (acceptType == 2)
                 msg = $"您于{booking.BookingDate} {booking.BookingTime} 提交的订单已被拒绝，请登录groupmeals.com查询别的餐厅";
@@ -309,55 +267,63 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
                 return new { code = 500, msg = "Cannot find shop info", };
             }
-            booking.Details.Clear();
-            foreach (var item in DBbooking.Details)
+        
+
+            System.Threading.Tasks.Task.Run(() =>
             {
-                if (item.Id == subBillId)
+                try
                 {
-                    booking.Details.Add(item);
+                    System.Threading.Thread.Sleep(1000 * 60);
+                    if (acceptType == 1)
+                    {
+                        //
+                        var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealAccepted];
+                        BookingDetail detail = booking?.Details.FirstOrDefault(a => a.Id == subBillId);
+                        _sendEmailUtil?.EmailCustomer(booking, detail, shopInfo, emailParams.TemplateName, _environment.WebRootPath, emailParams.Subject);
+
+                        var emailParamsRest = EmailConfigs.Instance.Emails[EmailTypeEnum.MealAcceptedRestaurant];
+                        var sendBooking= JsonConvert.DeserializeObject<TrDbRestaurantBooking>(JsonConvert.SerializeObject(booking));
+                        sendBooking.Details.Clear();
+                        sendBooking.Details.Add(detail);
+                        _sendEmailUtil.EmailBoss(sendBooking, shopInfo, emailParamsRest.TemplateName, this._environment.WebRootPath, emailParamsRest.Subject);
+
+                        //BackgroundJob.Schedule(() =>
+
+                        //, TimeSpan.FromMinutes(1));
+                    }
+                    else if (acceptType == 2)
+                    {
+                        var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealDeclined];
+                        sendEmail(booking.Id, subBillId, shopInfo, emailParams.TemplateName, this._environment.WebRootPath, emailParams.Subject);
+                      //  BackgroundJob.Schedule(() =>
+
+                        //, TimeSpan.FromMinutes(1));
+                    }
                 }
-            }
-            if (acceptType == 1)
-                BackgroundJob.Schedule(() =>
-                    sendEmail(booking.Id, subBillId, shopInfo, "new_meals_confirm", this._environment.WebRootPath, "Your order has been accepted")
-                , TimeSpan.FromMinutes(1));
+                catch (Exception ex)
+                {
 
-            else if (acceptType == 2)
-            {
-                BackgroundJob.Schedule(() =>
-                   sendEmail(booking.Id, subBillId, shopInfo, "new_meals_decline", this._environment.WebRootPath, "Your order has been declined")
-              , TimeSpan.FromMinutes(1));
+                }
+            });
 
-            }
             return new { code = 0, msg = "ok", data = booking };
         }
-        public void sendEmail(string bookingId, string subId, DbShop shopInfo, string tempName, string wwwPath, string subject)
-        {
-            _sendEmail(bookingId, subId, shopInfo, tempName, wwwPath, subject);
-        }
-        public async void _sendEmail(string bookingId, string subId, DbShop shopInfo, string tempName, string wwwPath, string subject)
+
+        public async void sendEmail(string bookingId, string subId, DbShop shopInfo, string tempName, string wwwPath, string subject)
         {
             try
             {
                 var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
 
-                TrDbRestaurantBooking bookingCopy = JsonConvert.DeserializeObject<TrDbRestaurantBooking>(JsonConvert.SerializeObject(booking));
-                bookingCopy?.Details?.Clear();
-                foreach (var item in booking?.Details)
-                {
-                    if (item?.Id == subId)
-                    {
-                        bookingCopy?.Details?.Add(item);
-                    }
-                }
+                BookingDetail detail = booking?.Details.FirstOrDefault(a=>a.Id==subId);
 
-                _sendEmailUtil?.EmailCustomer(bookingCopy, shopInfo, tempName, wwwPath, subject, _contentBuilder, _logger);
+                _sendEmailUtil?.EmailCustomer(booking, detail, shopInfo, tempName, wwwPath, subject);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex.Message);
             }
-        
+
 
 
         }
@@ -441,9 +407,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
 
 
-
-                _sendEmailUtil.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, "Thank you for your Booking", _contentBuilder, _logger);
-                _sendEmailUtil.EmailBoss(booking, shopInfo, "new_meals_restaurant", this._environment.WebRootPath, "New Booking", _twilioUtil, _contentBuilder, _logger);
+                var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealCustomer];
+                _sendEmailUtil.EmailCustomerTotal(booking, shopInfo, emailParams.TemplateName, this._environment.WebRootPath, emailParams.Subject);
+                emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealRestaurant];
+                _sendEmailUtil.EmailBoss(booking, shopInfo, emailParams.TemplateName, this._environment.WebRootPath, emailParams.Subject);
                 //var newItem = await _stripeCheckoutSeesionRepository.CreateAsync(new StripeCheckoutSeesion() { Data = session, BookingId = booking.Id });
             }
             catch (Exception ex)
@@ -706,8 +673,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 throw new ServiceException("Cannot find shop info");
             }
             _twilioUtil.sendSMS("+353874858555", $"你有新的订单: {booking.BookingRef}。 请登录groupmeal.com查看更多");
-            _sendEmailUtil.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, "Thank you for your Booking", _contentBuilder, _logger);
-            _sendEmailUtil.EmailBoss(booking, shopInfo, "new_meals_restaurant", this._environment.WebRootPath, "New Booking", _twilioUtil, _contentBuilder, _logger);
+
+            var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealCustomer];
+            _sendEmailUtil.EmailCustomerTotal(booking, shopInfo, emailParams.TemplateName, this._environment.WebRootPath, emailParams.Subject);
+            emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealRestaurant];
+            _sendEmailUtil.EmailBoss(booking, shopInfo, emailParams.TemplateName, this._environment.WebRootPath, emailParams.Subject);
             //EmailUtils.EmailSupport(booking, shopInfo, "new_meals_support", this._environment.WebRootPath, "New Booking", _twilioUtil, _contentBuilder,  _logger);
 
         }
@@ -720,16 +690,16 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 throw new ServiceException("Cannot find shop info");
             }
             _twilioUtil.sendSMS(booking.CustomerPhone, $"你有订单被修改: {booking.BookingRef}。 请登录groupmeal.com查看更多");
-
-            _sendEmailUtil.EmailCustomerTotal(booking, shopInfo, "new_modify", this._environment.WebRootPath, "Booking Modified", _contentBuilder, _logger);
+            var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealModified];
+            _sendEmailUtil.EmailCustomerTotal(booking, shopInfo, emailParams.TemplateName, this._environment.WebRootPath, emailParams.Subject);
 
             //if (booking.Details[0].Status == OrderStatusEnum.UnAccepted)//订单未接收时重发接收邮件
             //{
-            //    EmailUtils.EmailBoss(booking, shopInfo, "new_meals_restaurant", this._environment.WebRootPath, "New Booking Modified", _twilioUtil, _contentBuilder, _logger);
+            //    EmailUtils.EmailBoss(booking, shopInfo, emailParams.TemplateName, this._environment.WebRootPath, emailParams.Subject);
             //}
             //else
-            _sendEmailUtil.EmailBoss(booking, shopInfo, "new_modify", this._environment.WebRootPath, "Booking Modified", _twilioUtil, _contentBuilder, _logger);
-            //EmailUtils.EmailSupport(booking, shopInfo, "new_modify", this._environment.WebRootPath, "Booking Modified", _twilioUtil, _contentBuilder, exchange, _logger);
+
+            _sendEmailUtil.EmailBoss(booking, shopInfo, emailParams.TemplateName, this._environment.WebRootPath, emailParams.Subject);
 
         }
         public async Task<bool> DoRebate(string bookingId, double rebate)
@@ -763,7 +733,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     {
                         throw new ServiceException("Cannot find shop info");
                     }
-                    _sendEmailUtil.EmailBoss(booking, shopInfo, "new_meals_restaurant", this._environment.WebRootPath, "New Booking", _twilioUtil, _contentBuilder, _logger);
+                    var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealRestaurant];
+                    _sendEmailUtil.EmailBoss(booking, shopInfo, emailParams.TemplateName, this._environment.WebRootPath, emailParams.Subject);
                     //_sendEmailUtil.EmailCustomerTotal(booking, shopInfo, "new_meals", this._environment.WebRootPath, "New Booking", _contentBuilder,  _logger);
                     //EmailUtils.EmailBoss(booking, shopInfo, "new Order", this._environment.WebRootPath, _twilioUtil, _contentBuilder, _logger);
                 }
