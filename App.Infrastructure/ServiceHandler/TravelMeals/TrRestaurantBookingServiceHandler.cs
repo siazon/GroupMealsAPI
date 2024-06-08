@@ -166,7 +166,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
                         if (!isAdmin && (item.SelectDateTime.Value.GetLocaTimeByIANACode("Europe/Dublin") - DateTime.UtcNow.GetLocaTimeByIANACode("Europe/Dublin")).TotalHours < 24)
                         {
-                            return new { code = 0, msg = "距离用餐时间24小时内取消请联系客服人员：微信：groupmeals", };
+                            //return new { code = 0, msg = "距离用餐时间24小时内取消请联系客服人员：微信：groupmeals", };
                         }
                     }
 

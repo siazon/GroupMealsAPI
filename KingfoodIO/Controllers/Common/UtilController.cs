@@ -15,6 +15,12 @@ using App.Domain.Common.Shop;
 using KingfoodIO.Application.Filter;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.WebUtilities;
+using Twilio.TwiML.Voice;
+using Stream = System.IO.Stream;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Webp;
+using SixLabors.ImageSharp.Processing;
 
 namespace KingfoodIO.Controllers.Common
 {
@@ -44,7 +50,7 @@ namespace KingfoodIO.Controllers.Common
         [ServiceFilter(typeof(AuthActionFilter))]
         [HttpPost]
         [ProducesResponseType(typeof(string), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> UploadImage([FromForm] IFormCollection files,string folder)
+        public async Task<IActionResult> UploadImage([FromForm] IFormCollection files, string folder)
         {
             bool isUploaded = false;
             try
@@ -70,7 +76,20 @@ namespace KingfoodIO.Controllers.Common
                                 fileName = folder + "/" + formFile.FileName;
                             using (Stream stream = formFile.OpenReadStream())
                             {
-                                isUploaded = await ImageUploader.UploadFileToStorage(stream, fileName, storageConfig);
+
+                                using (var myImage = await Image.LoadAsync(stream))
+                                {
+                                    if (fileName.ToLower().IndexOf("main") > 0)
+                                        myImage.Mutate(x => x.Resize(173, 130));
+                                    using (var outStream = new MemoryStream())
+                                    {
+                                        await myImage.SaveAsync(outStream, new WebpEncoder());
+                                        fileName = fileName.Substring(0, fileName.LastIndexOf(".")) + ".webp";
+                                        outStream.Position = 0;
+                                        isUploaded = await ImageUploader.UploadFileToStorage(outStream, fileName, storageConfig);
+                                    }
+                                }
+
                             }
                         }
                     }
@@ -84,7 +103,7 @@ namespace KingfoodIO.Controllers.Common
                     //if (storageConfig.ThumbnailContainer != string.Empty)
                     //    return new AcceptedAtActionResult("GetThumbNails", "Images", null, null);
                     //else
-                    var res =  ImageUploader.GetImageUrl(storageConfig)+ fileName;
+                    var res = ImageUploader.GetImageUrl(storageConfig) + fileName;
                     return Json(new { uri = res });
                 }
                 else
@@ -94,6 +113,40 @@ namespace KingfoodIO.Controllers.Common
             {
                 return BadRequest(ex.Message);
             }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <returns></returns>
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [HttpGet]
+        [ProducesResponseType(typeof(string), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> DeleteImage(string fileName)
+        {
+            await ImageUploader.DeleteImage(fileName, storageConfig);
+            return Json(new { msg = "ok" });
+        }
+
+
+        private async Task<Stream> WebpConverter(Stream inStream)
+        {
+
+            //var imageBytes = await File.ReadAllBytesAsync("your-image.jpg");
+
+            //using var inStream = new MemoryStream(imageBytes);
+
+            using var myImage = await Image.LoadAsync(inStream);
+
+            using (var outStream = new MemoryStream())
+            {
+                await myImage.SaveAsync(outStream, new WebpEncoder());
+            }
+
+
+            return inStream;
+            //return new FileContentResult(outStream.ToArray(), "image/webp");
         }
 
         [HttpGet]
