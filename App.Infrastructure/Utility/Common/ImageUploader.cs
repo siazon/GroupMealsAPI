@@ -55,11 +55,7 @@ namespace App.Infrastructure.Utility.Common
         public static async Task<bool> DeleteImage(string fileName, AzureStorageConfig _storageConfig)
         {
             // Create a URI to the blob
-            Uri blobUri = new Uri("https://" +
-                                  _storageConfig.AccountName +
-                                  ".blob.core.windows.net/" +
-                                  _storageConfig.ImageContainer +
-                                  "/" + fileName);
+            Uri blobUri = new Uri(fileName);
 
             // Create StorageSharedKeyCredentials object by reading
             // the values from the configuration (appsettings.json)
