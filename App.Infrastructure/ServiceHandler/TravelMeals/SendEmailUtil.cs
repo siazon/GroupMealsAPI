@@ -248,7 +248,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var emailHtml = "";
             try
             {
-                emailHtml = await _contentBuilder.BuildRazorContent(new { selectDateTimeStr, booking, bookingDetail = booking.Details[0], Detail = detailstr }, htmlTemp);
+                emailHtml = await _contentBuilder.BuildRazorContent(new { selectDateTimeStr, booking, bookingDetail = item, Detail = detailstr }, htmlTemp);
             }
             catch (Exception ex)
             {
