@@ -12,6 +12,7 @@ using App.Infrastructure.ServiceHandler.Common;
 using App.Infrastructure.ServiceHandler.TravelMeals;
 using App.Infrastructure.Utility.Common;
 using KingfoodIO.Application.Filter;
+using KingfoodIO.Common;
 using KingfoodIO.Controllers.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
@@ -67,6 +68,8 @@ namespace KingfoodIO.Controllers.TravelMeals
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> RequestTravelMealsBooking([FromBody] TrDbRestaurantBooking booking, int shopId)
         {
+            string rawRequestBody = await Request.GetRawBodyAsync();
+            _logger.LogDebug(rawRequestBody);
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, false,

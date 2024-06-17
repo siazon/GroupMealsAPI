@@ -21,9 +21,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
     public interface ISendEmailUtil
     {
         Task EmailVerifyCode(string email, string code, DbShop shopInfo, string tempName, string wwwPath, string subject, string title, string titleCN);
-        Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject);
+        void EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject);
         //Task EmailSupport(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger);
-        Task EmailCustomerTotal(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject);
+        void EmailCustomerTotal(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject);
 
         Task EmailCustomer(TrDbRestaurantBooking booking, BookingDetail item, DbShop shopInfo, string tempName, string wwwPath, string subject);
 
@@ -56,7 +56,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
         }
 
-        public async Task EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject)
+        public void EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject)
         {
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";
@@ -109,7 +109,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     try
                     {
                         _logger.LogInfo($"_emailUtil.SendEmailto:{item.RestaurantEmail}" + booking.BookingRef);
-                        _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, item.RestaurantEmail, subject, emailHtml, "sales.ie@groupmeals.com");
+                       await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, item.RestaurantEmail, subject, emailHtml, "sales.ie@groupmeals.com");
 
                         _logger.LogInfo("_emailUtil.SendEmailend:" + booking.BookingRef);
                     }
@@ -126,6 +126,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             detailStr += item.RestaurantName + " <br> ";
             detailStr += item.RestaurantAddress + " <br> ";
             detailStr += item.RestaurantPhone + "  " + item.RestaurantEmail + " <br> ";
+            detailStr += "微信: " + item.ContactWechat + " <br> ";
             detailStr += "紧急: " + item.EmergencyPhone + " <br> ";
             return detailStr;
         }
@@ -139,7 +140,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return detailStr;
         }
 
-        public async Task EmailCustomerTotal(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject)
+        public void EmailCustomerTotal(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject)
         {
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";
@@ -216,7 +217,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
                 try
                 {
-                    _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, subject, emailHtml);
+                   await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, subject, emailHtml);
                 }
                 catch (Exception ex)
                 {

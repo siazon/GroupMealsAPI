@@ -45,15 +45,20 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         Task<ResponseModel> GetRestaurant(string Id);
         Task<ResponseModel> GetCitys(int shopId);
+        Task<ResponseModel> GetCities(int shopId);
         Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId);
+        Task<ResponseModel> UpsetCities(DbCountry countries, int shopId);
         Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId);
-        Task<ResponseModel> DeleteRestaurant(string id,string email,string pwd,int shopId);
+        Task<ResponseModel> DeleteRestaurant(string id, string email, string pwd, int shopId);
 
     }
 
     public class TrRestaurantServiceHandler : ITrRestaurantServiceHandler
     {
-        private readonly IDbCommonRepository<TrDbRestaurant> _restaurantRepository; private readonly IDbCommonRepository<DbCustomer> _customerRepository;
+        private readonly IDbCommonRepository<TrDbRestaurant> _restaurantRepository;
+        private readonly IDbCommonRepository<DbCustomer> _customerRepository;
+
+        private readonly IDbCommonRepository<DbCountry> _countryRepository;
         private readonly IDateTimeUtil _dateTimeUtil;
         private readonly IDbCommonRepository<DbShop> _shopRepository;
         private readonly ITrBookingDataSetBuilder _bookingDataSetBuilder;
@@ -70,10 +75,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public TrRestaurantServiceHandler(IDbCommonRepository<TrDbRestaurant> restaurantRepository, IDateTimeUtil dateTimeUtil, ILogManager logger, ITwilioUtil twilioUtil,
            IDbCommonRepository<DbShop> shopRepository, ITrBookingDataSetBuilder bookingDataSetBuilder, IEncryptionHelper encryptionHelper, IDbCommonRepository<DbCustomer> customerRepository,
         IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository, ITrRestaurantBookingServiceHandler trRestaurantBookingServiceHandler, IMemoryCache memoryCache,
-            IContentBuilder contentBuilder, IEmailUtil emailUtil)
+            IContentBuilder contentBuilder, IEmailUtil emailUtil, IDbCommonRepository<DbCountry> countryRepository)
         {
             _restaurantRepository = restaurantRepository;
-            _customerRepository= customerRepository;
+            _customerRepository = customerRepository;
             _dateTimeUtil = dateTimeUtil;
             _shopRepository = shopRepository;
             _bookingDataSetBuilder = bookingDataSetBuilder;
@@ -84,7 +89,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _trRestaurantBookingServiceHandler = trRestaurantBookingServiceHandler;
             _logger = logger;
             _memoryCache = memoryCache;
-            _encryptionHelper=encryptionHelper;
+            _encryptionHelper = encryptionHelper;
+            _countryRepository = countryRepository;
         }
 
         public static Expression<Func<TrDbRestaurant, bool>> CreateContainsExpression(string propertyName, string value)
@@ -105,20 +111,17 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<ResponseModel> GetRestaurants(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null)
         {
-
             _logger.LogInfo($"GetRestaurants");
             List<TrDbRestaurant> data = new List<TrDbRestaurant>();
             try
             {
-
-
                 bool IsAdmin = userInfo.RoleLevel.AuthVerify(8);
                 bool isAllCountry = country.Trim() == "All" || country.Trim() == "全部";
                 bool isAllCity = city.Trim() == "All" || city.Trim() == "全部";
                 bool isContentEmpty = string.IsNullOrWhiteSpace(content);
                 KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage;
 
-                var cacheKey = string.Format("motionmedia-{1}-{0}", shopId, typeof(TrDbRestaurant).Name);
+                var cacheKey = string.Format("motionmedia-{1}-{0}-{2}", shopId, typeof(TrDbRestaurant).Name, pageSize);
                 var cacheResult = _memoryCache.Get<KeyValuePair<string, IEnumerable<TrDbRestaurant>>>(cacheKey);
                 if (cacheResult.Value != null && cacheResult.Value.Count() > 0)
                 {
@@ -127,13 +130,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 else
                 {
                     currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId, pageSize, continuationToke);
+                    if(pageSize<1)
                     _memoryCache.Set(cacheKey, currentPage);
                 }
-
-
                 //currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId, pageSize, continuationToke);
                 var resdata = currentPage.Value.ToList();
-
 
                 List<Predicate<TrDbRestaurant>> Predicates = new List<Predicate<TrDbRestaurant>>();
                 Predicates.Add(s => s.ShopId == shopId);
@@ -159,9 +160,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     Predicates.Add(a => a.City.Contains(city));
                 }
 
-
                 data = resdata.FindAll(Predicates).ClearForOutPut().OrderByDescending(a => a.Created).OrderBy(a => a.SortOrder).ToList();
-
                 continuationToke = currentPage.Key;
             }
             catch (Exception ex)
@@ -171,7 +170,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 Console.WriteLine(ex.Message);
             }
             return new ResponseModel { msg = "ok", code = 200, token = continuationToke, data = data };
-
         }
 
         public async Task<ResponseModel> GetRestaurantsOld(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null)
@@ -307,8 +305,23 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 return new ResponseModel { msg = "Restaurant Already Exists", code = 501, data = existingRestaurant };
 
         }
+        public async Task<ResponseModel> UpsetCities(DbCountry countries, int shopId)
+        {
+            var cacheKey = string.Format("motionmedia-{1}-{0}", shopId, "cities");
+            var cacheKeycitys = string.Format("motionmedia-{1}-{0}", shopId, "citys");
+            _memoryCache.Set<DbCountry>(cacheKey, null);
+            _memoryCache.Set<Dictionary<string, List<string>>>(cacheKeycitys, null);
+            var cities = await _countryRepository.GetOneAsync(a => a.ShopId == shopId);
+            if (cities != null)
+                countries.Id = cities.Id;
+            else
+                countries.Id = Guid.NewGuid().ToString();
+            await _countryRepository.UpsertAsync(countries);
 
-
+            _memoryCache.Set<DbCountry>(cacheKey, null);
+            _memoryCache.Set<Dictionary<string, List<string>>>(cacheKeycitys, null);
+            return new ResponseModel { msg = "ok", code = 200, data = null };
+        }
         public async Task<ResponseModel> GetCitys(int shopId)
         {
             var cacheKey = string.Format("motionmedia-{1}-{0}", shopId, "citys");
@@ -318,34 +331,52 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 return new ResponseModel { msg = "ok", code = 200, data = cacheResult };
             }
 
-            var existingRestaurants = await _restaurantRepository.GetManyAsync(r => r.ShopId == shopId);
+            var existingRestaurants = await _countryRepository.GetOneAsync(a => a.ShopId == shopId);
             if (existingRestaurants == null)
-                return new ResponseModel { msg = "Restaurants can find", code = 501, };
-            var countrys = existingRestaurants.GroupBy(a => a.Country.Trim());
+                return new ResponseModel { msg = "Cities can find", code = 501, };
+            List<string> countrys = new List<string>();
+            existingRestaurants.Countries.ForEach(a => { countrys.Add(a.Name); });
             var countryList = new List<string>();
             Dictionary<string, List<string>> cityRes = new Dictionary<string, List<string>>();
             foreach (var country in countrys)
             {
                 List<string> temo = new List<string>();
-                var temp = existingRestaurants.Where(a => a.Country.Trim() == country.Key);
-                var citys = temp.GroupBy(a => a.City.Trim());
-                foreach (var city in citys)
+                var city = existingRestaurants.Countries.FirstOrDefault(a=>a.Name==country);
+                foreach (var item in city.Cities)
                 {
-                    temo.Add(city.Key);
+                    temo.Add(item.Name);
                 }
-                cityRes[country.Key] = temo;
+                cityRes[country] = temo;
             }
 
-            _memoryCache.Set(cacheKey, cityRes);
-
+            //_memoryCache.Set(cacheKey, cityRes);
             return new ResponseModel { msg = "ok", code = 200, data = cityRes };
+        }
+            public async Task<ResponseModel> GetCities(int shopId)
+        {
+            var cacheKey = string.Format("motionmedia-{1}-{0}", shopId, "cities");
+            var cacheResult = new DbCountry();
+            _memoryCache.TryGetValue(cacheKey, out cacheResult);//<Dictionary<string, List<string>>>(cacheKey);
+            if (cacheResult != null)
+            {
+                return new ResponseModel { msg = "ok", code = 200, data = cacheResult };
+            }
+            var existingCities = await _countryRepository.GetOneAsync(a => a.ShopId == shopId);
+            if (existingCities == null)
+                return new ResponseModel { msg = "Cities can't fund", code = 501, };
+            existingCities.Countries = existingCities.Countries.OrderBy(x => x.SortOrder).ToList();
+            existingCities.Countries.ForEach(x => { x.Cities = x.Cities.OrderBy(a => a.SortOrder).ToList(); });
+
+            _memoryCache.Set(cacheKey, existingCities);
+
+            return new ResponseModel { msg = "ok", code = 200, data = existingCities };
 
         }
 
         public async Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId)
         {
             Guard.NotNull(restaurant);
-            var cacheKey = string.Format("motionmedia-{1}-{0}", shopId, typeof(TrDbRestaurant).Name);
+            var cacheKey = string.Format("motionmedia-{1}-{0}--1", shopId, typeof(TrDbRestaurant).Name);
             TrDbRestaurant nullRest = null;
             _memoryCache.Set(cacheKey, nullRest);
             var existingRestaurant =
@@ -370,11 +401,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             Guard.NotNull(restaurant);
 
-            string cacheKey = string.Format("motionmedia-{1}-{0}", shopId, typeof(TrDbRestaurant).Name);
+            string cacheKey = string.Format("motionmedia-{1}-{0}--1", shopId, typeof(TrDbRestaurant).Name);
             KeyValuePair<string, IEnumerable<TrDbRestaurant>> cityRes = new KeyValuePair<string, IEnumerable<TrDbRestaurant>>();
             _memoryCache.Set(cacheKey, cityRes);
 
-            var citycacheKey = string.Format("motionmedia-{1}-{0}", shopId, "citys");
+            var citycacheKey = string.Format("motionmedia-{1}-{0}", shopId, "cities");
             _memoryCache.Set<string>(citycacheKey, null);
 
 
@@ -404,13 +435,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return savedRestaurant;
         }
 
-        public async Task<ResponseModel> DeleteRestaurant(string id, string email, string pwd, int shopId) {
+        public async Task<ResponseModel> DeleteRestaurant(string id, string email, string pwd, int shopId)
+        {
 
-            string cacheKey = string.Format("motionmedia-{1}-{0}", shopId, typeof(TrDbRestaurant).Name);
+            string cacheKey = string.Format("motionmedia-{1}-{0}--1", shopId, typeof(TrDbRestaurant).Name);
             KeyValuePair<string, IEnumerable<TrDbRestaurant>> cityRes = new KeyValuePair<string, IEnumerable<TrDbRestaurant>>();
             _memoryCache.Set(cacheKey, cityRes);
 
-            var citycacheKey = string.Format("motionmedia-{1}-{0}", shopId, "citys");
+            var citycacheKey = string.Format("motionmedia-{1}-{0}", shopId, "cities");
             _memoryCache.Set<string>(citycacheKey, null);
 
             var passwordEncode = _encryptionHelper.EncryptString(pwd);

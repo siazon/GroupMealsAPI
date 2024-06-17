@@ -35,6 +35,7 @@ using App.Domain.Common.Customer;
 using App.Domain.Common.Auth;
 using System.Net.Http;
 using Microsoft.Azure.Cosmos;
+using Microsoft.AspNetCore.Http;
 
 namespace KingfoodIO
 {
@@ -247,7 +248,10 @@ namespace KingfoodIO
             app.UseStaticFiles();
 
             app.UseAuthorization();
-
+            app.Use(next => context => {
+                context.Request.EnableBuffering();
+                return next(context);
+            });
             app.UseCors("allowCors");
             app.UseEndpoints(endpoints =>
             {

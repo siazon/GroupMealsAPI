@@ -12,6 +12,7 @@ using App.Domain.TravelMeals.Restaurant;
 using App.Infrastructure.ServiceHandler.TravelMeals;
 using App.Infrastructure.Utility.Common;
 using KingfoodIO.Application.Filter;
+using KingfoodIO.Common;
 using KingfoodIO.Controllers.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
@@ -65,7 +66,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpGet]
         //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> GetRestaurant(string Id, int shopId,  bool cache = false)
+        public async Task<IActionResult> GetRestaurant(string Id, int shopId, bool cache = false)
         {
             return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetRestaurant(Id));
         }
@@ -85,11 +86,11 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpPost]
         //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> GetRestaurants([FromBody] string pageToken, int shopId,string country="All", string city="All", string content = "", int pageSize = -1, bool cache = true)
+        public async Task<IActionResult> GetRestaurants([FromBody] string pageToken, int shopId, string country = "All", string city = "All", string content = "", int pageSize = -1, bool cache = true)
         {
             //return await ExecuteAsync(shopId, cache,
             //    async () => await _restaurantServiceHandler.GetRestaurantInfo(shopId));
-           //string _city= HttpUtility.UrlDecode(city);
+            //string _city= HttpUtility.UrlDecode(city);
 
             DbToken userInfo = new DbToken();
             var authHeader = Request.Headers["Wauthtoken"];
@@ -102,10 +103,10 @@ namespace KingfoodIO.Controllers.TravelMeals
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
-                
+
             }
             return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetRestaurants(shopId, country, city, content, userInfo, pageSize, pageToken));
-            
+
         }
 
         [HttpGet]
@@ -116,7 +117,28 @@ namespace KingfoodIO.Controllers.TravelMeals
             return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetCitys(shopId));
         }
 
+        [HttpGet]
+        //[ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> GetCities(int shopId, bool cache = false)
+        {
+            return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetCities(shopId));
+        }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="countries"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
+        [HttpPost]
+        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> UpsetCities([FromBody] DbCountry countries, int shopId)
+        {
+            return await ExecuteAsync(shopId, false,
+                async () => await _restaurantServiceHandler.UpsetCities(countries, shopId));
+        }
         /// <summary>
         /// 
         /// </summary>
@@ -143,6 +165,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> UpdateRestaurant([FromBody] TrDbRestaurant restaurant, int shopId)
         {
+            
             return await ExecuteAsync(shopId, false,
                 async () => await _restaurantServiceHandler.UpdateRestaurant(restaurant, shopId));
         }

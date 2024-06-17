@@ -273,7 +273,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 try
                 {
-                    System.Threading.Thread.Sleep(1000 * 60);
+                    //System.Threading.Thread.Sleep(1000 * 60);
                     if (acceptType == 1)
                     {
                         //
@@ -553,7 +553,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         public async Task<ResponseModel> MakeABooking(TrDbRestaurantBooking booking, int shopId, DbToken user)
         {
-            _logger.LogInfo("RequestBooking" + shopId);
+            _logger.LogInfo("RequestBooking" + user.UserEmail);
             Guard.NotNull(booking);
             Guard.AreEqual(booking.ShopId.Value, shopId);
             foreach (var item in booking.Details)
@@ -622,6 +622,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     item.RestaurantAddress = rest.Address;
                     item.RestaurantPhone = rest.PhoneNumber;
                     item.EmergencyPhone = rest.ContactPhone;
+                    item.ContactWechat = rest.Wechat;
                 }
 
 
