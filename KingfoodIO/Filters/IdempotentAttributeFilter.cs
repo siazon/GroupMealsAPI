@@ -3,33 +3,50 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
 using Newtonsoft.Json;
 using System;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Primitives;
+using System.Threading.Tasks;
+using System.Threading;
+using KingfoodIO.Common;
 
 namespace KingfoodIO.Filters
 {
     public class IdempotentAttributeFilter : IActionFilter, IResultFilter
     {
-        private readonly IDistributedCache _distributedCache;
+        private readonly IMemoryCache _memoryCache;
         private bool _isIdempotencyCache = false;
         const string IdempotencyKeyHeaderName = "IdempotencyKey";
         private string _idempotencyKey;
-        public IdempotentAttributeFilter(IDistributedCache distributedCache)
+        public IdempotentAttributeFilter(IMemoryCache memoryCache)
         {
-            _distributedCache = distributedCache;
+            _memoryCache = memoryCache;
         }
 
-        public void OnActionExecuting(ActionExecutingContext context)
+        public async void OnActionExecuting(ActionExecutingContext context)
         {
+
+            context.HttpContext.Request.Headers.TryGetValue("WAuthToken", out StringValues token);
+
+            string rawRequestBody = await context.HttpContext.Request.GetRawBodyAsync();
+            string bodyMd5 = rawRequestBody.CreateMD5();
             //Microsoft.Extensions.Primitives.StringValues idempotencyKeys;
             //context.HttpContext.Request.Headers.TryGetValue(IdempotencyKeyHeaderName, out idempotencyKeys);
             _idempotencyKey = context.HttpContext.Request.Path + context.HttpContext.Request.Method; // idempotencyKeys.ToString();
 
-            var cacheData = _distributedCache.GetString(GetDistributedCacheKey());
+            var cacheData = _memoryCache.Get (GetDistributedCacheKey())?.ToString();
             //_distributedCache.Remove(GetDistributedCacheKey());
-            if (cacheData != null)
+            if (cacheData != null&&cacheData==token+bodyMd5)
             {
-                context.Result = JsonConvert.DeserializeObject<ObjectResult>(cacheData);
                 _isIdempotencyCache = true;
-                return;
+                 context.Result = new ContentResult { StatusCode = 501, Content = "Duplicate requests" }; return; 
+            }
+            else {
+                _memoryCache.Set<string>(GetDistributedCacheKey(), token+ bodyMd5);
+                Task.Run(() =>
+                {
+                    Thread.Sleep(9000);
+                    _memoryCache.Set<string>(GetDistributedCacheKey(), null);
+                });
             }
         }
 
@@ -47,7 +64,7 @@ namespace KingfoodIO.Filters
             cacheOptions.AbsoluteExpirationRelativeToNow = new TimeSpan(0, 0, 10);
 
             //缓存:
-            _distributedCache.SetString(GetDistributedCacheKey(), JsonConvert.SerializeObject(contextResult), cacheOptions);
+            _memoryCache.Set<string>(GetDistributedCacheKey(),null);
         }
 
         public void OnActionExecuted(ActionExecutedContext context)

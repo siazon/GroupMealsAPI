@@ -39,6 +39,7 @@ using Microsoft.Azure.Cosmos.Linq;
 using App.Infrastructure.Extensions;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using App.Domain.Common.Email;
+using System.Threading;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -64,7 +65,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<bool> DeleteBookingDetail(string bookingId, string detailId, int shopId);
         Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
         Task<ResponseModel> SearchBookingsByRestaurant(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
-        Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, int pageSize = -1, string continuationToke = null);
+        Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, bool includeSettled = false, int pageSize = -1, string continuationToke = null);
 
 
         ResponseModel GetBookingItemAmount(List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate);
@@ -550,7 +551,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return isChange;
         }
 
-
+        
         public async Task<ResponseModel> MakeABooking(TrDbRestaurantBooking booking, int shopId, DbToken user)
         {
             _logger.LogInfo("RequestBooking" + user.UserEmail);
@@ -564,7 +565,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     return new ResponseModel { msg = "用餐时间少于12个小时", code = 200, data = null };
                 }
             }
-
             TourBooking newBooking;
             var exsitBooking = await _restaurantBookingRepository.GetOneAsync(r => r.Status == OrderStatusEnum.None && !r.IsDeleted && r.CustomerEmail == user.UserEmail);
             if (exsitBooking != null)
@@ -609,6 +609,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 booking.CustomerName = user.UserName;
                 booking.CustomerPhone = user.Phone;
                 booking.CustomerEmail = user.Email;
+                
             }
             booking.Created = _dateTimeUtil.GetCurrentTime();
             bool noPay = true;
@@ -622,7 +623,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     item.RestaurantAddress = rest.Address;
                     item.RestaurantPhone = rest.PhoneNumber;
                     item.EmergencyPhone = rest.ContactPhone;
-                    item.ContactWechat = rest.Wechat;
+                    item.RestaurantWechat = rest.Wechat;
                 }
 
 
@@ -902,28 +903,29 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return new ResponseModel { msg = "ok", code = 200, token = token, data = res };
         }
 
-        public async Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, int pageSize = -1, string continuationToken = null)
+        public async Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content,bool includeSettled=false, int pageSize = -1, string continuationToken = null)
         {
             List<TrDbRestaurantBooking> res = new List<TrDbRestaurantBooking>();
-
-
             string pageToken = "";
+            KeyValuePair<string, IEnumerable<TrDbRestaurantBooking>>  Bookings = new KeyValuePair<string, IEnumerable<TrDbRestaurantBooking>>();
+            if(includeSettled)
+             Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None&&!a.IsDeleted), pageSize, continuationToken);
+            else
+                Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.Status!=OrderStatusEnum.Settled&&a.Status!=OrderStatusEnum.SettledByAdmin), pageSize, continuationToken);
             if (string.IsNullOrWhiteSpace(content))
             {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None), pageSize, continuationToken);
                 res = Bookings.Value.ToList();
                 pageToken = Bookings.Key;
             }
             else
             {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None), pageSize, continuationToken);
                 res = Bookings.Value.ToList().FindAll(a => a.Details.Any(d => d.RestaurantName.ToLower().Contains(content.ToLower())));
                 pageToken = Bookings.Key;
             }
             //res.ForEach(r => { r.Details.OrderByDescending(d => d.SelectDateTime); });
-            var list = res.OrderByDescending(a => a.Created).ToList();
+            //var list = res.OrderByDescending(a => a.Created).ToList();
 
-            return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = list };
+            return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = res };
         }
 
         public ResponseModel GetBookingItemAmount(List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate)

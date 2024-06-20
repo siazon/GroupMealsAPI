@@ -36,6 +36,7 @@ using App.Domain.Common.Auth;
 using System.Net.Http;
 using Microsoft.Azure.Cosmos;
 using Microsoft.AspNetCore.Http;
+using KingfoodIO.Filters;
 
 namespace KingfoodIO
 {
@@ -205,6 +206,7 @@ namespace KingfoodIO
 
             services.AddScoped<AuthActionFilter>();
             services.AddScoped<AdminAuthFilter>();
+            services.AddScoped<IdempotentAttributeFilter>();
 
             //Nlog Context
 

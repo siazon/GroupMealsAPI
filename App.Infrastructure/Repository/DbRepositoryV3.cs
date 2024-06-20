@@ -101,10 +101,7 @@ namespace App.Infrastructure.Repository
 
 
                 FeedIterator<T> feed;
-                if (continuationToken == "")
-                    feed = linqQueryable.Where(predicate).ToFeedIterator();
-                else
-                    feed = linqQueryable.Where(predicate).ToFeedIterator();
+                    feed = linqQueryable.Where(predicate).OrderByDescending(a=>a.Created).ToFeedIterator();
 
                 List<T> results = new List<T>();
                 FeedResponse<T> response = await feed.ReadNextAsync();

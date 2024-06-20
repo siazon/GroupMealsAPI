@@ -14,6 +14,7 @@ using App.Infrastructure.Utility.Common;
 using KingfoodIO.Application.Filter;
 using KingfoodIO.Common;
 using KingfoodIO.Controllers.Common;
+using KingfoodIO.Filters;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -109,6 +110,32 @@ namespace KingfoodIO.Controllers.TravelMeals
 
         }
 
+        [HttpPost]
+        //[ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> GetRestaurantsByAdmin([FromBody] string pageToken, int shopId, string country = "All", string city = "All", string content = "", int pageSize = -1, bool cache = true)
+        {
+            //return await ExecuteAsync(shopId, cache,
+            //    async () => await _restaurantServiceHandler.GetRestaurantInfo(shopId));
+            //string _city= HttpUtility.UrlDecode(city);
+
+            DbToken userInfo = new DbToken();
+            var authHeader = Request.Headers["Wauthtoken"];
+            try
+            {
+
+                if (!string.IsNullOrEmpty(authHeader))
+                    userInfo = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+
+            }
+            return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetRestaurantsByAdmin(shopId, country, city, content, userInfo, pageSize, pageToken));
+
+        }
+
         [HttpGet]
         //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
@@ -146,6 +173,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         /// <param name="shopId"></param>
         /// <returns></returns>
         [HttpPost]
+        [Idempotent]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> AddRestaurant([FromBody] TrDbRestaurant restaurant, int shopId)
@@ -165,7 +193,6 @@ namespace KingfoodIO.Controllers.TravelMeals
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> UpdateRestaurant([FromBody] TrDbRestaurant restaurant, int shopId)
         {
-            
             return await ExecuteAsync(shopId, false,
                 async () => await _restaurantServiceHandler.UpdateRestaurant(restaurant, shopId));
         }

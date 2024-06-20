@@ -288,6 +288,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 amount = detail.AmountInfos.Sum(x => x.Amount) / exRate;
             paidAmount = Math.Round(paidAmount, 2);
             amount = Math.Round(amount, 2);
+
+           string selectDateTimeStr = detail.SelectDateTime.Value.GetLocaTimeByIANACode("Europe/Dublin").ToString("yyyy-MM-dd HH:mm:ss");
             string Detail = "";
             foreach (var course in detail.Courses)
             {
@@ -301,7 +303,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var emailHtml = "";
             try
             {
-                emailHtml = await _contentBuilder.BuildRazorContent(new { booking, detail, Detail = detailstr, Memo = detail.Courses[0].Memo }, htmlTemp);
+                emailHtml = await _contentBuilder.BuildRazorContent(new { booking, detail, selectDateTimeStr, Detail = detailstr, Memo = detail.Courses[0].Memo }, htmlTemp);
             }
             catch (Exception ex)
             {

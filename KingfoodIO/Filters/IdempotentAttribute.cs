@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.Memory;
 using System;
 
 namespace KingfoodIO.Filters
@@ -11,7 +12,7 @@ namespace KingfoodIO.Filters
 
         public IFilterMetadata CreateInstance(IServiceProvider serviceProvider)
         {
-            var distributedCache = (IDistributedCache)serviceProvider.GetService(typeof(IDistributedCache));
+            var distributedCache = (IMemoryCache)serviceProvider.GetService(typeof(IMemoryCache));
 
             var filter = new IdempotentAttributeFilter(distributedCache);
             return filter;

@@ -14,6 +14,7 @@ using App.Infrastructure.Utility.Common;
 using KingfoodIO.Application.Filter;
 using KingfoodIO.Common;
 using KingfoodIO.Controllers.Common;
+using KingfoodIO.Filters;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -63,6 +64,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         /// <param name="booking"></param>
         /// <param name="shopId"></param>
         /// <returns></returns>
+        [Idempotent]
         [HttpPost]
         [ProducesResponseType(typeof(TrDbRestaurantBooking), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
@@ -237,17 +239,19 @@ namespace KingfoodIO.Controllers.TravelMeals
         /// <param name="pageToken"></param>
         /// <param name="shopId"></param>
         /// <param name="content"></param>
+        /// <param name="includeSettled"></param>
         /// <param name="pageSize"></param>
         /// <param name="cache"></param>
         /// <returns></returns>
+      
         [HttpPost]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> SearchBookingsByAdmin([FromBody] string pageToken, int shopId, string content, int pageSize = -1, bool cache = true)
+        public async Task<IActionResult> SearchBookingsByAdmin([FromBody] string pageToken, int shopId, string content, bool includeSettled = false, int pageSize = -1, bool cache = true)
         {
 
             return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantBookingServiceHandler.SearchBookingsByAdmin(shopId,  content, pageSize, pageToken));
+                async () => await _restaurantBookingServiceHandler.SearchBookingsByAdmin(shopId,  content, includeSettled ,pageSize, pageToken));
         }
 
 
@@ -259,6 +263,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         /// <param name="cache"></param>
         /// <returns></returns>
         [HttpGet]
+        [Idempotent]
         //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> ResendEmail(int shopId, string bookingId, bool cache = false)
@@ -333,6 +338,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         /// <param name="cache"></param>
         /// <returns></returns>
         [HttpGet]
+        [Idempotent]
         //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> UpdateAccepted(int shopId, string bookingId, string subId, string e, int acceptType, bool cache = false)
@@ -354,6 +360,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         /// <param name="cache"></param>
         /// <returns></returns>
         [HttpPost]
+        [Idempotent]
         //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(bool), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> UpdateAcceptedReason([FromBody] string reason, int shopId, string bookingId, string subId, string e, bool cache = false)

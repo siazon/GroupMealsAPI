@@ -35,12 +35,15 @@ using static FluentValidation.Validators.PredicateValidator;
 using System.Reflection;
 using Microsoft.AspNetCore.Mvc;
 using App.Domain.Common.Customer;
+using Quartz.Logging;
+using System.Threading;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
     public interface ITrRestaurantServiceHandler
     {
         Task<ResponseModel> GetRestaurants(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null);
+        Task<ResponseModel> GetRestaurantsByAdmin(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null);
 
 
         Task<ResponseModel> GetRestaurant(string Id);
@@ -109,6 +112,57 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var body = Expression.Equal(member, constant);
             return body;
         }
+        private async Task<KeyValuePair<string, IEnumerable<TrDbRestaurant>>> QeuryByContent(int shopId, string content, int pageSize = -1, string continuationToke = null)
+        {
+            List<Predicate<TrDbRestaurant>> Predicates = new List<Predicate<TrDbRestaurant>>();
+            string lowContent = content.ToLower();
+            KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage = await _restaurantRepository.GetManyAsync(s => s.ShopId == shopId &&
+            (s.StoreName.ToLower().Contains(lowContent) || s.Address.ToLower().Contains(lowContent) ||
+                s.Description.ToLower().Contains(lowContent) || s.Tags.Any(b => b.ToLower().Contains(lowContent)) ||
+                s.Attractions.Any(b => b.ToLower().Contains(lowContent))), pageSize, continuationToke);
+            return currentPage;
+        }
+        public async Task<ResponseModel> GetRestaurantsByAdmin(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null)
+        {
+            _logger.LogInfo($"GetRestaurantsByAdmin");
+            List<TrDbRestaurant> data = new List<TrDbRestaurant>();
+            try
+            {
+                bool IsAdmin = userInfo.RoleLevel.AuthVerify(8);
+                bool isAllCountry = country.Trim() == "All" || country.Trim() == "全部";
+                bool isAllCity = city.Trim() == "All" || city.Trim() == "全部";
+                bool isContentEmpty = string.IsNullOrWhiteSpace(content);
+                KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage;
+
+                List<Predicate<TrDbRestaurant>> Predicates = new List<Predicate<TrDbRestaurant>>();
+                Predicates.Add(s => s.ShopId == shopId);
+
+                if (isAllCountry)
+                {
+                    currentPage = await QeuryByContent(shopId, content??"", pageSize, continuationToke);
+
+                }
+                else
+                {
+                    currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId&&a.Country==country&&a.City==city, pageSize, continuationToke);
+                  
+                }
+                if (!IsAdmin)
+                {
+                    Predicates.Add(a => a.IsActive == true);
+                }
+                var resdata = currentPage.Value.ToList();
+                data = resdata.FindAll(Predicates).ClearForOutPut().OrderByDescending(a => a.Created).OrderBy(a => a.SortOrder).ToList();
+                continuationToke = currentPage.Key;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInfo($"GetRestaurants" + ex.Message);
+                _logger.LogError(ex.Message);
+                Console.WriteLine(ex.Message);
+            }
+            return new ResponseModel { msg = "ok", code = 200, token = continuationToke, data = data };
+        }
         public async Task<ResponseModel> GetRestaurants(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null)
         {
             _logger.LogInfo($"GetRestaurants");
@@ -130,8 +184,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 else
                 {
                     currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId, pageSize, continuationToke);
-                    if(pageSize<1)
-                    _memoryCache.Set(cacheKey, currentPage);
+                    if (pageSize < 1)
+                        _memoryCache.Set(cacheKey, currentPage);
                 }
                 //currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId, pageSize, continuationToke);
                 var resdata = currentPage.Value.ToList();
@@ -341,7 +395,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             foreach (var country in countrys)
             {
                 List<string> temo = new List<string>();
-                var city = existingRestaurants.Countries.FirstOrDefault(a=>a.Name==country);
+                var city = existingRestaurants.Countries.FirstOrDefault(a => a.Name == country);
                 foreach (var item in city.Cities)
                 {
                     temo.Add(item.Name);
@@ -352,7 +406,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //_memoryCache.Set(cacheKey, cityRes);
             return new ResponseModel { msg = "ok", code = 200, data = cityRes };
         }
-            public async Task<ResponseModel> GetCities(int shopId)
+        public async Task<ResponseModel> GetCities(int shopId)
         {
             var cacheKey = string.Format("motionmedia-{1}-{0}", shopId, "cities");
             var cacheResult = new DbCountry();
@@ -400,7 +454,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId)
         {
             Guard.NotNull(restaurant);
-
             string cacheKey = string.Format("motionmedia-{1}-{0}--1", shopId, typeof(TrDbRestaurant).Name);
             KeyValuePair<string, IEnumerable<TrDbRestaurant>> cityRes = new KeyValuePair<string, IEnumerable<TrDbRestaurant>>();
             _memoryCache.Set(cacheKey, cityRes);
