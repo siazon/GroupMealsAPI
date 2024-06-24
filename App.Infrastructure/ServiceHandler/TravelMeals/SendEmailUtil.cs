@@ -33,12 +33,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
     {
 
         private readonly IEmailUtil _emailUtil; ILogManager _logger;
-        IContentBuilder _contentBuilder;
-        public SendEmailUtil(IEmailUtil emailUtil, ILogManager logger, IContentBuilder contentBuilder)
+        IContentBuilder _contentBuilder; private readonly IDateTimeUtil _dateTimeUtil;
+        public SendEmailUtil(IEmailUtil emailUtil, ILogManager logger, IDateTimeUtil dateTimeUtil, IContentBuilder contentBuilder)
         {
             _emailUtil = emailUtil;
             _logger = logger;
             _contentBuilder = contentBuilder;
+            _dateTimeUtil = dateTimeUtil;
 
         }
         public async Task EmailVerifyCode(string email, string code, DbShop shopInfo, string tempName, string wwwPath, string subject, string title, string titleCN)
@@ -72,7 +73,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 paidAmount = Math.Round(paidAmount, 2);
                 amount = Math.Round(amount, 2);
                 Detail = "";
-                string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode("Europe/Dublin").ToString("yyyy-MM-dd HH:mm:ss");
+                string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm:ss");
                 if (tempName == EmailConfigs.Instance.Emails[EmailTypeEnum.MealModified].TemplateName)
                 {
                     Detail += AppendRestaurantInfo(item);
@@ -126,7 +127,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             detailStr += item.RestaurantName + " <br> ";
             detailStr += item.RestaurantAddress + " <br> ";
             detailStr += item.RestaurantPhone + "  " + item.RestaurantEmail + " <br> ";
-            detailStr += "微信: " + item.ContactWechat + " <br> ";
+            detailStr += "微信: " + item.RestaurantWechat + " <br> ";
             detailStr += "紧急: " + item.EmergencyPhone + " <br> ";
             return detailStr;
         }
@@ -151,7 +152,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 if (item.Status == OrderStatusEnum.Canceled) continue;
                  Detail += AppendRestaurantInfo(item);
-                string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode("Europe/Dublin").ToString("yyyy-MM-dd HH:mm:ss");
+                string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm:ss");
                 Detail += selectDateTimeStr + " <br><br> ";
 
                 Detail += AppendCustomerInfo(item);
@@ -238,7 +239,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             totalAmount += amount;
             decimal paidAmount = item?.AmountInfos.Sum(x => x.PaidAmount) ?? 0;
             totalPaidAmount += paidAmount;
-            selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode("Europe/Dublin").ToString("yyyy-MM-dd HH:mm:ss");
+            selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm:ss");
             foreach (var course in item?.Courses)
             {
                 Detail += $"{course.MenuItemName} * {course.Qty}  人  {currencyStr}{paidAmount}/{amount}<br>";
@@ -289,7 +290,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             paidAmount = Math.Round(paidAmount, 2);
             amount = Math.Round(amount, 2);
 
-           string selectDateTimeStr = detail.SelectDateTime.Value.GetLocaTimeByIANACode("Europe/Dublin").ToString("yyyy-MM-dd HH:mm:ss");
+           string selectDateTimeStr = detail.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(detail.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm:ss");
             string Detail = "";
             foreach (var course in detail.Courses)
             {

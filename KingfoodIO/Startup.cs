@@ -37,6 +37,7 @@ using System.Net.Http;
 using Microsoft.Azure.Cosmos;
 using Microsoft.AspNetCore.Http;
 using KingfoodIO.Filters;
+using QuestPDF.Infrastructure;
 
 namespace KingfoodIO
 {
@@ -222,8 +223,10 @@ namespace KingfoodIO
 
             services.AddHostedService<ExchangeService>();
 
-
-          
+            // please kindly ensure what license is appropriate for your project
+            QuestPDF.Settings.License = LicenseType.Community;
+            //string fontPath = $"{AppDomain.CurrentDomain.BaseDirectory}msyh.ttc";
+            //QuestPDF.Drawing.FontManager.RegisterFont(System.IO.File.OpenRead(fontPath));
 
         }
 

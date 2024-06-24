@@ -14,15 +14,20 @@ namespace App.Infrastructure.Utility.Common
         DateTime? GetMaxDateTime(DateTime? dateA, DateTime? dateB);
         DateTime? CovertDaysOfWeekTime(DateTime? specialDayShopCollectionStartTime, string toString);
         bool IsInBetween(DateTime? timeToCompare, DateTime? fromTime, DateTime? toTime);
+        string GetIANACode(string CountryCode);
     }
 
     public class DateTimeUtil : IDateTimeUtil
     {
         private readonly AppSettingConfig _appsettingConfig;
+       public Dictionary<string, string> _DicTimeZone=new Dictionary<string, string>();
 
         public DateTimeUtil(IOptions<AppSettingConfig> appsettingConfig)
         {
             _appsettingConfig = appsettingConfig.Value;
+            _DicTimeZone["Ireland"] = "Europe/Dublin";
+            _DicTimeZone["UK"] = "Europe/Dublin";
+            _DicTimeZone["France"] = "Europe/Paris";
         }
 
         public DateTime GetCurrentTime()
@@ -33,6 +38,11 @@ namespace App.Infrastructure.Utility.Common
             return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
                 timezoneInfo);
         }
+
+        public string GetIANACode(string CountryCode) { 
+        return _DicTimeZone[CountryCode];
+        }
+
         public DateTime GetNowByIANACode(string IANACode)
         {
 

@@ -164,8 +164,8 @@ namespace App.Infrastructure.ServiceHandler.Common
             var newItem = customer.Clone();
 
             newItem.ShopId = shopId;
-            newItem.Created = _dateTimeUtil.GetCurrentTime();
-            newItem.Updated = _dateTimeUtil.GetCurrentTime();
+            newItem.Created = DateTime.UtcNow;
+            newItem.Updated = DateTime.UtcNow;
             newItem.IsActive = true;
             var passwordEncode = _encryptionHelper.EncryptString(customer.Password);
             newItem.Password = passwordEncode;
@@ -215,7 +215,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             if (existingCustomer == null)
                 throw new ServiceException("Customer Not Exists");
 
-            existingCustomer.Updated = _dateTimeUtil.GetCurrentTime();
+            existingCustomer.Updated = DateTime.UtcNow;
             existingCustomer.Password = _encryptionHelper.EncryptString(customer.Password);
 
             var savedCustomer = await _customerRepository.UpsertAsync(existingCustomer);

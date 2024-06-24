@@ -81,7 +81,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             DbTour tour = new DbTour();
 
             tour.Id = "T" + SnowflakeId.getSnowId();
-            tour.Created = _dateTimeUtil.GetCurrentTime();
+            tour.Created = DateTime.UtcNow;
             tour.IsActive = true;
             tour.ShopId = shopId;
 
@@ -97,7 +97,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             var findTour = await _tourRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == tour.Id);
             if (findTour == null)
                 throw new ServiceException("Cannot Find tour");
-            tour.Updated = _dateTimeUtil.GetCurrentTime();
+            tour.Updated = DateTime.UtcNow;
 
             var saveTour = await _tourRepository.UpsertAsync(tour);
 

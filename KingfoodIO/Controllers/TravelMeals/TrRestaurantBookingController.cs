@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Threading.Tasks;
 using App.Domain.Common;
@@ -15,12 +16,17 @@ using KingfoodIO.Application.Filter;
 using KingfoodIO.Common;
 using KingfoodIO.Controllers.Common;
 using KingfoodIO.Filters;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Clients.ActiveDirectory;
 using Microsoft.VisualBasic;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
+using Twilio.TwiML.Voice;
 
 namespace KingfoodIO.Controllers.TravelMeals
 {
@@ -282,6 +288,22 @@ namespace KingfoodIO.Controllers.TravelMeals
             return await ExecuteAsync(shopId, cache,
                 async () => await _restaurantBookingServiceHandler.DoRebate(bookingId,rebate));
         }
+
+
+        [HttpGet]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IResult> GetSchedulePdf(int shopId,   bool cache = false)
+        {
+            var authHeader = Request.Headers["Wauthtoken"];
+            var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+          var doc = await _restaurantBookingServiceHandler.GetSchedulePdf(user.UserId);
+
+            //doc.GeneratePdfAndShow();
+            var pdf = doc.GeneratePdf();
+            return Results.File(pdf, "application/pdf", "订餐行程单.pdf");
+        }
+
         /// <summary>
         /// 订单修改时返回的paidAmount不可用，应该取amountInfos里真实付了多少钱的Sum(paidAmount)。
         /// Json中menuCalculateType，price，childrenPrice，qty，childrenQty必填

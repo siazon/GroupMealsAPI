@@ -37,6 +37,7 @@ using Microsoft.AspNetCore.Mvc;
 using App.Domain.Common.Customer;
 using Quartz.Logging;
 using System.Threading;
+using Microsoft.Azure.Cosmos.Linq;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -385,25 +386,27 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 return new ResponseModel { msg = "ok", code = 200, data = cacheResult };
             }
 
-            var existingRestaurants = await _countryRepository.GetOneAsync(a => a.ShopId == shopId);
+            var existingRestaurants = await _restaurantRepository.GetManyAsync(r => r.ShopId == shopId);
             if (existingRestaurants == null)
-                return new ResponseModel { msg = "Cities can find", code = 501, };
-            List<string> countrys = new List<string>();
-            existingRestaurants.Countries.ForEach(a => { countrys.Add(a.Name); });
+                return new ResponseModel { msg = "Restaurants can find", code = 501, };
+            var countrys = existingRestaurants.GroupBy(a => a.Country.Trim());
             var countryList = new List<string>();
             Dictionary<string, List<string>> cityRes = new Dictionary<string, List<string>>();
             foreach (var country in countrys)
             {
                 List<string> temo = new List<string>();
-                var city = existingRestaurants.Countries.FirstOrDefault(a => a.Name == country);
-                foreach (var item in city.Cities)
+                var temp = existingRestaurants.Where(a => a.Country.Trim() == country.Key);
+                var citys = temp.GroupBy(a => a.City.Trim());
+                temo.Add("È«²¿");
+                foreach (var city in citys)
                 {
-                    temo.Add(item.Name);
+                    temo.Add(city.Key);
                 }
-                cityRes[country] = temo;
+                cityRes[country.Key] = temo;
             }
 
-            //_memoryCache.Set(cacheKey, cityRes);
+            _memoryCache.Set(cacheKey, cityRes);
+
             return new ResponseModel { msg = "ok", code = 200, data = cityRes };
         }
         public async Task<ResponseModel> GetCities(int shopId)
@@ -442,8 +445,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             restaurant.Id = Guid.NewGuid().ToString();
             restaurant.ShopId = shopId;
-            restaurant.Created = _dateTimeUtil.GetCurrentTime();
-            restaurant.Updated = _dateTimeUtil.GetCurrentTime();
+            restaurant.Created = DateTime.UtcNow;
+            restaurant.Updated = DateTime.UtcNow;
             restaurant.IsActive = true;
 
             var savedRestaurant = await _restaurantRepository.UpsertAsync(restaurant);
@@ -475,7 +478,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
             }
 
-            restaurant.Updated = _dateTimeUtil.GetCurrentTime();
+            restaurant.Updated = DateTime.UtcNow;
 
             var savedRestaurant = await _restaurantRepository.UpsertAsync(restaurant);
 
