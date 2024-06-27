@@ -930,45 +930,45 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             List<TrDbRestaurantBooking> res = new List<TrDbRestaurantBooking>();
             string pageToken = "";
             KeyValuePair<string, IEnumerable<TrDbRestaurantBooking>> Bookings = new KeyValuePair<string, IEnumerable<TrDbRestaurantBooking>>();
-            if (includeSettled)
+
+            if (string.IsNullOrWhiteSpace(content))
             {
-                Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted), pageSize, continuationToken);
-                res=Bookings.Value.ToList();
+                if (includeSettled)
+                    Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted  &&
+              a.Details.Any(d => d.SelectDateTime > stime && d.SelectDateTime < etime) ), pageSize, continuationToken);
+                else
+                    Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.Status != OrderStatusEnum.Settled &&
+            a.Details.Any(d => d.SelectDateTime > stime && d.SelectDateTime < etime) && a.Status != OrderStatusEnum.SettledByAdmin), pageSize, continuationToken);
+                res = Bookings.Value.ToList();
+                foreach (var order in res)
+                {
+                    order.Details = order.Details.FindAll(d => d.SelectDateTime > stime && d.SelectDateTime < etime);
+                }
             }
             else
             {
-                List<Predicate<TrDbRestaurant>> Predicates = new List<Predicate<TrDbRestaurant>>();
-                Predicates.Add(s => s.ShopId == shopId);
-                if (string.IsNullOrWhiteSpace(content))
-                {
-                    Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.Status != OrderStatusEnum.Settled &&
-                  a.Details.Any(d => d.SelectDateTime > stime && d.SelectDateTime < etime) && a.Status != OrderStatusEnum.SettledByAdmin), pageSize, continuationToken);
+                content = content.ToLower();
+                Predicate<BookingDetail> predicate = d => d.RestaurantName.ToLower().Contains(content) || d.RestaurantAddress.ToLower().Contains(content) || d.ContactName.ToLower().Contains(content) ||
+                 d.GroupRef.ToLower().Contains(content);
 
-                    res = Bookings.Value.ToList();
-                    foreach (var order in res)
-                    {
-                        order.Details = order.Details.FindAll(d => d.SelectDateTime > stime && d.SelectDateTime < etime);
-                    }
-                }
+                if (includeSettled)
+                    Bookings = await _restaurantBookingRepository.GetManyAsync(a => ((a.Status != OrderStatusEnum.None && !a.IsDeleted ) && a.Details.Any(d => d.SelectDateTime > stime && d.SelectDateTime < etime) &&
+              a.Details.Any(d => d.RestaurantName.ToLower().Contains(content) || d.RestaurantAddress.ToLower().Contains(content) || d.ContactName.ToLower().Contains(content) ||
+                 d.GroupRef.ToLower().Contains(content))), pageSize, continuationToken);
                 else
-                {
-                    content = content.ToLower();
-                    Predicate<BookingDetail> predicate = d => d.RestaurantName.ToLower().Contains(content) || d.RestaurantAddress.ToLower().Contains(content) || d.ContactName.ToLower().Contains(content) ||
-                     d.GroupRef.ToLower().Contains(content);
-
                     Bookings = await _restaurantBookingRepository.GetManyAsync(a => ((a.Status != OrderStatusEnum.None && !a.IsDeleted &&
-                  a.Status != OrderStatusEnum.Settled && a.Status != OrderStatusEnum.SettledByAdmin) && a.Details.Any(d => d.SelectDateTime > stime && d.SelectDateTime < etime) &&
-                  a.Details.Any(d => d.RestaurantName.ToLower().Contains(content) || d.RestaurantAddress.ToLower().Contains(content) || d.ContactName.ToLower().Contains(content) ||
-                     d.GroupRef.ToLower().Contains(content))), pageSize, continuationToken);
+              a.Status != OrderStatusEnum.Settled && a.Status != OrderStatusEnum.SettledByAdmin) && a.Details.Any(d => d.SelectDateTime > stime && d.SelectDateTime < etime) &&
+              a.Details.Any(d => d.RestaurantName.ToLower().Contains(content) || d.RestaurantAddress.ToLower().Contains(content) || d.ContactName.ToLower().Contains(content) ||
+                 d.GroupRef.ToLower().Contains(content))), pageSize, continuationToken);
 
-                    res = Bookings.Value.ToList();
-                    foreach (var order in res)
-                    {
-                        order.Details = order.Details.FindAll(predicate);
-                    }
+                res = Bookings.Value.ToList();
+                foreach (var order in res)
+                {
+                    order.Details = order.Details.FindAll(predicate);
                 }
             }
-          
+
+
             pageToken = Bookings.Key;
             //res.ForEach(r => { r.Details.OrderByDescending(d => d.SelectDateTime); });
             //var list = res.OrderByDescending(a => a.Created).ToList();
