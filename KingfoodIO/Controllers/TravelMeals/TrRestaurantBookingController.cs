@@ -253,11 +253,11 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpPost]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> SearchBookingsByAdmin([FromBody] string pageToken, int shopId, string content, bool includeSettled = false, int pageSize = -1, bool cache = true)
+        public async Task<IActionResult> SearchBookingsByAdmin([FromBody] string pageToken, int shopId, string content,DateTime stime,DateTime etime, bool includeSettled = false, int pageSize = -1, bool cache = true)
         {
-
+            
             return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantBookingServiceHandler.SearchBookingsByAdmin(shopId,  content, includeSettled ,pageSize, pageToken));
+                async () => await _restaurantBookingServiceHandler.SearchBookingsByAdmin(shopId,  content,stime,etime, includeSettled ,pageSize, pageToken));
         }
 
 
@@ -288,7 +288,14 @@ namespace KingfoodIO.Controllers.TravelMeals
             return await ExecuteAsync(shopId, cache,
                 async () => await _restaurantBookingServiceHandler.DoRebate(bookingId,rebate));
         }
-
+        [HttpGet]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> GetOrdersSummary(int shopId, bool cache = false)
+        {
+            return await ExecuteAsync(shopId, cache,
+            async () => await _restaurantBookingServiceHandler.GetOrdersSummary());
+        }
 
         [HttpGet]
         [ServiceFilter(typeof(AuthActionFilter))]
@@ -299,7 +306,7 @@ namespace KingfoodIO.Controllers.TravelMeals
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
           var doc = await _restaurantBookingServiceHandler.GetSchedulePdf(user.UserId);
 
-            //doc.GeneratePdfAndShow();
+            doc.GeneratePdfAndShow();
             var pdf = doc.GeneratePdf();
             return Results.File(pdf, "application/pdf", "¶©²ÍÐÐ³Ìµ¥.pdf");
         }

@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace App.Domain.Common
 {
@@ -87,11 +88,11 @@ namespace App.Domain.Common
                     var item = _PDFData[i];
                     column.Item().Row(row =>
                     {
-                        row.RelativeItem().Component(new AddressComponent("就餐信息", item.OrderInfo));
+                        row.RelativeItem().Component(new OrderComponent("就餐信息", item));
                         row.ConstantItem(10);
-                        row.RelativeItem().Component(new AddressComponent("餐厅位置", item.RestaurantInfo));
+                        row.RelativeItem().Component(new RestuarantComponent("餐厅位置", item));
                         row.ConstantItem(10);
-                        row.RelativeItem().Component(new AddressComponent("用餐要求", item.MealInfo));
+                        row.RelativeItem().Component(new MealComponent("用餐要求", item));
                     });
                     if (i < _PDFData.Count - 1)
                     {
@@ -100,37 +101,104 @@ namespace App.Domain.Common
                         column.Spacing(25);
                     }
                 }
+                
 
             });
         }
     }
-    public class AddressComponent : IComponent
+    public class OrderComponent : IComponent
     {
         private string Title { get; }
-        private string Address { get; }
+        private PDFModel _model { get; }
 
-        public AddressComponent(string title, string address)
+        public OrderComponent(string title, PDFModel model)
         {
             Title = title;
-            Address = address;
+            _model = model;
         }
 
         public void Compose(IContainer container)
         {
-            container.Column(column =>
+            container.ShowEntire().Column(column =>
             {
                 column.Spacing(2);
 
                 //column.Item().BorderBottom(1).PaddingBottom(5).Text(Title).SemiBold();
 
-                column.Item().Text(Address);
+                column.Item().Text(text => { text.Span("订单号：").Bold(); });
+                column.Item().Text(_model.BookingRef);
+                column.Item().Text(text => { text.Span("时间：").Bold(); text.Span(_model.BookingTime).Bold(); });
+                column.Item().Text(text => { text.Span("餐厅名称：").Bold(); text.Span(_model.RestuarantName); });
+                column.Item().Text(text => { text.Span("地址：").Bold(); text.Span(_model.Address); });
+
+            });
+        }
+    }
+    public class RestuarantComponent : IComponent
+    {
+        private string Title { get; }
+        private PDFModel _model { get; }
+
+        public RestuarantComponent(string title, PDFModel model)
+        {
+            Title = title;
+            _model = model;
+        }
+
+        public void Compose(IContainer container)
+        {
+            container.ShowEntire().Column(column =>
+            {
+                column.Spacing(2);
+
+                //column.Item().BorderBottom(1).PaddingBottom(5).Text(Title).SemiBold();
+
+
+                column.Item().Text(text => { text.Span("电话：").Bold(); text.Span(_model.Phone); });
+                column.Item().Text(text => { text.Span("紧急电话：").Bold(); text.Span(_model.ContactPhone); });
+                column.Item().Text(text => { text.Span("邮箱：").Bold(); text.Span(_model.Email); });
+                column.Item().Text(text => { text.Span("微信：").Bold(); text.Span(_model.Wechat); });
+            });
+        }
+    }
+    public class MealComponent : IComponent
+    {
+        private string Title { get; }
+        private PDFModel _model { get; }
+
+        public MealComponent(string title, PDFModel model)
+        {
+            Title = title;
+            _model = model;
+        }
+
+        public void Compose(IContainer container)
+        {
+            container.ShowEntire().Column(column =>
+            {
+                column.Spacing(2);
+
+                //column.Item().BorderBottom(1).PaddingBottom(5).Text(Title).SemiBold();
+
+
+                column.Item().Text(_model.mealInfo);
+                column.Item().Text(_model.Remark);
             });
         }
     }
     public class PDFModel
     {
-        public string OrderInfo { get; set; }
-        public string RestaurantInfo { get; set; }
-        public string MealInfo { get; set; }
+        public string mealInfo { get; set; }
+        public string BookingRef { get; set; }
+        public string BookingTime { get; set; }    
+        public string RestuarantName { get; set; }
+        public string Address { get; set; }    
+        public string Phone { get; set; }
+        public string Email { get; set; }
+        public string ContactPhone { get; set; }
+        public string Wechat { get; set; }
+        public string Remark { get; set; }
+
     }
+  
 }

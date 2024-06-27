@@ -46,6 +46,9 @@ using QuestPDF.Helpers;
 using System.Reflection.Metadata;
 using System.Net.Http;
 using RazorLight.Extensions;
+using StackExchange.Redis;
+using Twilio.Base;
+using static FluentValidation.Validators.PredicateValidator;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -59,6 +62,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<TrDbRestaurantBooking> BindingPayInfoToTourBooking(TrDbRestaurantBooking gpBooking, string PaymentId, string stripeClientSecretKey, bool isSetupPay);
         Task<bool> ResendEmail(string bookingId);
         Task<bool> DoRebate(string bookingId, double rebate);
+        Task<ResponseModel> GetOrdersSummary();
         Task<QuestPDF.Fluent.Document> GetSchedulePdf(string userId);
         Task<object> UpdateAccepted(string bookingId, string subBillId, int acceptType, string operater);
         Task<bool> UpdateAcceptedReason(string bookingId, string subBillId, string reason, string operater);
@@ -72,7 +76,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<bool> DeleteBookingDetail(string bookingId, string detailId, int shopId);
         Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
         Task<ResponseModel> SearchBookingsByRestaurant(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
-        Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, bool includeSettled = false, int pageSize = -1, string continuationToke = null);
+        Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, DateTime stime, DateTime etime, bool includeSettled = false, int pageSize = -1, string continuationToke = null);
 
 
         ResponseModel GetBookingItemAmount(List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate);
@@ -639,6 +643,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 if (string.IsNullOrWhiteSpace(item.Id))
                     item.Id = Guid.NewGuid().ToString();
 
+                if (item.ContactEmail == null)
+                {
+                    var user = await _customerRepository.GetOneAsync(a => a.Id == userId);
+                    item.ContactEmail = user.Email;
+                    item.ContactName = user.UserName;
+                    item.ContactPhone = user.Phone;
+                    item.ContactWechat = user.WeChat;
+                }
+
                 //foreach (var course in item.Courses)
                 //{
                 //    if (string.IsNullOrWhiteSpace(course.Id))
@@ -912,25 +925,51 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return new ResponseModel { msg = "ok", code = 200, token = token, data = res };
         }
 
-        public async Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, bool includeSettled = false, int pageSize = -1, string continuationToken = null)
+        public async Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, DateTime stime, DateTime etime, bool includeSettled = false, int pageSize = -1, string continuationToken = null)
         {
             List<TrDbRestaurantBooking> res = new List<TrDbRestaurantBooking>();
             string pageToken = "";
             KeyValuePair<string, IEnumerable<TrDbRestaurantBooking>> Bookings = new KeyValuePair<string, IEnumerable<TrDbRestaurantBooking>>();
             if (includeSettled)
+            {
                 Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted), pageSize, continuationToken);
-            else
-                Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.Status != OrderStatusEnum.Settled && a.Status != OrderStatusEnum.SettledByAdmin), pageSize, continuationToken);
-            if (string.IsNullOrWhiteSpace(content))
-            {
-                res = Bookings.Value.ToList();
-                pageToken = Bookings.Key;
+                res=Bookings.Value.ToList();
             }
             else
             {
-                res = Bookings.Value.ToList().FindAll(a => a.Details.Any(d => d.RestaurantName.ToLower().Contains(content.ToLower())));
-                pageToken = Bookings.Key;
+                List<Predicate<TrDbRestaurant>> Predicates = new List<Predicate<TrDbRestaurant>>();
+                Predicates.Add(s => s.ShopId == shopId);
+                if (string.IsNullOrWhiteSpace(content))
+                {
+                    Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.Status != OrderStatusEnum.Settled &&
+                  a.Details.Any(d => d.SelectDateTime > stime && d.SelectDateTime < etime) && a.Status != OrderStatusEnum.SettledByAdmin), pageSize, continuationToken);
+
+                    res = Bookings.Value.ToList();
+                    foreach (var order in res)
+                    {
+                        order.Details = order.Details.FindAll(d => d.SelectDateTime > stime && d.SelectDateTime < etime);
+                    }
+                }
+                else
+                {
+                    content = content.ToLower();
+                    Predicate<BookingDetail> predicate = d => d.RestaurantName.ToLower().Contains(content) || d.RestaurantAddress.ToLower().Contains(content) || d.ContactName.ToLower().Contains(content) ||
+                     d.GroupRef.ToLower().Contains(content);
+
+                    Bookings = await _restaurantBookingRepository.GetManyAsync(a => ((a.Status != OrderStatusEnum.None && !a.IsDeleted &&
+                  a.Status != OrderStatusEnum.Settled && a.Status != OrderStatusEnum.SettledByAdmin) && a.Details.Any(d => d.SelectDateTime > stime && d.SelectDateTime < etime) &&
+                  a.Details.Any(d => d.RestaurantName.ToLower().Contains(content) || d.RestaurantAddress.ToLower().Contains(content) || d.ContactName.ToLower().Contains(content) ||
+                     d.GroupRef.ToLower().Contains(content))), pageSize, continuationToken);
+
+                    res = Bookings.Value.ToList();
+                    foreach (var order in res)
+                    {
+                        order.Details = order.Details.FindAll(predicate);
+                    }
+                }
             }
+          
+            pageToken = Bookings.Key;
             //res.ForEach(r => { r.Details.OrderByDescending(d => d.SelectDateTime); });
             //var list = res.OrderByDescending(a => a.Created).ToList();
 
@@ -1030,29 +1069,51 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<QuestPDF.Fluent.Document> GetSchedulePdf(string userId)
         {
             List<PDFModel> pdfData = new List<PDFModel>();
-            var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted&&a.Status!=OrderStatusEnum.Canceled && a.Status != OrderStatusEnum.Settled && a.Status != OrderStatusEnum.SettledByAdmin));
+            var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.Status != OrderStatusEnum.Canceled && a.Status != OrderStatusEnum.Settled && a.Status != OrderStatusEnum.SettledByAdmin));
             foreach (var Booking in Bookings)
             {
-                foreach (var detail in Booking.Details) {
+                foreach (var detail in Booking.Details)
+                {
                     if ((int)detail.AcceptStatus > 1) continue;//只加入待接单与已接单的
                     string selectDateTimeStr = detail.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(detail.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm:ss");
-                    string orderInfo = $"订单号：{Environment.NewLine}{Booking.BookingRef}{Environment.NewLine}时间：{selectDateTimeStr}{Environment.NewLine}餐厅名称：{detail.RestaurantName}{Environment.NewLine}地址：{detail.RestaurantAddress}";
-                    string restInfo = $"电话：{detail.RestaurantPhone}{Environment.NewLine}紧急电话：{detail.EmergencyPhone}{Environment.NewLine}邮箱：{detail.RestaurantEmail}{Environment.NewLine}微信：{detail.RestaurantWechat}";
+                    //string orderInfo = $"订单号：{Environment.NewLine}{Booking.BookingRef}{Environment.NewLine}时间：{selectDateTimeStr}{Environment.NewLine}餐厅名称：{detail.RestaurantName}{Environment.NewLine}地址：{detail.RestaurantAddress}";
+                    //string restInfo = $"电话：{detail.RestaurantPhone}{Environment.NewLine}紧急电话：{detail.EmergencyPhone}{Environment.NewLine}邮箱：{detail.RestaurantEmail}{Environment.NewLine}微信：{detail.RestaurantWechat}";
                     string mealStr = "";
-                    foreach (var meal in detail.Courses) {
-                        mealStr += $"{meal.MenuItemName}({meal.Price})*{meal.Qty+meal.ChildrenQty}{Environment.NewLine}";
+                    foreach (var meal in detail.Courses)
+                    {
+                        mealStr += $"{meal.MenuItemName}({meal.Price})*{meal.Qty + meal.ChildrenQty}{Environment.NewLine}";
                     }
-                    decimal amount=detail.AmountInfos.Sum(a => a.Amount);
+                    decimal amount = detail.AmountInfos.Sum(a => a.Amount);
                     string currencyStr = detail.Currency == "" ? "" : "";
-                    string mealInfo = $"{mealStr}{currencyStr}{Environment.NewLine}{detail.Memo}";
-                    pdfData.Add(new PDFModel { OrderInfo=orderInfo,RestaurantInfo=restInfo,MealInfo=mealInfo });
+                    string mealInfo = $"{mealStr}{currencyStr} ";
+                    var model = new PDFModel
+                    {
+                        mealInfo = mealInfo,
+                        BookingRef = Booking.BookingRef,
+                        BookingTime = selectDateTimeStr,
+                        RestuarantName = detail.RestaurantName,
+                        Phone = detail.RestaurantPhone,
+                        ContactPhone = detail.EmergencyPhone,
+                        Email = detail.ContactEmail,
+                        Wechat = detail.ContactWechat,
+                        Remark = detail.Memo,
+                        Address = detail.RestaurantAddress
+                    };
+                    pdfData.Add(model);
                 }
             }
-            
-        
+
+
             var doc = _pDFUtil.GeneratePdf(pdfData);
             return doc;
 
+        }
+        public async Task<ResponseModel> GetOrdersSummary()
+        {
+            var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None));
+            int total = Bookings.Sum(a => a.Details.Count);
+            int settled = Bookings.Sum(a => a.Details.Count(b => b.Status == OrderStatusEnum.Settled));
+            return new ResponseModel { msg = "ok", code = 200, data = new { total, settled } };
         }
     }
 }
