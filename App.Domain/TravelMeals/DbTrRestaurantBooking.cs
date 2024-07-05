@@ -60,6 +60,7 @@ namespace App.Domain.TravelMeals
     public class BookingDetail
     {
         public string Id { get; set; }
+        public string BookingRef { get; set; }
         public string RestaurantId { get; set; }
         public string RestaurantName { get; set; }
         public string RestaurantPhone { get; set; }
@@ -95,7 +96,13 @@ namespace App.Domain.TravelMeals
     }
     public enum AcceptStatusEnum
     {
-        UnAccepted, Accepted, Declined, CanceledBeforeAccepted,CanceledAfterAccepted, Settled, SettledByAdmin
+        UnAccepted, 
+        Accepted, 
+        Declined, 
+        CanceledBeforeAccepted,
+        CanceledAfterAccepted, 
+        Settled, 
+        SettledByAdmin
     }
     public class BookingCourse : TrDbRestaurantMenuItem
     {

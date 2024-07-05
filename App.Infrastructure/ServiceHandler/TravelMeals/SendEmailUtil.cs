@@ -151,7 +151,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             foreach (var item in booking.Details)
             {
                 if (item.Status == OrderStatusEnum.Canceled) continue;
-                 Detail += AppendRestaurantInfo(item);
+                if (tempName != EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealCustomer].TemplateName)
+                    Detail += AppendRestaurantInfo(item);
                 string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm:ss");
                 Detail += selectDateTimeStr + " <br><br> ";
 

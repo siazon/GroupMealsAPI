@@ -7,7 +7,6 @@ using System.Text;
 using System.Threading.Tasks;
 using App.Domain.Common.Shop;
 using App.Infrastructure.Builders.Common;
-using App.Infrastructure.Builders.TravelMeals;
 using App.Infrastructure.Repository;
 using App.Infrastructure.Utility.Common;
 using App.Domain.Common.Stripe;
@@ -29,11 +28,9 @@ using App.Domain.Common.Customer;
 using App.Domain.Common;
 using App.Infrastructure.ServiceHandler.Common;
 using Newtonsoft.Json;
-using System.Drawing.Printing;
 using Twilio.Jwt.AccessToken;
 using Microsoft.Azure.Cosmos;
 using App.Domain.Common.Auth;
-using Twilio.TwiML.Voice;
 using Hangfire.Dashboard;
 using Microsoft.Azure.Cosmos.Linq;
 using App.Infrastructure.Extensions;
@@ -62,7 +59,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<TrDbRestaurantBooking> BindingPayInfoToTourBooking(TrDbRestaurantBooking gpBooking, string PaymentId, string stripeClientSecretKey, bool isSetupPay);
         Task<bool> ResendEmail(string bookingId);
         Task<bool> DoRebate(string bookingId, double rebate);
-        Task<ResponseModel> GetOrdersSummary();
+        Task<ResponseModel> GetDashboardData();
         Task<QuestPDF.Fluent.Document> GetSchedulePdf(string userId);
         Task<object> UpdateAccepted(string bookingId, string subBillId, int acceptType, string operater);
         Task<bool> UpdateAcceptedReason(string bookingId, string subBillId, string reason, string operater);
@@ -74,9 +71,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<ResponseModel> ModifyBooking(TrDbRestaurantBooking booking, int shopId, string email);
         Task<bool> DeleteBooking(string bookingId, int shopId);
         Task<bool> DeleteBookingDetail(string bookingId, string detailId, int shopId);
+        Task<bool> UndoDeleteDetail(string bookingId, string detailId, int shopId);
         Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
         Task<ResponseModel> SearchBookingsByRestaurant(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
-        Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, DateTime stime, DateTime etime, bool includeSettled = false, int pageSize = -1, string continuationToke = null);
+        Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, int filterTime, DateTime stime, DateTime etime, int status, int pageSize = -1, string continuationToke = null);
 
 
         ResponseModel GetBookingItemAmount(List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate);
@@ -201,6 +199,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                             _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
                             throw new ServiceException("Cannot find shop info");
                         }
+                        _twilioUtil.sendSMS("+353874858555", $"你有订单: {booking.BookingRef}被取消。 请登录groupmeal.com查看更多");
                         var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealCancelled];
                         _sendEmailUtil.SendCancelEmail(shopInfo, booking, item, _environment.WebRootPath, emailParams.TemplateName, emailParams.Subject, emailParams.CCEmail.ToArray());
                     }
@@ -226,6 +225,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var temp = await _restaurantBookingRepository.UpsertAsync(booking);
             return true;
         }
+        private void UpdateStatus(BookingDetail item, int acceptType)
+        {
+            item.AcceptStatus = (AcceptStatusEnum)acceptType;
+            if (item.AcceptStatus == AcceptStatusEnum.Accepted)
+                item.Status = OrderStatusEnum.Accepted;
+            if (item.AcceptStatus == AcceptStatusEnum.Declined)
+                item.Status = OrderStatusEnum.Canceled;
+        }
         public async Task<object> UpdateAccepted(string billId, string subBillId, int acceptType, string operater)
         {
             TrDbRestaurantBooking booking = GetBooking(billId).Result;
@@ -238,21 +245,58 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     switch (item.AcceptStatus)
                     {
                         case AcceptStatusEnum.UnAccepted:
-                            item.AcceptStatus = (AcceptStatusEnum)acceptType;
-                            if (item.AcceptStatus == AcceptStatusEnum.Accepted)
-                                item.Status = OrderStatusEnum.Accepted;
-                            if (item.AcceptStatus == AcceptStatusEnum.Declined)
-                                item.Status = OrderStatusEnum.Canceled;
+                            UpdateStatus(item, acceptType);
                             break;
                         case AcceptStatusEnum.Accepted:
-                            return new { code = 1, msg = "Order Accepted(订单已接受，如需修改请联系客服)", };
+                            var customer = await _customerRepository.GetOneAsync(a => a.Email == operater);
+                            if (customer != null)
+                            {
+                                bool IsAdmin = customer.AuthValue.AuthVerify(8);
+                                if (IsAdmin)
+                                {
+                                    UpdateStatus(item, acceptType);
+                                }
+                                else
+                                {
+                                    return new { code = 1, msg = "Order Accepted(订单已接受，如需修改请联系客服)", };
+                                }
+                            }
+
                             break;
                         case AcceptStatusEnum.Declined:
-                            return new { code = 2, msg = "Order Declined(订单已被拒绝，如需修改请联系客服)", };
+                            customer = await _customerRepository.GetOneAsync(a => a.Email == operater);
+                            if (customer != null)
+                            {
+                                bool IsAdmin = customer.AuthValue.AuthVerify(8);
+                                if (IsAdmin)
+                                {
+                                    UpdateStatus(item, acceptType);
+                                }
+                                else
+                                {
+                                    return new { code = 2, msg = "Order Declined(订单已被拒绝，如需修改请联系客服)", };
+                                }
+                            }
+
                             break;
                         case AcceptStatusEnum.CanceledBeforeAccepted:
                         case AcceptStatusEnum.CanceledAfterAccepted:
-                            return new { code = 2, msg = "Order Declined(订单已取消，如需修改请联系客服)", };
+                            customer = await _customerRepository.GetOneAsync(a => a.Email == operater);
+                            if (customer != null)
+                            {
+                                bool IsAdmin = customer.AuthValue.AuthVerify(8);
+                                if (IsAdmin)
+                                {
+                                    UpdateStatus(item, acceptType);
+                                }
+                                else
+                                {
+                                    return new { code = 2, msg = "Order Declined(订单已取消，如需修改请联系客服)", };
+                                }
+                            }
+
+
+
                             break;
                         case AcceptStatusEnum.Settled:
                         case AcceptStatusEnum.SettledByAdmin:
@@ -628,6 +672,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             bool noPay = true;
             foreach (var item in booking.Details)
             {
+                if (string.IsNullOrWhiteSpace(item.BookingRef))
+                {
+                    item.BookingRef = "GM" + SnowflakeId.getSnowId();
+                }
                 if (string.IsNullOrWhiteSpace(item.RestaurantEmail))
                 {
                     var rest = await _restaurantRepository.GetOneAsync(a => a.Id == item.RestaurantId);
@@ -828,6 +876,21 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var savedRestaurant = await _restaurantBookingRepository.UpsertAsync(booking);
             return savedRestaurant != null;
         }
+        public async Task<bool> UndoDeleteDetail(string bookingId, string detailId, int shopId)
+        {
+            var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
+            foreach (var bookingDetail in booking.Details)
+            {
+                if (bookingDetail.Id == detailId)
+                {
+                    bookingDetail.IsDeleted = false;
+                    booking.IsDeleted = false;
+                }
+            }
+            booking.Updated = DateTime.UtcNow;
+            var savedRestaurant = await _restaurantBookingRepository.UpsertAsync(booking);
+            return savedRestaurant != null;
+        }
         public async Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToken = null)
         {
             //SettleOrder();
@@ -925,47 +988,132 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return new ResponseModel { msg = "ok", code = 200, token = token, data = res };
         }
 
-        public async Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, DateTime stime, DateTime etime, bool includeSettled = false, int pageSize = -1, string continuationToken = null)
+        public async Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, int filterTime, DateTime stime, DateTime etime, int status, int pageSize = -1, string continuationToken = null)
         {
             List<TrDbRestaurantBooking> res = new List<TrDbRestaurantBooking>();
             string pageToken = "";
             KeyValuePair<string, IEnumerable<TrDbRestaurantBooking>> Bookings = new KeyValuePair<string, IEnumerable<TrDbRestaurantBooking>>();
-
+            bool emptyTime = stime == DateTime.MinValue || etime == DateTime.MinValue;
             if (string.IsNullOrWhiteSpace(content))
             {
-                if (includeSettled)
-                    Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted  &&
-              a.Details.Any(d => d.SelectDateTime > stime && d.SelectDateTime < etime) ), pageSize, continuationToken);
-                else
-                    Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.Status != OrderStatusEnum.Settled &&
-            a.Details.Any(d => d.SelectDateTime > stime && d.SelectDateTime < etime) && a.Status != OrderStatusEnum.SettledByAdmin), pageSize, continuationToken);
-                res = Bookings.Value.ToList();
-                foreach (var order in res)
+                if (status == 6)
                 {
-                    order.Details = order.Details.FindAll(d => d.SelectDateTime > stime && d.SelectDateTime < etime);
+                    if (emptyTime)
+                    {
+                        Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && a.IsDeleted), pageSize, continuationToken);
+                        res = Bookings.Value.ToList();
+                    }
+                    else
+                    {
+                        etime = etime.AddDays(1);
+                        if (filterTime == 1)
+                        {
+                            Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && a.IsDeleted &&
+                            a.Details.Any(d => d.SelectDateTime > stime && d.SelectDateTime <= etime)), pageSize, continuationToken);
+                            res = Bookings.Value.ToList();
+                            foreach (var order in res)
+                            {
+                                order.Details = order.Details.FindAll(d => d.SelectDateTime > stime && d.SelectDateTime <= etime);
+                            }
+                        }
+                        else
+                        {
+                            Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && a.IsDeleted &&
+                            a.Created > stime && a.Created <= etime), pageSize, continuationToken);
+                            res = Bookings.Value.ToList();
+                        }
+
+                    }
+
                 }
+                else if (status == -1)
+                {
+                    if (emptyTime)
+                    {
+                        Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted), pageSize, continuationToken);
+                        res = Bookings.Value.ToList();
+                    }
+                    else
+                    {
+                        etime = etime.AddDays(1);
+                        if (filterTime == 1)
+                        {
+                            Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted &&
+                            a.Details.Any(d => d.SelectDateTime > stime && d.SelectDateTime <= etime)), pageSize, continuationToken);
+                            res = Bookings.Value.ToList();
+                            foreach (var order in res)
+                            {
+                                order.Details = order.Details.FindAll(d => d.SelectDateTime > stime && d.SelectDateTime <= etime);
+                            }
+                        }
+                        else
+                        {
+                            Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted &&
+                            a.Created > stime && a.Created <= etime), pageSize, continuationToken);
+                            res = Bookings.Value.ToList();
+                        }
+                    }
+                }
+                else
+                {
+                    if (emptyTime)
+                    {
+                        Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted &&
+                        a.Details.Any(d => d.Status == (OrderStatusEnum)status)), pageSize, continuationToken);
+                        res = Bookings.Value.ToList();
+                        foreach (var order in res)
+                        {
+                            order.Details = order.Details.FindAll(d => d.Status == (OrderStatusEnum)status);
+                        }
+                    }
+                    else
+                    {
+                        etime = etime.AddDays(1);
+                        if (filterTime == 1)
+                        {
+                            Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted &&
+                            a.Details.Any(d => d.Status == (OrderStatusEnum)status && d.SelectDateTime > stime && d.SelectDateTime <= etime)), pageSize, continuationToken);
+                            res = Bookings.Value.ToList();
+                            foreach (var order in res)
+                            {
+                                order.Details = order.Details.FindAll(d => d.Status == (OrderStatusEnum)status && d.SelectDateTime > stime && d.SelectDateTime <= etime);
+                            }
+                        }
+                        else
+                        {
+                            Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted &&
+                            a.Created > stime && a.Created <= etime && a.Details.Any(d => d.Status == (OrderStatusEnum)status)), pageSize, continuationToken);
+                            res = Bookings.Value.ToList();
+                            foreach (var order in res)
+                            {
+                                order.Details = order.Details.FindAll(d => d.Status == (OrderStatusEnum)status);
+                            }
+                        }
+                    }
+
+                }
+
+
             }
             else
             {
-                content = content.ToLower();
-                Predicate<BookingDetail> predicate = d => d.RestaurantName.ToLower().Contains(content) || d.RestaurantAddress.ToLower().Contains(content) || d.ContactName.ToLower().Contains(content) ||
-                 d.GroupRef.ToLower().Contains(content);
+                content = content.ToLower().Trim();
+                Predicate<BookingDetail> predicate =
+                    d => d.RestaurantName.ToLower().Contains(content) || d.RestaurantAddress.ToLower().Contains(content) || d.ContactName.ToLower().Contains(content) || d.GroupRef.ToLower().Contains(content);
 
-                if (includeSettled)
-                    Bookings = await _restaurantBookingRepository.GetManyAsync(a => ((a.Status != OrderStatusEnum.None && !a.IsDeleted ) && a.Details.Any(d => d.SelectDateTime > stime && d.SelectDateTime < etime) &&
-              a.Details.Any(d => d.RestaurantName.ToLower().Contains(content) || d.RestaurantAddress.ToLower().Contains(content) || d.ContactName.ToLower().Contains(content) ||
-                 d.GroupRef.ToLower().Contains(content))), pageSize, continuationToken);
-                else
-                    Bookings = await _restaurantBookingRepository.GetManyAsync(a => ((a.Status != OrderStatusEnum.None && !a.IsDeleted &&
-              a.Status != OrderStatusEnum.Settled && a.Status != OrderStatusEnum.SettledByAdmin) && a.Details.Any(d => d.SelectDateTime > stime && d.SelectDateTime < etime) &&
-              a.Details.Any(d => d.RestaurantName.ToLower().Contains(content) || d.RestaurantAddress.ToLower().Contains(content) || d.ContactName.ToLower().Contains(content) ||
-                 d.GroupRef.ToLower().Contains(content))), pageSize, continuationToken);
+                Bookings = await _restaurantBookingRepository.GetManyAsync(a => ((a.Status != OrderStatusEnum.None) &&
+                (a.BookingRef.ToLower().Contains(content) || a.Details.Any(d => d.RestaurantName.ToLower().Contains(content) || d.RestaurantAddress.ToLower().Contains(content) ||
+                d.ContactName.ToLower().Contains(content) || d.GroupRef.ToLower().Contains(content)
+                    ))), pageSize, continuationToken);
 
                 res = Bookings.Value.ToList();
                 foreach (var order in res)
                 {
-                    order.Details = order.Details.FindAll(predicate);
+                    if (!order.BookingRef.ToLower().Contains(content))//主单未命才筛选子单
+                        order.Details = order.Details.FindAll(predicate);
                 }
+
+
             }
 
 
@@ -1069,7 +1217,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<QuestPDF.Fluent.Document> GetSchedulePdf(string userId)
         {
             List<PDFModel> pdfData = new List<PDFModel>();
-            var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.Status != OrderStatusEnum.Canceled && a.Status != OrderStatusEnum.Settled && a.Status != OrderStatusEnum.SettledByAdmin));
+            var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.Status != OrderStatusEnum.Canceled &&
+            a.Status != OrderStatusEnum.Settled && a.Status != OrderStatusEnum.SettledByAdmin));
             foreach (var Booking in Bookings)
             {
                 foreach (var detail in Booking.Details)
@@ -1108,12 +1257,27 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return doc;
 
         }
-        public async Task<ResponseModel> GetOrdersSummary()
+        public async Task<ResponseModel> GetDashboardData()
         {
             var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None));
-            int total = Bookings.Sum(a => a.Details.Count);
-            int settled = Bookings.Sum(a => a.Details.Count(b => b.Status == OrderStatusEnum.Settled));
-            return new ResponseModel { msg = "ok", code = 200, data = new { total, settled } };
+            int totalQty = Bookings.Sum(a => a.Details.Count);
+            var monthBooking = Bookings.Where(a => a.Created > DateTime.UtcNow.AddDays(1 - DateTime.UtcNow.Day).Date).ToList();
+            int monthQty = monthBooking.Sum(a => a.Details.Count);
+            var weekBooking = Bookings.Where(a => a.Created > DateTime.UtcNow.Date.AddDays(-7)).ToList();
+            int todayQty = weekBooking.Where(a => a.Created > DateTime.UtcNow.Date).ToList().Sum(a => a.Details.Count);
+            int week = weekBooking.Sum(a => a.Details.Count);
+            List<BookingReport> weekly = new List<BookingReport>();
+
+            weekly.Add(new BookingReport() { Name = DateTime.UtcNow.ToString("yyyy-MM-dd") + " (" + todayQty + ")", Qty = todayQty });
+            int weekQty = 0;
+            for (int i = 1; i < 7; i++)
+            {
+                weekQty = weekly.Sum(a => a.Qty);
+                int dayqty = weekBooking.Where(a => a.Created > DateTime.UtcNow.Date.AddDays(-i)).ToList().Sum(a => a.Details.Count) - weekQty;
+                weekly.Add(new BookingReport() { Name = DateTime.UtcNow.Date.AddDays(-i).ToString("yyyy-MM-dd") + " (" + dayqty + ")", Qty = dayqty });
+            }
+            weekly.Reverse();
+            return new ResponseModel { msg = "ok", code = 200, data = new { totalQty, todayQty, weekQty, monthQty, weekly } };
         }
     }
 }

@@ -140,13 +140,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
                 if (isAllCountry)
                 {
-                    currentPage = await QeuryByContent(shopId, content??"", pageSize, continuationToke);
+                    currentPage = await QeuryByContent(shopId, content ?? "", pageSize, continuationToke);
 
                 }
                 else
                 {
-                    currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId&&a.Country==country&&a.City==city, pageSize, continuationToke);
-                  
+                    currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId && a.Country == country && a.City == city, pageSize, continuationToke);
+
                 }
                 if (!IsAdmin)
                 {
@@ -167,7 +167,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<ResponseModel> GetRestaurants(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null)
         {
             _logger.LogInfo($"GetRestaurants");
-            List<TrDbRestaurant> data = new List<TrDbRestaurant>();
+            IList<TrDbRestaurant> resdata = new List<TrDbRestaurant>();
             try
             {
                 bool IsAdmin = userInfo.RoleLevel.AuthVerify(8);
@@ -175,47 +175,40 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 bool isAllCity = city.Trim() == "All" || city.Trim() == "È«²¿";
                 bool isContentEmpty = string.IsNullOrWhiteSpace(content);
                 KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage;
-
-                var cacheKey = string.Format("motionmedia-{1}-{0}-{2}", shopId, typeof(TrDbRestaurant).Name, pageSize);
-                var cacheResult = _memoryCache.Get<KeyValuePair<string, IEnumerable<TrDbRestaurant>>>(cacheKey);
-                if (cacheResult.Value != null && cacheResult.Value.Count() > 0)
+                if (isAllCountry && isAllCity && isContentEmpty)
                 {
-                    currentPage = cacheResult;
+                    var cacheKey = string.Format("motionmedia-{1}-{0}-{2}", shopId, typeof(TrDbRestaurant).Name, pageSize);
+                    var cacheResult = _memoryCache.Get<KeyValuePair<string, IEnumerable<TrDbRestaurant>>>(cacheKey);
+                    if (cacheResult.Value != null && cacheResult.Value.Count() > 0&&string.IsNullOrWhiteSpace(continuationToke))
+                    {
+                        currentPage = cacheResult;
+                    }
+                    else
+                    {
+                        currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId, pageSize, continuationToke);
+                        if(string.IsNullOrWhiteSpace(continuationToke))
+                        _memoryCache.Set(cacheKey, currentPage);
+                    }
                 }
                 else
                 {
-                    currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId, pageSize, continuationToke);
-                    if (pageSize < 1)
-                        _memoryCache.Set(cacheKey, currentPage);
-                }
-                //currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId, pageSize, continuationToke);
-                var resdata = currentPage.Value.ToList();
+                    string lowContent = content?.ToLower();
+                    if (isContentEmpty)
+                    {
+                        if(isAllCity)
+                        currentPage = await _restaurantRepository.GetManyAsync(a => a.Country == country , pageSize, continuationToke);
+                        else
+                            currentPage = await _restaurantRepository.GetManyAsync(a => a.Country == country && a.City == city, pageSize, continuationToke);
 
-                List<Predicate<TrDbRestaurant>> Predicates = new List<Predicate<TrDbRestaurant>>();
-                Predicates.Add(s => s.ShopId == shopId);
-
-                if (!isContentEmpty)
-                {
-                    string lowContent = content.ToLower();
-                    Predicates.Add(s => s.StoreName.ToLower().Contains(lowContent) || s.Address.ToLower().Contains(lowContent) || s.Description.ToLower().Contains(lowContent) || s.Tags.Any(b => b.ToLower().Contains(lowContent)) || s.Attractions.Any(b => b.ToLower().Contains(lowContent)));
-
+                    }
+                    else
+                        currentPage = await _restaurantRepository.GetManyAsync(s => s.StoreName.ToLower().Contains(lowContent) || s.Address.ToLower().Contains(lowContent) || s.Description.ToLower().Contains(lowContent) || s.Tags.Any(b => b.ToLower().Contains(lowContent)) || s.Attractions.Any(b => b.ToLower().Contains(lowContent)), pageSize, continuationToke);
                 }
 
                 if (!IsAdmin)
-                {
-                    Predicates.Add(a => a.IsActive == true);
-                }
-
-                if (!isAllCountry)
-                {
-                    Predicates.Add(a => a.Country == country);
-                }
-                if (!isAllCity)
-                {
-                    Predicates.Add(a => a.City.Contains(city));
-                }
-
-                data = resdata.FindAll(Predicates).ClearForOutPut().OrderByDescending(a => a.Created).OrderBy(a => a.SortOrder).ToList();
+                    resdata = currentPage.Value.Where(a => a.IsActive == true).ToList();
+                else
+                    resdata = currentPage.Value.ToList();
                 continuationToke = currentPage.Key;
             }
             catch (Exception ex)
@@ -224,7 +217,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 _logger.LogError(ex.Message);
                 Console.WriteLine(ex.Message);
             }
-            return new ResponseModel { msg = "ok", code = 200, token = continuationToke, data = data };
+            return new ResponseModel { msg = "ok", code = 200, token = continuationToke, data = resdata };
         }
 
         public async Task<ResponseModel> GetRestaurantsOld(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null)

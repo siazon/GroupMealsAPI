@@ -83,7 +83,13 @@ namespace KingfoodIO.Controllers.TravelMeals
             return await ExecuteAsync(shopId, false,
                 async () => await _restaurantBookingServiceHandler.MakeABooking(booking, shopId, user));
         }
-
+        [HttpGet]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> GetBooking(string Id, int shopId, bool cache = false)
+        {
+            return await ExecuteAsync(shopId, cache, async () => await _restaurantBookingServiceHandler.GetBooking(Id));
+        }
         /// <summary>
         /// 
         /// </summary>
@@ -198,6 +204,23 @@ namespace KingfoodIO.Controllers.TravelMeals
         /// <summary>
         /// 
         /// </summary>
+        /// <param name="shopId"></param>
+        /// <param name="bookingId"></param>
+        /// <param name="detailId"></param>
+        /// <param name="cache"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> UndoDeleteDetail(int shopId, string bookingId, string detailId, bool cache = false)
+        {
+            return await ExecuteAsync(shopId, cache,
+                async () => await _restaurantBookingServiceHandler.UndoDeleteDetail(bookingId, detailId, shopId));
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
         /// <param name="pageToken"></param>
         /// <param name="shopId"></param>
         /// <param name="email">TAµƒ” œ‰</param>
@@ -239,25 +262,28 @@ namespace KingfoodIO.Controllers.TravelMeals
                 async () => await _restaurantBookingServiceHandler.SearchBookingsByRestaurant(shopId, email, content, pageSize, pageToken));
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="pageToken"></param>
-        /// <param name="shopId"></param>
-        /// <param name="content"></param>
-        /// <param name="includeSettled"></param>
-        /// <param name="pageSize"></param>
-        /// <param name="cache"></param>
-        /// <returns></returns>
+       /// <summary>
+       /// 
+       /// </summary>
+       /// <param name="pageToken"></param>
+       /// <param name="shopId"></param>
+       /// <param name="content"></param>
+       /// <param name="stime"></param>
+       /// <param name="etime"></param>
+       /// <param name="status"></param>
+       /// <param name="isDelete"></param>
+       /// <param name="pageSize"></param>
+       /// <param name="cache"></param>
+       /// <returns></returns>
       
         [HttpPost]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> SearchBookingsByAdmin([FromBody] string pageToken, int shopId, string content,DateTime stime,DateTime etime, bool includeSettled = false, int pageSize = -1, bool cache = true)
+        public async Task<IActionResult> SearchBookingsByAdmin([FromBody] string pageToken, int shopId, string content,int filterTime, DateTime stime,DateTime etime,int status, int pageSize = -1, bool cache = true)
         {
             
             return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantBookingServiceHandler.SearchBookingsByAdmin(shopId,  content,stime,etime, includeSettled ,pageSize, pageToken));
+                async () => await _restaurantBookingServiceHandler.SearchBookingsByAdmin(shopId,  content, filterTime,stime, etime,status ,pageSize, pageToken));
         }
 
 
@@ -291,10 +317,10 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpGet]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> GetOrdersSummary(int shopId, bool cache = false)
+        public async Task<IActionResult> GetDashboardData(int shopId, bool cache = false)
         {
             return await ExecuteAsync(shopId, cache,
-            async () => await _restaurantBookingServiceHandler.GetOrdersSummary());
+            async () => await _restaurantBookingServiceHandler.GetDashboardData());
         }
 
         [HttpGet]
