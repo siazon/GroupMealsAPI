@@ -58,7 +58,7 @@ namespace App.Domain.Common
                     column.Item().Text(text =>
                     {
                         text.Span("打印时间: ").SemiBold();
-                        text.Span(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                        text.Span(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"));
                     });
 
                     column.Item().Text(text =>

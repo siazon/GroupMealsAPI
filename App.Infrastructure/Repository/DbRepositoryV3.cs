@@ -103,7 +103,7 @@ namespace App.Infrastructure.Repository
 
                 FeedIterator<T> feed;
                 if(typeof(T)==typeof(TrDbRestaurant))
-                    feed = linqQueryable.Where(predicate).OrderByDescending(a=>a.SortOrder).ThenByDescending(a=>a.Created).ToFeedIterator();
+                    feed = linqQueryable.Where(predicate).OrderBy(a=>a.SortOrder).ThenByDescending(a=>a.Created).ToFeedIterator();
                 else
                     feed = linqQueryable.Where(predicate).OrderByDescending(a => a.Created).ToFeedIterator();
 

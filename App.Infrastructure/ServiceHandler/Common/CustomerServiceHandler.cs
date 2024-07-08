@@ -152,8 +152,8 @@ namespace App.Infrastructure.ServiceHandler.Common
                 return new { msg = "验证码错误或者已过期" };
             newItem.Id=Guid.NewGuid().ToString();
             newItem.ShopId = shopId;
-            newItem.Created = DateTime.Now;
-            newItem.Updated = DateTime.Now;
+            newItem.Created = DateTime.UtcNow;
+            newItem.Updated = DateTime.UtcNow;
             newItem.IsActive = true;
             newItem.IsVerity = true;
             newItem.AuthValue = 159;

@@ -469,7 +469,7 @@ namespace KingfoodIO.Controllers.Common
                 if (bill.BillType == "TOUR")
                 {
                     tourBooking = await _tourBookingServiceHandler.GetTourBooking(bill.BillId);
-                    var selectTimeSpan = (DateTime.Parse(tourBooking.SelectDate) - DateTime.Now).TotalHours;
+                    var selectTimeSpan = (DateTime.Parse(tourBooking.SelectDate) - DateTime.UtcNow).TotalHours;
                     if (selectTimeSpan > 0 && selectTimeSpan < 24)
                         chargeId = tourBooking.StripeChargeId;
                     else

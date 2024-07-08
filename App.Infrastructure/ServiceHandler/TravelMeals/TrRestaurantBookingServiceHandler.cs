@@ -46,6 +46,9 @@ using RazorLight.Extensions;
 using StackExchange.Redis;
 using Twilio.Base;
 using static FluentValidation.Validators.PredicateValidator;
+using App.Domain.Config;
+using QuestPDF.Fluent;
+using SixLabors.ImageSharp.Memory;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -60,11 +63,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<bool> ResendEmail(string bookingId);
         Task<bool> DoRebate(string bookingId, double rebate);
         Task<ResponseModel> GetDashboardData();
-        Task<QuestPDF.Fluent.Document> GetSchedulePdf(string userId);
+        Task<ResponseModel> GetSchedulePdf(string userId);
         Task<object> UpdateAccepted(string bookingId, string subBillId, int acceptType, string operater);
         Task<bool> UpdateAcceptedReason(string bookingId, string subBillId, string reason, string operater);
         Task<object> CancelBooking(string bookingId, string detailId, string userEmail, bool isAdmin);
         Task<object> SettleBooking(string bookingId, string detailId, string userEmail);
+        Task<object> UpdateStatusByAdmin(string id, string dtlId, int status, DbToken user);
 
         Task<object> UpsetBookingRemark(string bookingId, string detailId, string remark, string userEmail);
         Task<ResponseModel> MakeABooking(TrDbRestaurantBooking booking, int shopId, DbToken user);
@@ -100,10 +104,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private readonly IDateTimeUtil _dateTimeUtil;
         IAmountCalculaterUtil _amountCalculaterV1;
         IPDFUtil _pDFUtil;
+        private readonly AzureStorageConfig storageConfig;
 
         public TrRestaurantBookingServiceHandler(ITwilioUtil twilioUtil, IDbCommonRepository<TrDbRestaurant> restaurantRepository, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository, IDbCommonRepository<DbCustomer> customerRepository,
             IDbCommonRepository<DbShop> shopRepository, ICustomerServiceHandler customerServiceHandler, IHostingEnvironment environment, IStripeUtil stripeUtil, IMemoryCache memoryCache, IShopServiceHandler shopServiceHandler,
-            IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, IDateTimeUtil dateTimeUtil, IAmountCalculaterUtil amountCalculaterV1, ISendEmailUtil sendEmailUtil,
+            IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, IDateTimeUtil dateTimeUtil, IAmountCalculaterUtil amountCalculaterV1, ISendEmailUtil sendEmailUtil, Microsoft.Extensions.Options.IOptions<AzureStorageConfig> _storageConfig,
       IPDFUtil pDFUtil, ILogManager logger, IContentBuilder contentBuilder)
         {
             _restaurantRepository = restaurantRepository;
@@ -112,6 +117,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _customerRepository = customerRepository;
             _contentBuilder = contentBuilder;
             _sendEmailUtil = sendEmailUtil;
+            storageConfig = _storageConfig.Value;
             _logger = logger;
             _pDFUtil = pDFUtil;
             _twilioUtil = twilioUtil;
@@ -131,6 +137,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var Booking = await _restaurantBookingRepository.GetOneAsync(r => r.Id == id);
             return Booking;
         }
+
         public async Task<object> SettleBooking(string bookingId, string detailId, string userEmail)
         {
             var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
@@ -208,7 +215,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             booking.Status = OrderStatusEnum.Canceled;
             booking.Updated = DateTime.UtcNow;
             booking.Updater = userEmail;
-            OperationInfo operationInfo = new OperationInfo() { ModifyType = 3, Operater = userEmail, UpdateTime = DateTime.Now, Operation = "订单取消" };
+            OperationInfo operationInfo = new OperationInfo() { ModifyType = 3, Operater = userEmail, UpdateTime = DateTime.UtcNow, Operation = "订单取消" };
             booking.Operations.Add(operationInfo);
 
             var savedRestaurant = await _restaurantBookingRepository.UpsertAsync(booking);
@@ -227,11 +234,48 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         private void UpdateStatus(BookingDetail item, int acceptType)
         {
-            item.AcceptStatus = (AcceptStatusEnum)acceptType;
-            if (item.AcceptStatus == AcceptStatusEnum.Accepted)
-                item.Status = OrderStatusEnum.Accepted;
-            if (item.AcceptStatus == AcceptStatusEnum.Declined)
-                item.Status = OrderStatusEnum.Canceled;
+
+            AcceptStatusEnum statusEnum = (AcceptStatusEnum)acceptType;
+            if (statusEnum == AcceptStatusEnum.CanceledBeforeAccepted && item.AcceptStatus == AcceptStatusEnum.Accepted)
+                item.AcceptStatus = AcceptStatusEnum.CanceledAfterAccepted;
+            else
+                item.AcceptStatus = statusEnum;
+            switch (statusEnum)
+            {
+                case AcceptStatusEnum.UnAccepted:
+                    item.Status = OrderStatusEnum.UnAccepted;
+                    break;
+                case AcceptStatusEnum.Accepted:
+                    item.Status = OrderStatusEnum.Accepted;
+                    break;
+                case AcceptStatusEnum.Declined:
+                case AcceptStatusEnum.CanceledBeforeAccepted:
+                case AcceptStatusEnum.CanceledAfterAccepted:
+                    item.Status = OrderStatusEnum.Canceled;
+                    break;
+                case AcceptStatusEnum.Settled:
+                case AcceptStatusEnum.SettledByAdmin:
+                    item.Status = OrderStatusEnum.Settled;
+                    break;
+                default:
+                    break;
+            }
+        }
+        public async Task<object> UpdateStatusByAdmin(string id, string dtlId, int status, DbToken user)
+        {
+            TrDbRestaurantBooking booking = await GetBooking(id);
+            AcceptStatusEnum statusEnum = (AcceptStatusEnum)status;
+            foreach (var item in booking.Details)
+            {
+                if (item.Id == dtlId)
+                {
+                    UpdateStatus(item, status);
+                }
+            }
+            var opt = new OperationInfo() { Operater = user.UserId, Operation = statusEnum.ToString(), UpdateTime = DateTime.UtcNow };
+            booking.Operations.Add(opt);
+            var temp = await _restaurantBookingRepository.UpsertAsync(booking);
+            return new ResponseModel { msg = "ok", code = 200, data = new { } };
         }
         public async Task<object> UpdateAccepted(string billId, string subBillId, int acceptType, string operater)
         {
@@ -312,7 +356,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //{
             //    _stripeUtil.RefundGroupMeals(booking);
             //}
-            var opt = new OperationInfo() { Operater = operater, Operation = acceptType == 1 ? "接收预订" : "拒绝预订", UpdateTime = DateTime.Now };
+            var opt = new OperationInfo() { Operater = operater, Operation = acceptType == 1 ? "接收预订" : "拒绝预订", UpdateTime = DateTime.UtcNow };
             booking.Operations.Add(opt);
             var temp = await _restaurantBookingRepository.UpsertAsync(booking);
             string msg = $"您于{booking.BookingDate} {booking.BookingTime} 提交的订单已被接收，请按时就餐";
@@ -396,7 +440,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     item.AcceptReason = reason;
                 }
             }
-            var opt = new OperationInfo() { Operater = operater, Operation = "添加原因", UpdateTime = DateTime.Now };
+            var opt = new OperationInfo() { Operater = operater, Operation = "添加原因", UpdateTime = DateTime.UtcNow };
             booking.Operations.Add(opt);
             var temp = await _restaurantBookingRepository.UpsertAsync(booking);
             return true;
@@ -503,7 +547,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             Guard.AreEqual(booking.ShopId.Value, shopId);
             var exsitBooking = await _restaurantBookingRepository.GetOneAsync(r => !r.IsDeleted && r.Id == booking.Id);
             if (exsitBooking == null) return new ResponseModel { msg = "booking not found", code = 200, data = null };
-            OperationInfo operationInfo = new OperationInfo() { ModifyType = 4, Operater = email, UpdateTime = DateTime.Now, Operation = "订单修改" };
+            OperationInfo operationInfo = new OperationInfo() { ModifyType = 4, Operater = email, UpdateTime = DateTime.UtcNow, Operation = "订单修改" };
             int isChange = 0;
             foreach (var item in exsitBooking.Details)
             {
@@ -617,7 +661,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //foreach (var item in booking.Details)
             //{
             //    _logger.LogInfo(" Make a booking.time: " + item.SelectDateTime);
-            //    if ((item.SelectDateTime - DateTime.Now).Value.TotalHours < 12)
+            //    if ((item.SelectDateTime - DateTime.UtcNow).Value.TotalHours < 12)
             //    {
             //        return new ResponseModel { msg = "用餐时间少于12个小时", code = 200, data = null };
             //    }
@@ -634,7 +678,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 booking.Id = Guid.NewGuid().ToString();
                 booking.BookingRef = "GM" + SnowflakeId.getSnowId();
                 booking.Created = DateTime.UtcNow;
-                var opt = new OperationInfo() { Operater = user.UserEmail, Operation = "新增订单", UpdateTime = DateTime.Now };
+                var opt = new OperationInfo() { Operater = user.UserEmail, Operation = "新增订单", UpdateTime = DateTime.UtcNow };
                 booking.Operations.Add(opt);
             }
             bool noPay = await InitBooking(booking, user.UserId);
@@ -921,17 +965,17 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             try
             {
-                DateTime stime = DateTime.Now;
+                DateTime stime = DateTime.UtcNow;
                 var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted));
-                var span = (DateTime.Now - stime).TotalMilliseconds;
-                Console.WriteLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff") + " : " + span);
+                var span = (DateTime.UtcNow - stime).TotalMilliseconds;
+                Console.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + " : " + span);
                 var list = Bookings.ToList();
                 foreach (var item in list)
                 {
                     bool isSettled = true;
                     foreach (var b in item.Details)
                     {
-                        if (b.AcceptStatus == AcceptStatusEnum.Accepted && b.SelectDateTime < DateTime.Now)
+                        if (b.AcceptStatus == AcceptStatusEnum.Accepted && b.SelectDateTime < DateTime.UtcNow)
                         {
 
                         }
@@ -1138,12 +1182,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<ResponseModel> GetBookingAmount(bool isBookingModify, string currency, string userId, double rate, List<string> Ids)
         {
             decimal EUAmount = 0, UKAmount = 0, EUPaidAmount = 0, UKPaidAmount = 0, totalPayAmount = 0;
-            DateTime sdate = DateTime.Now;
+            DateTime sdate = DateTime.UtcNow;
             if (isBookingModify)
             {
-                DateTime stime = DateTime.Now;
+                DateTime stime = DateTime.UtcNow;
                 var Bookings = await _restaurantBookingRepository.GetManyAsync(a => a.Details.Any(d => Ids.Contains(d.Id)));
-                Console.WriteLine((DateTime.Now - stime).TotalMilliseconds);
+                Console.WriteLine((DateTime.UtcNow - stime).TotalMilliseconds);
                 if (Bookings == null || Bookings.Count() == 0)
                 {
                     return new ResponseModel { msg = "detailId can't find in Order list", code = 500, };
@@ -1173,9 +1217,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             else
             {
-                DateTime stime = DateTime.Now;
+                DateTime stime = DateTime.UtcNow;
                 var user = await _customerRepository.GetOneAsync(a => a.Id == userId);
-                Console.WriteLine("cart:" + (DateTime.Now - stime).TotalMilliseconds);
+                Console.WriteLine("cart:" + (DateTime.UtcNow - stime).TotalMilliseconds);
                 var details = user.CartInfos.FindAll(c => Ids.Contains(c.Id));
                 if (details == null || details.Count() == 0)
                 {
@@ -1210,23 +1254,21 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
 
             }
-            Console.WriteLine("Total: " + (DateTime.Now - sdate).TotalMilliseconds);
+            Console.WriteLine("Total: " + (DateTime.UtcNow - sdate).TotalMilliseconds);
             return new ResponseModel { msg = "ok", code = 200, data = new { EUAmount, UKAmount, EUPaidAmount, UKPaidAmount, totalPayAmount } };
 
         }
-        public async Task<QuestPDF.Fluent.Document> GetSchedulePdf(string userId)
+        public async Task<ResponseModel> GetSchedulePdf(string userId)
         {
             List<PDFModel> pdfData = new List<PDFModel>();
             var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.Status != OrderStatusEnum.Canceled &&
-            a.Status != OrderStatusEnum.Settled && a.Status != OrderStatusEnum.SettledByAdmin));
+            a.Status != OrderStatusEnum.Settled));
             foreach (var Booking in Bookings)
             {
                 foreach (var detail in Booking.Details)
                 {
                     if ((int)detail.AcceptStatus > 1) continue;//只加入待接单与已接单的
-                    string selectDateTimeStr = detail.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(detail.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm:ss");
-                    //string orderInfo = $"订单号：{Environment.NewLine}{Booking.BookingRef}{Environment.NewLine}时间：{selectDateTimeStr}{Environment.NewLine}餐厅名称：{detail.RestaurantName}{Environment.NewLine}地址：{detail.RestaurantAddress}";
-                    //string restInfo = $"电话：{detail.RestaurantPhone}{Environment.NewLine}紧急电话：{detail.EmergencyPhone}{Environment.NewLine}邮箱：{detail.RestaurantEmail}{Environment.NewLine}微信：{detail.RestaurantWechat}";
+                    string selectDateTimeStr = detail.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(detail.RestaurantCountry ?? "UK")).ToString("yyyy-MM-dd HH:mm:ss");
                     string mealStr = "";
                     foreach (var meal in detail.Courses)
                     {
@@ -1252,9 +1294,18 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
             }
 
-
             var doc = _pDFUtil.GeneratePdf(pdfData);
-            return doc;
+            Stream fileStream = new MemoryStream(doc.GeneratePdf());
+            string fileName = $"PDFs/订单行程单{DateTime.UtcNow.ToString("yyyyMMddHHmmssfff")}.pdf";
+
+            bool saveSucc = await ImageUploader.UploadFileToStorage(fileStream, fileName, storageConfig);
+            if (saveSucc)
+            {
+                var url = ImageUploader.GetImageUrl(storageConfig) + fileName;
+
+                return new ResponseModel { msg = "ok", code = 200, data = url };
+            }else
+            return new ResponseModel { msg = "保存失败", code = 200,  };
 
         }
         public async Task<ResponseModel> GetDashboardData()
@@ -1279,5 +1330,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             weekly.Reverse();
             return new ResponseModel { msg = "ok", code = 200, data = new { totalQty, todayQty, weekQty, monthQty, weekly } };
         }
+
+
     }
 }

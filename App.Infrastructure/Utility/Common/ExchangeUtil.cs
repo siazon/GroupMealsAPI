@@ -60,8 +60,8 @@ namespace App.Infrastructure.Utility.Common
             var existRate = await _shopRepository.GetOneAsync(r => r.ShopId == 11);
             if (existRate != null)
             {
-                existRate.Updated = DateTime.Now;
-                existRate.RateUpdate = DateTime.Now;
+                existRate.Updated = DateTime.UtcNow;
+                existRate.RateUpdate = DateTime.UtcNow;
                 existRate.ExchangeRate = rate;
                 var savedShop = await _shopRepository.UpsertAsync(existRate);
             }

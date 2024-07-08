@@ -15,8 +15,8 @@ namespace App.Domain.TravelMeals
         public string CustomerName { get; set; }
         public string CustomerEmail { get; set; }
         public string CustomerPhone { get; set; }
-        public string BookingDate { get; set; } = DateTime.Now.ToString("yyyy-MMM-dd");
-        public string BookingTime { get; set; } = DateTime.Now.ToString("HH:mm");
+        public string BookingDate { get; set; } = DateTime.UtcNow.ToString("yyyy-MMM-dd");
+        public string BookingTime { get; set; } = DateTime.UtcNow.ToString("HH:mm");
         [JsonIgnore]
         public int NumberOfAdults { get; set; }
         [JsonIgnore]

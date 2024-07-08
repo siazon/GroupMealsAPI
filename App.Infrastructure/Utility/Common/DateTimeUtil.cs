@@ -102,7 +102,7 @@ namespace App.Infrastructure.Utility.Common
          
 
           
-            var time = DateTime.Now;
+            var time = DateTime.UtcNow;
             try
             {
 
