@@ -31,7 +31,7 @@ namespace App.Domain.Common.Email
             Emails[EmailTypeEnum.MealAcceptedRestaurant] = new EmailSenderParams() { TemplateName = "meal_accepted_restaurant", Subject = "You Accepted an Booking", CCEmail = new List<string>() { "" } };
             Emails[EmailTypeEnum.MealDeclined] = new EmailSenderParams() { TemplateName = "meal_declined", Subject = "Your Booking has been Declined", CCEmail = new List<string>() { "" } };
             Emails[EmailTypeEnum.MealModified] = new EmailSenderParams() { TemplateName = "meal_modify", Subject = "Groupmeals Booking Modified", CCEmail = new List<string>() { "" } };
-            Emails[EmailTypeEnum.MealCancelled] = new EmailSenderParams() { TemplateName = "meal_canceled", Subject = "Groupmeals Booking Canceled", CCEmail = new List<string>() { "" } };
+            Emails[EmailTypeEnum.MealCancelled] = new EmailSenderParams() { TemplateName = "meal_canceled", Subject = "Groupmeals Booking Canceled", CCEmail = new List<string>() { "sales.ie@groupmeals.com" } };
         }
     }
     public class EmailSenderParams

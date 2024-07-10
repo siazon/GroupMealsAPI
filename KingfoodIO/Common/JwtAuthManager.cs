@@ -41,8 +41,8 @@ namespace KingfoodIO.Common
                issuer: _jwtTokenConfig.Issuer,
                audience: _jwtTokenConfig.Audience,
                claims: claims,
-               expires: DateTime.Now.AddMinutes(60),//有效期
-               notBefore: DateTime.Now,//开始有效时间，可以往后设置
+               expires: DateTime.UtcNow.AddMinutes(60),//有效期
+               notBefore: DateTime.UtcNow,//开始有效时间，可以往后设置
                signingCredentials: creds);
             string returnToken = new JwtSecurityTokenHandler().WriteToken(token);
             return returnToken;

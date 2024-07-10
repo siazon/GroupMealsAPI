@@ -22,8 +22,8 @@ namespace KingfoodIO.Common
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                _logger.LogInformation("Worker running at: {Time}", DateTime.Now);
-                await _clockHub.Clients.All.ShowTime(DateTime.Now);
+                _logger.LogInformation("Worker running at: {Time}", DateTime.UtcNow);
+                await _clockHub.Clients.All.ShowTime(DateTime.UtcNow);
                 await Task.Delay(1000);
             }
         }

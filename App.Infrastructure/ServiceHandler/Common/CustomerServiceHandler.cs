@@ -152,8 +152,8 @@ namespace App.Infrastructure.ServiceHandler.Common
                 return new { msg = "验证码错误或者已过期" };
             newItem.Id=Guid.NewGuid().ToString();
             newItem.ShopId = shopId;
-            newItem.Created = _dateTimeUtil.GetCurrentTime();
-            newItem.Updated = _dateTimeUtil.GetCurrentTime();
+            newItem.Created = DateTime.UtcNow;
+            newItem.Updated = DateTime.UtcNow;
             newItem.IsActive = true;
             newItem.IsVerity = true;
             newItem.AuthValue = 159;
@@ -263,7 +263,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             if (existingCustomer == null)
                 throw new ServiceException("Customer Not Exists");
 
-            existingCustomer.Updated = _dateTimeUtil.GetCurrentTime();
+            existingCustomer.Updated = DateTime.UtcNow;
             existingCustomer.Password = _encryptionHelper.EncryptString(customer.Password);
 
             var savedCustomer = await _customerRepository.UpsertAsync(existingCustomer);
@@ -279,7 +279,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             if (existingCustomer == null)
                 throw new ServiceException("Customer Not Exists");
 
-            existingCustomer.Updated = _dateTimeUtil.GetCurrentTime();
+            existingCustomer.Updated = DateTime.UtcNow;
             existingCustomer.Favorites = customer.Favorites;
 
             var savedCustomer = await _customerRepository.UpsertAsync(existingCustomer);

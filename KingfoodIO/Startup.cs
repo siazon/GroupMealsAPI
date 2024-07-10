@@ -37,6 +37,7 @@ using System.Net.Http;
 using Microsoft.Azure.Cosmos;
 using Microsoft.AspNetCore.Http;
 using KingfoodIO.Filters;
+using QuestPDF.Infrastructure;
 
 namespace KingfoodIO
 {
@@ -59,7 +60,7 @@ namespace KingfoodIO
             services.AddDistributedMemoryCache();
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "Wiiya", Version = $"v1_{DateTime.Now.ToString("yyyyMMddHHmmss")}" });
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "Wiiya", Version = $"v1_{DateTime.UtcNow.ToString("yyyyMMddHHmmss")}" });
                 
                 c.AddSecurityDefinition("WAuthToken", new OpenApiSecurityScheme()
                 {
@@ -222,8 +223,10 @@ namespace KingfoodIO
 
             services.AddHostedService<ExchangeService>();
 
-
-          
+            // please kindly ensure what license is appropriate for your project
+            QuestPDF.Settings.License = LicenseType.Community;
+            //string fontPath = $"{AppDomain.CurrentDomain.BaseDirectory}msyh.ttc";
+            //QuestPDF.Drawing.FontManager.RegisterFont(System.IO.File.OpenRead(fontPath));
 
         }
 

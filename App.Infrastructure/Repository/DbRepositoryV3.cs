@@ -15,6 +15,7 @@ using static FluentValidation.Validators.PredicateValidator;
 using System.Text.RegularExpressions;
 using StackExchange.Redis;
 using Microsoft.Extensions.Options;
+using App.Domain.TravelMeals.Restaurant;
 
 namespace App.Infrastructure.Repository
 {
@@ -101,7 +102,10 @@ namespace App.Infrastructure.Repository
 
 
                 FeedIterator<T> feed;
-                    feed = linqQueryable.Where(predicate).OrderByDescending(a=>a.Created).ToFeedIterator();
+                if(typeof(T)==typeof(TrDbRestaurant))
+                    feed = linqQueryable.Where(predicate).OrderBy(a=>a.SortOrder).ThenByDescending(a=>a.Created).ToFeedIterator();
+                else
+                    feed = linqQueryable.Where(predicate).OrderByDescending(a => a.Created).ToFeedIterator();
 
                 List<T> results = new List<T>();
                 FeedResponse<T> response = await feed.ReadNextAsync();

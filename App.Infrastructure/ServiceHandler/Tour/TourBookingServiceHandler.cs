@@ -70,12 +70,12 @@ namespace App.Infrastructure.ServiceHandler.Tour
             if (findTour == null)
                 throw new ServiceException("Cannot Find tour");
             TourBooking newBooking;
-            var createTime = _dateTimeUtil.GetCurrentTime();
+            var createTime =DateTime.UtcNow;
             var exsitBookings = await _tourBookingRepository.GetManyAsync(r => r.Status == OrderStatusEnum.None && r.Email == booking.Email);
             var exsitBooking = exsitBookings.FirstOrDefault(a => (createTime - a.Created).Value.Hours < 2);
             if (exsitBooking != null)
             {
-                exsitBooking.Created = _dateTimeUtil.GetCurrentTime();
+                exsitBooking.Created = DateTime.UtcNow;
                 exsitBooking.NumberOfPeople = booking.NumberOfPeople;
                 exsitBooking.NumberOfChild = booking.NumberOfChild;
                 exsitBooking.NumberOfAgedOrStudent = booking.NumberOfAgedOrStudent;
@@ -91,7 +91,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             {
                 newBooking = booking.Clone();
                 newBooking.Id = "IHO" + SnowflakeId.getSnowId();
-                newBooking.Created = _dateTimeUtil.GetCurrentTime();
+                newBooking.Created = DateTime.UtcNow;
                 newBooking.Ref = GuidHashUtil.Get6DigitNumber();
 
                 var savedBooking = await _tourBookingRepository.UpsertAsync(newBooking);

@@ -15,8 +15,8 @@ namespace App.Domain.TravelMeals
         public string CustomerName { get; set; }
         public string CustomerEmail { get; set; }
         public string CustomerPhone { get; set; }
-        public string BookingDate { get; set; } = DateTime.Now.ToString("yyyy-MMM-dd");
-        public string BookingTime { get; set; } = DateTime.Now.ToString("HH:mm");
+        public string BookingDate { get; set; } = DateTime.UtcNow.ToString("yyyy-MMM-dd");
+        public string BookingTime { get; set; } = DateTime.UtcNow.ToString("HH:mm");
         [JsonIgnore]
         public int NumberOfAdults { get; set; }
         [JsonIgnore]
@@ -60,6 +60,7 @@ namespace App.Domain.TravelMeals
     public class BookingDetail
     {
         public string Id { get; set; }
+        public string BookingRef { get; set; }
         public string RestaurantId { get; set; }
         public string RestaurantName { get; set; }
         public string RestaurantPhone { get; set; }
@@ -95,7 +96,13 @@ namespace App.Domain.TravelMeals
     }
     public enum AcceptStatusEnum
     {
-        UnAccepted, Accepted, Declined, CanceledBeforeAccepted,CanceledAfterAccepted, Settled, SettledByAdmin
+        UnAccepted, 
+        Accepted, 
+        Declined, 
+        CanceledBeforeAccepted,
+        CanceledAfterAccepted, 
+        Settled, 
+        SettledByAdmin
     }
     public class BookingCourse : TrDbRestaurantMenuItem
     {

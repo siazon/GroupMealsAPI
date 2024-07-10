@@ -15,7 +15,6 @@ namespace App.Domain.Enum
         Canceled=3,
         OpenOrder = 4,
         Settled=5,
-        SettledByAdmin = 6,
 
     }
     public enum PayTypeEnum
