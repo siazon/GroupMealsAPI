@@ -90,6 +90,12 @@ namespace KingfoodIO.Controllers.TravelMeals
         {
             return await ExecuteAsync(shopId, cache, async () => await _restaurantBookingServiceHandler.GetBooking(Id));
         }
+        [HttpGet]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> OrderCheck( bool cache = false)
+        {
+            return await ExecuteAsync(11, cache, async () => await _restaurantBookingServiceHandler.OrderCheck());
+        }
 
         [HttpGet]
         [ServiceFilter(typeof(AuthActionFilter))]
@@ -100,21 +106,23 @@ namespace KingfoodIO.Controllers.TravelMeals
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, cache, async () => await _restaurantBookingServiceHandler.UpdateStatusByAdmin(Id, dtlId, status, user));
         }
+
         /// <summary>
         /// 
         /// </summary>
         /// <param name="booking"></param>
         /// <param name="shopId"></param>
+        /// <param name="isNotify"></param>
         /// <returns></returns>
         [HttpPost]
         [ProducesResponseType(typeof(TrDbRestaurantBooking), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> ModifyBooking([FromBody] TrDbRestaurantBooking booking, int shopId)
+        public async Task<IActionResult> ModifyBooking([FromBody] TrDbRestaurantBooking booking, int shopId,bool isNotify)
         {
             var authHeader = Request.Headers["Wauthtoken"];
             var temp = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, false,
-                async () => await _restaurantBookingServiceHandler.ModifyBooking(booking, shopId, temp.UserEmail));
+                async () => await _restaurantBookingServiceHandler.ModifyBooking(booking, shopId, temp.UserEmail, isNotify));
         }
 
         /// <summary>
@@ -340,7 +348,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         {
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
-            return await ExecuteAsync(shopId, cache, async () => await _restaurantBookingServiceHandler.GetSchedulePdf(user.UserId));
+            return await ExecuteAsync(shopId, cache, async () => await _restaurantBookingServiceHandler.GetSchedulePdf(user));
         }
 
         /// <summary>

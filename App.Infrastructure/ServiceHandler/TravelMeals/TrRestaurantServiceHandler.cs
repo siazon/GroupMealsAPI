@@ -38,6 +38,7 @@ using App.Domain.Common.Customer;
 using Quartz.Logging;
 using System.Threading;
 using Microsoft.Azure.Cosmos.Linq;
+using QuestPDF.Helpers;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -404,6 +405,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<ResponseModel> GetCities(int shopId)
         {
+            _logger.LogInfo("azure functions actioned");
             var cacheKey = string.Format("motionmedia-{1}-{0}", shopId, "cities");
             var cacheResult = new DbCountry();
             _memoryCache.TryGetValue(cacheKey, out cacheResult);//<Dictionary<string, List<string>>>(cacheKey);
@@ -414,6 +416,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var existingCities = await _countryRepository.GetOneAsync(a => a.ShopId == shopId);
             if (existingCities == null)
                 return new ResponseModel { msg = "Cities can't fund", code = 501, };
+    
+
             existingCities.Countries = existingCities.Countries.OrderBy(x => x.SortOrder).ToList();
             existingCities.Countries.ForEach(x => { x.Cities = x.Cities.OrderBy(a => a.SortOrder).ToList(); });
 
@@ -426,7 +430,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId)
         {
             Guard.NotNull(restaurant);
-            var cacheKey = string.Format("motionmedia-{1}-{0}--1", shopId, typeof(TrDbRestaurant).Name);
+            var cacheKey = string.Format("motionmedia-{1}-{0}-{2}", shopId, typeof(TrDbRestaurant).Name, 50);
             TrDbRestaurant nullRest = null;
             _memoryCache.Set(cacheKey, nullRest);
             var existingRestaurant =
@@ -450,7 +454,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId)
         {
             Guard.NotNull(restaurant);
-            string cacheKey = string.Format("motionmedia-{1}-{0}--1", shopId, typeof(TrDbRestaurant).Name);
+            var cacheKey = string.Format("motionmedia-{1}-{0}-{2}", shopId, typeof(TrDbRestaurant).Name, 50);
             KeyValuePair<string, IEnumerable<TrDbRestaurant>> cityRes = new KeyValuePair<string, IEnumerable<TrDbRestaurant>>();
             _memoryCache.Set(cacheKey, cityRes);
 
@@ -486,8 +490,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         public async Task<ResponseModel> DeleteRestaurant(string id, string email, string pwd, int shopId)
         {
-
-            string cacheKey = string.Format("motionmedia-{1}-{0}--1", shopId, typeof(TrDbRestaurant).Name);
+            var cacheKey = string.Format("motionmedia-{1}-{0}-{2}", shopId, typeof(TrDbRestaurant).Name, 50);
             KeyValuePair<string, IEnumerable<TrDbRestaurant>> cityRes = new KeyValuePair<string, IEnumerable<TrDbRestaurant>>();
             _memoryCache.Set(cacheKey, cityRes);
 

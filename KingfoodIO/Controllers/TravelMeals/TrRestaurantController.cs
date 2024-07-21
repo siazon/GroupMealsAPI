@@ -149,6 +149,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> GetCities(int shopId, bool cache = false)
         {
+
             return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetCities(shopId));
         }
 

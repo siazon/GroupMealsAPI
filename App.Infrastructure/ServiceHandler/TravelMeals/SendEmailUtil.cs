@@ -73,7 +73,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 paidAmount = Math.Round(paidAmount, 2);
                 amount = Math.Round(amount, 2);
                 Detail = "";
-                string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm:ss");
+                string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm");
                 if (tempName == EmailConfigs.Instance.Emails[EmailTypeEnum.MealModified].TemplateName)
                 {
                     Detail += AppendRestaurantInfo(item);
@@ -153,7 +153,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 if (item.Status == OrderStatusEnum.Canceled) continue;
                 if (tempName != EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealCustomer].TemplateName)
                     Detail += AppendRestaurantInfo(item);
-                string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm:ss");
+                string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm");
                 Detail += selectDateTimeStr + " <br><br> ";
 
                 Detail += AppendCustomerInfo(item);
@@ -305,7 +305,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var emailHtml = "";
             try
             {
-                emailHtml = await _contentBuilder.BuildRazorContent(new { booking, detail, selectDateTimeStr, Detail = detailstr, Memo = detail.Courses[0].Memo }, htmlTemp);
+                emailHtml = await _contentBuilder.BuildRazorContent(new { booking, bookingDetail= detail, selectDateTimeStr, Detail = detailstr, Memo = detail.Courses[0].Memo }, htmlTemp);
             }
             catch (Exception ex)
             {

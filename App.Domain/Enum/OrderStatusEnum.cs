@@ -17,6 +17,16 @@ namespace App.Domain.Enum
         Settled=5,
 
     }
+    public enum AcceptStatusEnum
+    {
+        UnAccepted=0,
+        Accepted=1,
+        Declined=2,
+        CanceledBeforeAccepted=3,
+        CanceledAfterAccepted=4,
+        Settled=5,
+        SettledByAdmin=6
+    }
     public enum PayTypeEnum
     {
         [Description("Name With Spaces1")]
