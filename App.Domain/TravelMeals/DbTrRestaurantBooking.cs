@@ -94,16 +94,7 @@ namespace App.Domain.TravelMeals
     {
         DEFAULT, Canceled
     }
-    public enum AcceptStatusEnum
-    {
-        UnAccepted, 
-        Accepted, 
-        Declined, 
-        CanceledBeforeAccepted,
-        CanceledAfterAccepted, 
-        Settled, 
-        SettledByAdmin
-    }
+
     public class BookingCourse : TrDbRestaurantMenuItem
     {
         public string Id { get; set; }
