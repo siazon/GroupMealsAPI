@@ -572,9 +572,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     if (res) isChange++;
                     res = UpdateField(operationInfo, booking.Id, item, detail, "ContactPhone");
                     if (res) isChange++;
+                    res = UpdateField(operationInfo, booking.Id, item, detail, "ContactEmail");
+                    if (res) isChange++;
                     res = UpdateField(operationInfo, booking.Id, item, detail, "ContactWechat");
                     if (res) isChange++;
                     res = UpdateField(operationInfo, booking.Id, item, detail, "ContactInfos");
+                    if (res) isChange++;
+                    res = UpdateField(operationInfo, booking.Id, item, detail, "Remark");
                     if (res) isChange++;
                     res = UpdateField(operationInfo, booking.Id, item, detail, "RestaurantId");
                     if (res) isChange++;
@@ -590,8 +594,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     if (res) isChange++;
                     res = UpdateField(operationInfo, booking.Id, item, detail, "RestaurantWechat", false);
                     if (res) isChange++;
-
-
                     var Oldamount = _amountCalculaterV1.getItemAmount(item);
                     var amount = _amountCalculaterV1.getItemAmount(detail);
                     if (amount != Oldamount)
@@ -613,7 +615,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             if (isChange > 0)
             {
-                var temo = _amountCalculaterV1.CalculateOrderPaidAmount(exsitBooking, 0.8);
+                var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
+                if (shopInfo == null)
+                {
+                    _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
+                    return new ResponseModel { msg = "Cannot find shop info", code = 500, };
+                }
+
+                double exchange = (double)shopInfo.ExchangeRate;
+                var temo = _amountCalculaterV1.CalculateOrderPaidAmount(exsitBooking, exchange);
                 exsitBooking.Operations.Add(operationInfo);
                 var savedBooking = await _restaurantBookingRepository.UpsertAsync(exsitBooking);
                 TrDbRestaurantBooking sendBooking = JsonConvert.DeserializeObject<TrDbRestaurantBooking>(JsonConvert.SerializeObject(savedBooking));
@@ -632,23 +642,31 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private bool UpdateField(OperationInfo operationInfo, string bookingId, BookingDetail item, BookingDetail detail, string fieldName, bool record = true)
         {
             bool isChange = false;
-            var newValue = detail.GetType().GetProperty(fieldName).GetValue(detail, null);
-            var oldValue = item.GetType().GetProperty(fieldName).GetValue(item, null);
-            if (newValue?.ToString() != oldValue?.ToString())
+            try
             {
-                item.Modified = true;
-                isChange = true;
-                if (record)
+                var newValue = detail.GetType().GetProperty(fieldName).GetValue(detail, null);
+                var oldValue = item.GetType().GetProperty(fieldName).GetValue(item, null);
+                if (newValue?.ToString() != oldValue?.ToString())
                 {
-                    ModifyInfo modifyInfo = new ModifyInfo();
-                    modifyInfo.ModifyField = fieldName;
-                    modifyInfo.ModifyLocation = $"{bookingId}>{item.Id}";
-                    modifyInfo.oldValue = oldValue?.ToString();
-                    modifyInfo.newValue = newValue?.ToString();
-                    operationInfo.ModifyInfos.Add(modifyInfo);
+                    item.Modified = true;
+                    isChange = true;
+                    if (record)
+                    {
+                        ModifyInfo modifyInfo = new ModifyInfo();
+                        modifyInfo.ModifyField = fieldName;
+                        modifyInfo.ModifyLocation = $"{bookingId}>{item.Id}";
+                        modifyInfo.oldValue = oldValue?.ToString();
+                        modifyInfo.newValue = newValue?.ToString();
+                        operationInfo.ModifyInfos.Add(modifyInfo);
+                    }
+                    item.GetType().GetProperty(fieldName).SetValue(item, newValue);
                 }
-                item.GetType().GetProperty(fieldName).SetValue(item, newValue);
             }
+            catch (Exception ex)
+            {
+                _logger.LogError("UpdateField."+ fieldName+"： " + ex.Message);
+            }
+          
             return isChange;
         }
         private bool UpdateListField(OperationInfo operationInfo, string bookingId, BookingDetail item, BookingDetail detail, string fieldName)
