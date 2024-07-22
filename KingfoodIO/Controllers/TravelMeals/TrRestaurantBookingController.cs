@@ -77,7 +77,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         public async Task<IActionResult> RequestTravelMealsBooking([FromBody] TrDbRestaurantBooking booking, int shopId)
         {
             string rawRequestBody = await Request.GetRawBodyAsync();
-            _logger.LogDebug(rawRequestBody);
+            _logger.LogDebug("RequestTravelMealsBooking: " + rawRequestBody);
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, false,
@@ -117,8 +117,10 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpPost]
         [ProducesResponseType(typeof(TrDbRestaurantBooking), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> ModifyBooking([FromBody] TrDbRestaurantBooking booking, int shopId,bool isNotify)
+        public async Task<IActionResult> ModifyBooking([FromBody] TrDbRestaurantBooking booking, int shopId,bool isNotify=true)
         {
+            string rawRequestBody = await Request.GetRawBodyAsync();
+            _logger.LogDebug("ModifyBooking: " + rawRequestBody);
             var authHeader = Request.Headers["Wauthtoken"];
             var temp = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, false,
