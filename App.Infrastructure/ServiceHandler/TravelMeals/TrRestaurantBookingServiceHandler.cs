@@ -645,7 +645,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     if (item.Modified)
                         sendBooking.Details.Add(item);
                 }
-                if (isNotify)
+                //if (isNotify)
                     SendModifyEmail(sendBooking);
             }
             return new ResponseModel { msg = "", code = 200, data = null };
