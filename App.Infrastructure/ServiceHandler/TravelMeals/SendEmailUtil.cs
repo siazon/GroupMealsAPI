@@ -4,14 +4,18 @@ using App.Domain.Enum;
 using App.Domain.TravelMeals;
 using App.Infrastructure.Builders.Common;
 using App.Infrastructure.Exceptions;
+using App.Infrastructure.Extensions;
 using App.Infrastructure.ServiceHandler.Tour;
 using App.Infrastructure.Utility.Common;
 using Hangfire;
 using Microsoft.AspNetCore.Html;
+using Microsoft.AspNetCore.Http.Metadata;
+using Quartz.Impl.Triggers;
 using Stripe;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -26,7 +30,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         void EmailCustomerTotal(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject);
 
         Task EmailCustomer(TrDbRestaurantBooking booking, BookingDetail item, DbShop shopInfo, string tempName, string wwwPath, string subject);
-
+        void SendModifiedEmail(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject);
         Task SendCancelEmail(DbShop shopInfo, TrDbRestaurantBooking booking, BookingDetail detail, string webPath, string tempName, string subject, params string[] ccEmail);
     }
     public class SendEmailUtil : ISendEmailUtil
@@ -110,7 +114,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     try
                     {
                         _logger.LogInfo($"_emailUtil.SendEmailto:{item.RestaurantEmail}" + booking.BookingRef);
-                       await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, item.RestaurantEmail, subject, emailHtml, "sales.ie@groupmeals.com");
+                        await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, item.RestaurantEmail, subject, emailHtml, "sales.ie@groupmeals.com");
 
                         _logger.LogInfo("_emailUtil.SendEmailend:" + booking.BookingRef);
                     }
@@ -121,23 +125,36 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 });
             }
         }
-        private string AppendRestaurantInfo(BookingDetail item)
+        private string AppendRestaurantInfo(BookingDetail item, TrDbRestaurantBooking booking = null)
         {
             string detailStr = "";
-            detailStr += item.RestaurantName + " <br> ";
-            detailStr += item.RestaurantAddress + " <br> ";
-            detailStr += item.RestaurantPhone + "  " + item.RestaurantEmail + " <br> ";
-            detailStr += "微信: " + item.RestaurantWechat + " <br> ";
-            detailStr += "紧急: " + item.EmergencyPhone + " <br> ";
+            string oldValue = ModifyOldValue(booking, item.Id, "RestaurantName");
+            detailStr += oldValue.ToDelFormat() + item.RestaurantName + " <br> ";
+            oldValue = ModifyOldValue(booking, item.Id, "RestaurantAddress");
+            detailStr += oldValue.ToDelFormat() + item.RestaurantAddress + " <br> ";
+            string oldphone = ModifyOldValue(booking, item.Id, "RestaurantPhone");
+           string oldEmail = ModifyOldValue(booking, item.Id, "RestaurantEmail");
+            detailStr += oldphone.ToDelFormat() + item.RestaurantPhone + "  " + oldEmail.ToDelFormat()+ item.RestaurantEmail + " <br> ";
+            oldValue = ModifyOldValue(booking, item.Id, "RestaurantWechat");
+            detailStr += "微信: " + oldValue.ToDelFormat() + item.RestaurantWechat + " <br> ";
+            oldValue = ModifyOldValue(booking, item.Id, "EmergencyPhone");
+            detailStr += "紧急: " + oldValue.ToDelFormat() + item.EmergencyPhone + " <br> ";
             return detailStr;
         }
-        private string AppendCustomerInfo(BookingDetail item )
+        private string AppendCustomerInfo(BookingDetail item, TrDbRestaurantBooking booking = null)
         {
             string detailStr = "";
-            detailStr += "团号: " + item.GroupRef + " <br> ";
-            detailStr += "联系人: " + item.ContactName + " " + item.ContactPhone + " <br> ";
-            detailStr += "微信: " + item.ContactWechat + " <br> ";
-            detailStr += "更多联系方式: " + item.ContactInfos + " <br> <br>";
+            string oldValue = ModifyOldValue(booking, item.Id, "GroupRef");
+            detailStr += "团号: " + oldValue.ToDelFormat() + item.GroupRef + " <br> ";
+            string oldName = ModifyOldValue(booking, item.Id, "ContactName");
+            string oldPhone = ModifyOldValue(booking, item.Id, "ContactPhone");
+            detailStr += "联系人: " + oldName.ToDelFormat()+ item.ContactName + " " + oldPhone.ToDelFormat()+ item.ContactPhone + " <br> ";
+             oldValue = ModifyOldValue(booking, item.Id, "ContactWechat");
+            detailStr += "微信: " + oldValue.ToDelFormat() + item.ContactWechat + " <br> ";
+             oldValue = ModifyOldValue(booking, item.Id, "ContactInfos");
+            detailStr += "更多联系方式: " + oldValue.ToDelFormat() + item.ContactInfos + "  <br>";
+            oldValue = ModifyOldValue(booking, item.Id, "Memo");
+            detailStr += "备注: " + oldValue.ToDelFormat() + item.Memo + " <br> <br> ";
             return detailStr;
         }
 
@@ -219,7 +236,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
                 try
                 {
-                   await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, subject, emailHtml);
+                    await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, subject, emailHtml);
                 }
                 catch (Exception ex)
                 {
@@ -271,7 +288,106 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 _logger.LogError($"EmailCustomer Email Customer Error {ex.Message} -{ex.StackTrace} ");
             }
         }
+        string ModifyOldValue(TrDbRestaurantBooking booking, string dtlId, string filedName)
+        {
+            string oldValue = "";
+            if (booking != null)
+            {
+                foreach (var item in booking?.Operations)
+                {
+                    if (item.ModifyType == 4)//&&(DateTime.UtcNow-item.UpdateTime).TotalSeconds<10)
+                    {
+                        foreach (var filed in item?.ModifyInfos)
+                        {
+                            if (filed.ModifyField == filedName && filed.ModifyLocation.Contains(dtlId))
+                            {
+                                oldValue = filed.oldValue;
+                            }
+                        }
+                    }
+                }
+            }
+            return oldValue;
 
+        }
+        public void SendModifiedEmail(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject)
+        {
+            string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
+            string Detail = "";
+            foreach (var item in booking.Details)
+            {
+                decimal amount = 0;
+                decimal paidAmount = 0; //item.AmountInfos.Sum(x => x.PaidAmount);
+
+                paidAmount = item.AmountInfos.Sum(x => x.PaidAmount);
+
+                amount = item.AmountInfos.Sum(x => x.Amount);
+
+                paidAmount = Math.Round(paidAmount, 2);
+                amount = Math.Round(amount, 2);
+                Detail = "";
+                string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm");
+                string oldtime = ModifyOldValue(booking, item.Id, "SelectDateTime");
+                string oldDateTime = "";
+                if (!string.IsNullOrWhiteSpace(oldtime))
+                {
+                    DateTime selectTime = DateTime.MinValue;
+                    DateTime.TryParse(oldtime, out selectTime);
+                    if (selectTime != DateTime.MinValue)
+                    {
+                        oldDateTime = selectTime.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm");
+                    }
+                }
+                if (tempName == EmailConfigs.Instance.Emails[EmailTypeEnum.MealModified_V2].TemplateName)
+                {
+                    Detail += AppendRestaurantInfo(item, booking);
+                }
+
+                if (tempName != EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealRestaurant].TemplateName)
+                {
+                    Detail += AppendCustomerInfo(item, booking);
+                }
+
+                Detail += $"用餐时间：{oldDateTime.ToDelFormat()}{selectDateTimeStr}<br> ";
+                List<string> names = new List<string>();
+                foreach (var course in item.Courses)
+                {
+                    int qty = course.Qty + course.ChildrenQty;
+                    Detail += $"{course.MenuItemName} * {qty} 人 ";
+                }
+                string itemCurrencyStr = item.Currency == "UK" ? "£" : "€";
+                //_twilioUtil.sendSMS(item.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
+                Detail += $"<br> Amount(金额)：<b>{itemCurrencyStr}{item.AmountInfos.Sum(x => x.Amount)}</b>, <br> Paid(已付)：<b>{itemCurrencyStr}{paidAmount}</b>,<br>";
+                if (amount - paidAmount > 0)
+                    Detail += $" UnPaid(待支付)：<b style=\"color: red;\">{itemCurrencyStr}{amount - paidAmount}</b>";
+                var detailstr = new HtmlString(Detail);
+                Task.Run(async () =>
+                {
+                    string emailHtml = "";
+                    try
+                    {
+                        string memo = ModifyOldValue(booking, item.Id, "Memo");
+                        string memoStr = memo.ToDelFormat() + item.Courses[0].Memo;
+                        emailHtml = await _contentBuilder.BuildRazorContent(new { selectDateTimeStr, booking, bookingDetail = item, AmountStr = amount, PaidAmountStr = paidAmount, UnpaidAmountStr = amount - paidAmount, Detail = detailstr, Memo =memo.ToDelFormat()+ item.Courses[0].Memo }, htmlTemp);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError($"------EmailBoss--------{tempName}-{subject}-emailHtml---error" + ex.Message);
+                    }
+                    try
+                    {
+                        _logger.LogInfo($"_emailUtil.SendEmailto:{item.RestaurantEmail}" + booking.BookingRef);
+                        await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, item.RestaurantEmail, subject, emailHtml, "sales.ie@groupmeals.com");
+
+                        _logger.LogInfo("_emailUtil.SendEmailend:" + booking.BookingRef);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError($"EmailBossError {ex.Message} -{ex.StackTrace} ");
+                    }
+                });
+            }
+        }
         public async Task SendCancelEmail(DbShop shopInfo, TrDbRestaurantBooking booking, BookingDetail detail, string webPath, string tempName, string subject, params string[] ccEmail)
         {
             string currencyStr = booking.PayCurrency == "UK" ? "￡" : "€";
@@ -291,7 +407,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             paidAmount = Math.Round(paidAmount, 2);
             amount = Math.Round(amount, 2);
 
-           string selectDateTimeStr = detail.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(detail.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm:ss");
+            string selectDateTimeStr = detail.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(detail.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm:ss");
             string Detail = "";
             foreach (var course in detail.Courses)
             {
@@ -305,7 +421,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var emailHtml = "";
             try
             {
-                emailHtml = await _contentBuilder.BuildRazorContent(new { booking, bookingDetail= detail, selectDateTimeStr, Detail = detailstr, Memo = detail.Courses[0].Memo }, htmlTemp);
+                emailHtml = await _contentBuilder.BuildRazorContent(new { booking, bookingDetail = detail, selectDateTimeStr, Detail = detailstr, Memo = detail.Courses[0].Memo }, htmlTemp);
             }
             catch (Exception ex)
             {

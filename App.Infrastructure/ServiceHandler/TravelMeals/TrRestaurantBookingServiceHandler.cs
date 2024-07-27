@@ -355,7 +355,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var temp = await _restaurantBookingRepository.UpsertAsync(booking);
             string msg = $"您于{booking.BookingDate} {booking.BookingTime} 提交的订单已被接收，请按时就餐";
             if (acceptType == 2)
-                msg = $"您于{booking.BookingDate} {booking.BookingTime} 提交的订单已被拒绝，请登录groupmeals.com查询别的餐厅";
+            { msg = $"您于{booking.BookingDate} {booking.BookingTime} 提交的订单已被拒绝，请登录groupmeals.com查询别的餐厅";
+                _logger.LogInfo($"你有订单[{booking.BookingRef}]被餐厅拒绝了，请登录groupmeal.com查看更多");
+                _twilioUtil.sendSMS("+353874858555", $"你有订单[{ booking.BookingRef}]被餐厅拒绝了，请登录groupmeal.com查看更多");
+            }
             //_twilioUtil.sendSMS(booking.CustomerPhone, msg);
             var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
             if (shopInfo == null)
@@ -859,7 +862,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 throw new ServiceException("Cannot find shop info");
             }
             _twilioUtil.sendSMS(booking.CustomerPhone, $"你有订单被修改: {booking.BookingRef}。 请登录groupmeal.com查看更多");
-            var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealModified];
+            var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealModified_V2];
             _sendEmailUtil.EmailCustomerTotal(booking, shopInfo, emailParams.TemplateName, this._environment.WebRootPath, emailParams.Subject);
 
             //if (booking.Details[0].Status == OrderStatusEnum.UnAccepted)//订单未接收时重发接收邮件
@@ -868,7 +871,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //}
             //else
 
-            _sendEmailUtil.EmailBoss(booking, shopInfo, emailParams.TemplateName, this._environment.WebRootPath, emailParams.Subject);
+            _sendEmailUtil.SendModifiedEmail(booking, shopInfo, emailParams.TemplateName, this._environment.WebRootPath, emailParams.Subject);
 
         }
         public async Task<bool> DoRebate(string bookingId, double rebate)
@@ -1389,13 +1392,18 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<bool> OrderCheck()
         {
-           DateTime time= DateTime.UtcNow.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode("Ireland"));
-            if(time.Hour<18&&time.Hour>8) { 
-            var bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.UnAccepted && (a.Created.Value - DateTime.UtcNow).TotalMinutes > 30));
+            DateTime time = DateTime.UtcNow.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode("Ireland"));
+            if (time.Hour < 18 && time.Hour > 8)
+            {
+                var bookings = await _restaurantBookingRepository.GetManyAsync(a => a.Details.Any(d=>d.Status == OrderStatusEnum.UnAccepted ));
                 if (bookings != null && bookings.Count() > 0)
                 {
-                    _logger.LogInfo($"你有[{bookings.Count()}]张订单超过30分钟未接单，请登录groupmeal.com查看更多");
-                    _twilioUtil.sendSMS("+353874858555", $"你有[{bookings.Count()}]张订单超过30分钟未接单，请登录groupmeal.com查看更多"); 
+                    var unAcceptOrderCount = bookings.Count(a => (DateTime.UtcNow - a.Created.Value).TotalMinutes > 30);
+                    if (unAcceptOrderCount > 0)
+                    {
+                        _logger.LogInfo($"你有[{unAcceptOrderCount}]张订单超过30分钟未接单，请登录groupmeal.com查看更多");
+                        _twilioUtil.sendSMS("+353874858555", $"你有[{bookings.Count()}]张订单超过30分钟未接单，请登录groupmeal.com查看更多");
+                    }
                 }
             }
             return true;

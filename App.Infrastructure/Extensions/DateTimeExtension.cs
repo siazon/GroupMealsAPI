@@ -7,14 +7,14 @@ namespace App.Infrastructure.Extensions
 
         public static DateTime? GetDateValueOnly(this DateTime? source)
         {
-            return !source.HasValue ? (DateTime?)null : new DateTime(source.Value.Year, source.Value.Month, source.Value.Day, 0, 0, 0); 
+            return !source.HasValue ? (DateTime?)null : new DateTime(source.Value.Year, source.Value.Month, source.Value.Day, 0, 0, 0);
         }
         public static DateTime GetFoodToday(this DateTime source)
         {
-            return source.Hour < 7 ? new DateTime(source.Year,source.Month,source.Day).AddDays(-1) : new DateTime(source.Year, source.Month, source.Day);
+            return source.Hour < 7 ? new DateTime(source.Year, source.Month, source.Day).AddDays(-1) : new DateTime(source.Year, source.Month, source.Day);
         }
 
-      
+
         public static string ToDateUtcFormat(this DateTime? source)
         {
             return source.HasValue ? source.Value.ToString("yyyy-MM-dd") : string.Empty;
@@ -48,6 +48,15 @@ namespace App.Infrastructure.Extensions
         public static DateTime? GetLocalTime(this DateTime? source, DateTime? destination)
         {
             return new DateTime(source.Value.Year, source.Value.Month, source.Value.Day, destination.Value.Hour, destination.Value.Minute, destination.Value.Second);
+        }
+
+
+        public static string ToDelFormat(this string source)
+        {
+            if (string.IsNullOrWhiteSpace(source))
+                return "";
+            else
+                return $"<del>{source}</del>";
         }
     }
 }
