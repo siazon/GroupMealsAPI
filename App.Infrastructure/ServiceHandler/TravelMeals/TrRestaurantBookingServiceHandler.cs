@@ -478,7 +478,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     return false;
                 }
 
-                if (!string.IsNullOrWhiteSpace(payMethodId))
+                if (!string.IsNullOrWhiteSpace(payMethodId))    
                     booking.PaymentInfos[0].StripePaymentId = payMethodId;
                 if (!string.IsNullOrWhiteSpace(customerId))
                 {
@@ -791,7 +791,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 if (string.IsNullOrWhiteSpace(item.Id))
                     item.Id = Guid.NewGuid().ToString();
 
-                if (string.IsNullOrWhiteSpace(item.ContactEmail)|| string.IsNullOrWhiteSpace(item.ContactPhone) || string.IsNullOrWhiteSpace(item.ContactName))
+                if (string.IsNullOrWhiteSpace(item.ContactEmail)&& string.IsNullOrWhiteSpace(item.ContactPhone) && string.IsNullOrWhiteSpace(item.ContactName))
                 {
                     var user = await _customerRepository.GetOneAsync(a => a.Id == userId);
                     item.ContactEmail = user.Email;
@@ -1392,20 +1392,20 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<bool> OrderCheck()
         {
-            DateTime time = DateTime.UtcNow.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode("Ireland"));
-            if (time.Hour < 18 && time.Hour > 8)
-            {
-                var bookings = await _restaurantBookingRepository.GetManyAsync(a => a.Details.Any(d=>d.Status == OrderStatusEnum.UnAccepted ));
-                if (bookings != null && bookings.Count() > 0)
-                {
-                    var unAcceptOrderCount = bookings.Count(a => (DateTime.UtcNow - a.Created.Value).TotalMinutes > 30);
-                    if (unAcceptOrderCount > 0)
-                    {
-                        _logger.LogInfo($"你有[{unAcceptOrderCount}]张订单超过30分钟未接单，请登录groupmeal.com查看更多");
-                        _twilioUtil.sendSMS("+353874858555", $"你有[{bookings.Count()}]张订单超过30分钟未接单，请登录groupmeal.com查看更多");
-                    }
-                }
-            }
+            //DateTime time = DateTime.UtcNow.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode("Ireland"));
+            //if (time.Hour < 18 && time.Hour > 8)
+            //{
+            //    var bookings = await _restaurantBookingRepository.GetManyAsync(a => a.Details.Any(d=>d.Status == OrderStatusEnum.UnAccepted ));
+            //    if (bookings != null && bookings.Count() > 0)
+            //    {
+            //        var unAcceptOrderCount = bookings.Count(a => (DateTime.UtcNow - a.Created.Value).TotalMinutes > 30);
+            //        if (unAcceptOrderCount > 0)
+            //        {
+            //            _logger.LogInfo($"你有[{unAcceptOrderCount}]张订单超过30分钟未接单，请登录groupmeal.com查看更多");
+            //            _twilioUtil.sendSMS("+353874858555", $"你有[{bookings.Count()}]张订单超过30分钟未接单，请登录groupmeal.com查看更多");
+            //        }
+            //    }
+            //}
             return true;
         }
 

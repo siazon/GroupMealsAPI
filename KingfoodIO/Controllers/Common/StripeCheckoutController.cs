@@ -232,21 +232,21 @@ namespace KingfoodIO.Controllers.Common
 
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="bookingId"></param>
-        /// <returns></returns>
+  /// <summary>
+  /// 
+  /// </summary>
+  /// <param name="bill"></param>
+  /// <returns></returns>
         [HttpPost]
-        public ActionResult CreateSetupIntent([FromBody] string bookingId)
+        public ActionResult CreateSetupIntent([FromBody] PayIntentParam bill)
         {
             try
             {
                 Dictionary<string, string> meta = new Dictionary<string, string>
             {
-                { "bookingId", bookingId}
+                { "bookingId", bill.BillId}
             };
-                meta["billType"] = "GROUPMEALS";
+                meta["billType"] = bill.BillType;
                 var customer = new CustomerService().Create(new CustomerCreateOptions { });
 
                 var options = new SetupIntentCreateOptions
@@ -260,7 +260,7 @@ namespace KingfoodIO.Controllers.Common
                 var service = new SetupIntentService();
                 var paymentIntent = service.Create(options);
 
-                _trRestaurantBookingServiceHandler.UpdateStripeClientKey(bookingId, paymentIntent.PaymentMethodId, customer.Id, paymentIntent.ClientSecret);
+                _trRestaurantBookingServiceHandler.UpdateStripeClientKey(bill.BillId, paymentIntent.PaymentMethodId, customer.Id, paymentIntent.ClientSecret);
                 return Json(new { clientSecret = paymentIntent.ClientSecret });
             }
             catch (Exception ex)
