@@ -28,6 +28,10 @@ namespace App.Infrastructure.Utility.Common
             _DicTimeZone["Ireland"] = "Europe/Dublin";
             _DicTimeZone["UK"] = "Europe/Dublin";
             _DicTimeZone["France"] = "Europe/Paris";
+            _DicTimeZone["Italy"] = "Europe/Rome";
+            _DicTimeZone["Switzerland"] = "Europe/Zurich";
+            _DicTimeZone["Spain"] = "Europe/Madrid";
+            _DicTimeZone["Portugal"] = "Europe/Lisbon";
         }
 
         public DateTime GetCurrentTime()

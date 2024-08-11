@@ -581,7 +581,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     res = UpdateField(operationInfo, booking.Id, item, detail, "Remark");
                     if (res) isChange++;
                     res = UpdateField(operationInfo, booking.Id, item, detail, "RestaurantId");
-                    if (res) {
+                    if (res)
+                    {
                         var rest = await _restaurantRepository.GetOneAsync(a => a.Id == detail.RestaurantId);
                         detail.RestaurantName = rest.StoreName;
                         detail.RestaurantEmail = rest.Email;
@@ -592,7 +593,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         isChange++;
                     }
 
-               
+
 
                     res = UpdateField(operationInfo, booking.Id, item, detail, "RestaurantName", false);
                     if (res) isChange++;
@@ -617,6 +618,21 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         AmountInfo amountInfo = new AmountInfo() { Id = "A" + SnowflakeId.getSnowId() };
                         amountInfo.Amount = amount - Oldamount;//新增差价记录
                         item.AmountInfos.Add(amountInfo);
+                    }
+                    if (item.Courses.Count != detail.Courses.Count)
+                    {
+                        isChange++;
+                        UpdateListField(operationInfo, booking.Id, item, detail, "Courses");
+                        item.Courses = detail.Courses;
+                    }
+                    for (int i = 0; i < item.Courses.Count; i++)
+                    {
+                        if (item.Courses[i].ToString() != detail.Courses[i].ToString())
+                        {
+                            isChange++;
+                            UpdateListField(operationInfo, booking.Id, item, detail, "Courses");
+                            item.Courses = detail.Courses;
+                        }
                     }
                 }
                 if (isDtlChanged == isChange)
@@ -646,7 +662,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         sendBooking.Details.Add(item);
                 }
                 //if (isNotify)
-                    SendModifyEmail(sendBooking);
+                SendModifyEmail(sendBooking);
             }
             return new ResponseModel { msg = "", code = 200, data = null };
         }
@@ -676,9 +692,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             catch (Exception ex)
             {
-                _logger.LogError("UpdateField."+ fieldName+"： " + ex.Message);
+                _logger.LogError("UpdateField." + fieldName + "： " + ex.Message);
             }
-          
+
             return isChange;
         }
         private bool UpdateListField(OperationInfo operationInfo, string bookingId, BookingDetail item, BookingDetail detail, string fieldName)
@@ -703,6 +719,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         public async Task<ResponseModel> MakeABooking(TrDbRestaurantBooking booking, int shopId, DbToken user)
         {
+            //Thread.Sleep(5000);
             _logger.LogInfo("RequestBooking" + user.UserEmail);
             Guard.NotNull(booking);
             Guard.AreEqual(booking.ShopId.Value, shopId);
@@ -752,8 +769,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         private async Task<bool> InitBooking(TrDbRestaurantBooking booking, string userId)
         {
-            if (string.IsNullOrWhiteSpace(booking.CustomerEmail)|| 
-                string.IsNullOrWhiteSpace(booking.CustomerPhone) || 
+            if (string.IsNullOrWhiteSpace(booking.CustomerEmail) ||
+                string.IsNullOrWhiteSpace(booking.CustomerPhone) ||
                 string.IsNullOrWhiteSpace(booking.CustomerName))
             {
                 DbCustomer user = await _customerRepository.GetOneAsync(a => a.Id == userId);
@@ -770,31 +787,37 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     item.BookingRef = "GM" + SnowflakeId.getSnowId();
                 }
-                if (string.IsNullOrWhiteSpace(item.RestaurantEmail)|| 
-                    string.IsNullOrWhiteSpace(item.RestaurantPhone) || 
-                    string.IsNullOrWhiteSpace(item.EmergencyPhone) || 
+                if (string.IsNullOrWhiteSpace(item.RestaurantEmail) ||
+                    string.IsNullOrWhiteSpace(item.RestaurantPhone) ||
+                    string.IsNullOrWhiteSpace(item.EmergencyPhone) ||
                     string.IsNullOrWhiteSpace(item.RestaurantAddress))
                 {
                     var rest = await _restaurantRepository.GetOneAsync(a => a.Id == item.RestaurantId);
-                    item.RestaurantName = rest.StoreName;
-                    item.RestaurantEmail = rest.Email;
-                    item.RestaurantAddress = rest.Address;
-                    item.RestaurantPhone = rest.PhoneNumber;
-                    item.EmergencyPhone = rest.ContactPhone;
-                    item.RestaurantWechat = rest.Wechat;
+                    if (rest != null)
+                    {
+                        item.RestaurantName = rest.StoreName;
+                        item.RestaurantEmail = rest.Email;
+                        item.RestaurantAddress = rest.Address;
+                        item.RestaurantPhone = rest.PhoneNumber;
+                        item.EmergencyPhone = rest.ContactPhone;
+                        item.RestaurantWechat = rest.Wechat;
+                    }
                 }
 
 
                 if (string.IsNullOrWhiteSpace(item.Id))
                     item.Id = Guid.NewGuid().ToString();
 
-                if (string.IsNullOrWhiteSpace(item.ContactEmail)|| string.IsNullOrWhiteSpace(item.ContactPhone) || string.IsNullOrWhiteSpace(item.ContactName))
+                if (string.IsNullOrWhiteSpace(item.ContactEmail) && string.IsNullOrWhiteSpace(item.ContactPhone) && string.IsNullOrWhiteSpace(item.ContactName))
                 {
                     var user = await _customerRepository.GetOneAsync(a => a.Id == userId);
-                    item.ContactEmail = user.Email;
-                    item.ContactName = user.UserName;
-                    item.ContactPhone = user.Phone;
-                    item.ContactWechat = user.WeChat;
+                    if (user != null)
+                    {
+                        item.ContactEmail = user.Email;
+                        item.ContactName = user.UserName;
+                        item.ContactPhone = user.Phone;
+                        item.ContactWechat = user.WeChat;
+                    }
                 }
 
                 //foreach (var course in item.Courses)
@@ -1389,13 +1412,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<bool> OrderCheck()
         {
-           DateTime time= DateTime.UtcNow.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode("Ireland"));
-            if(time.Hour<18&&time.Hour>8) { 
-            var bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.UnAccepted && (a.Created.Value - DateTime.UtcNow).TotalMinutes > 30));
+            DateTime time = DateTime.UtcNow.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode("Ireland"));
+            if (time.Hour < 18 && time.Hour > 8)
+            {
+                var bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.UnAccepted && (a.Created.Value - DateTime.UtcNow).TotalMinutes > 30));
                 if (bookings != null && bookings.Count() > 0)
                 {
                     _logger.LogInfo($"你有[{bookings.Count()}]张订单超过30分钟未接单，请登录groupmeal.com查看更多");
-                    _twilioUtil.sendSMS("+353874858555", $"你有[{bookings.Count()}]张订单超过30分钟未接单，请登录groupmeal.com查看更多"); 
+                    _twilioUtil.sendSMS("+353874858555", $"你有[{bookings.Count()}]张订单超过30分钟未接单，请登录groupmeal.com查看更多");
                 }
             }
             return true;
