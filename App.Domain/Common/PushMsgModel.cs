@@ -10,6 +10,7 @@ namespace App.Domain.Common
     {
         public string Title { get; set; }
         public string Message { get; set; }
+        public string MessageReference { get; set; }
         public string Sender { get; set; }
         public string Receiver { get; set; }
         public MSGEnum MsgStatus { get; set; }

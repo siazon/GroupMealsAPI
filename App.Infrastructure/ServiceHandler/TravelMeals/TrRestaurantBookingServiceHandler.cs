@@ -1027,7 +1027,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             else
             {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.CustomerEmail == email && a.Details.Any(d => d.RestaurantName.ToLower().Contains(content.ToLower()))), pageSize, continuationToken);
+                var _content = content.ToLower().Trim();
+                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.CustomerEmail == email &&
+                (a.BookingRef.ToLower().Contains(_content)||
+                a.Details.Any(d => d.RestaurantName.ToLower().Contains(_content)))), pageSize, continuationToken);
+
+               
                 res = Bookings.Value.ToList();
                 pageToken = Bookings.Key;
 
