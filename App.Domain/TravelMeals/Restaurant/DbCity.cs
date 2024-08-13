@@ -15,6 +15,9 @@ namespace App.Domain.TravelMeals.Restaurant
         public int SortOrder { get; set; }
         public string Name { get; set; }
         public string NameCN { get; set; }
+        public string TimeZone { get; set; }
+        public string Currency { get; set; }
+        public string CurrencySymbol { get; set; }
         public List<City> Cities { get; set; }
     }
     public class City

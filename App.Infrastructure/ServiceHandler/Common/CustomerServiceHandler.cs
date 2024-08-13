@@ -60,6 +60,7 @@ namespace App.Infrastructure.ServiceHandler.Common
     {
         private readonly IDbCommonRepository<DbCustomer> _customerRepository;
         private readonly IDbCommonRepository<DbShop> _shopRepository;
+        private readonly IDbCommonRepository<TrDbRestaurant> _restaurantRepository;
         private readonly IDbCommonRepository<DbShopContent> _shopContentRepository;
         private readonly IDbCommonRepository<DbSetting> _settingRepository;
         private readonly IEncryptionHelper _encryptionHelper;
@@ -73,11 +74,12 @@ namespace App.Infrastructure.ServiceHandler.Common
         IMemoryCache _memoryCache;
 
         public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1, IMemoryCache memoryCache,
-        ITwilioUtil twilioUtil, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil,
+        ITwilioUtil twilioUtil, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<TrDbRestaurant> restaurantRepository,
         IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, ISendEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
         {
             _customerRepository = customerRepository;
             _encryptionHelper = encryptionHelper;
+            _restaurantRepository= restaurantRepository;
             _dateTimeUtil = dateTimeUtil;
             _shopRepository = shopRepository;
             _shopContentRepository = shopContentRepository;
@@ -318,6 +320,36 @@ namespace App.Infrastructure.ServiceHandler.Common
         {
             var existingCustomer =
                 await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == userId);
+            foreach (var item in existingCustomer.CartInfos) {
+                var rest = await _restaurantRepository.GetOneAsync(a=>a.Id==item.RestaurantId);
+                if(rest != null)
+                {
+                    List<TrDbRestaurantMenuItem> courses = new List<TrDbRestaurantMenuItem>();
+                    foreach (var cate in rest.Categories)
+                    {
+                        courses.AddRange(cate.MenuItems);
+                    }
+                    foreach (var course in item.Courses)
+                    {
+                       var menu=courses.FirstOrDefault(a=>a.Id==course.Id);
+                        if (menu != null)
+                        {
+                            course.MenuItemName=menu.MenuItemName;
+                            course.Price=menu.Price;
+                            course.ChildrenPrice=menu.ChildrenPrice;
+                        }
+
+                    }
+                }
+                foreach (var info in item.AmountInfos)
+                {
+                    info.Amount = _amountCalculaterV1.getItemAmount(item);
+                    info.PaidAmount = _amountCalculaterV1.getItemPayAmount(item);
+                }
+            }
+            if(existingCustomer.CartInfos.Count>0)
+            existingCustomer=await _customerRepository.UpsertAsync(existingCustomer);
+
             if (existingCustomer == null)
                 return new { msg = "User not found!(用户不存在)", };
 

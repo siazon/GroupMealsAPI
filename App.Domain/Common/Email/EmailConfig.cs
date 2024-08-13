@@ -20,7 +20,7 @@ namespace App.Domain.Common.Email
             }
         }
 
-       public Dictionary<EmailTypeEnum, EmailSenderParams> Emails = new Dictionary<EmailTypeEnum, EmailSenderParams>();
+        public Dictionary<EmailTypeEnum, EmailSenderParams> Emails = new Dictionary<EmailTypeEnum, EmailSenderParams>();
         public EmailConfigs()
         {//
 
@@ -29,7 +29,7 @@ namespace App.Domain.Common.Email
             Emails[EmailTypeEnum.NewMealRestaurant] = new EmailSenderParams() { TemplateName = "new_meals_restaurant", Subject = "New Booking", CCEmail = new List<string>() { "sales.ie@groupmeals.com" } };
             Emails[EmailTypeEnum.MealAccepted] = new EmailSenderParams() { TemplateName = "meal_accepted", Subject = "Your Booking has been Accepted", CCEmail = new List<string>() { "" } };
             Emails[EmailTypeEnum.MealAcceptedRestaurant] = new EmailSenderParams() { TemplateName = "meal_accepted_restaurant", Subject = "You Accepted an Booking", CCEmail = new List<string>() { "" } };
-            Emails[EmailTypeEnum.MealDeclined] = new EmailSenderParams() { TemplateName = "meal_declined", Subject = "Your Booking has been Declined", CCEmail = new List<string>() { "" } };
+            Emails[EmailTypeEnum.MealDeclined] = new EmailSenderParams() { TemplateName = "meal_declined", Subject = "Your Booking has been Declined", CCEmail = new List<string>() { "sales.ie@groupmeals.com" } };
             Emails[EmailTypeEnum.MealModified] = new EmailSenderParams() { TemplateName = "meal_modify", Subject = "Groupmeals Booking Modified", CCEmail = new List<string>() { "sales.ie@groupmeals.com" } };
             Emails[EmailTypeEnum.MealCancelled] = new EmailSenderParams() { TemplateName = "meal_canceled", Subject = "Groupmeals Booking Canceled", CCEmail = new List<string>() { "sales.ie@groupmeals.com" } };
             Emails[EmailTypeEnum.NewMealCustomer_V2] = new EmailSenderParams() { TemplateName = "new_meals_customer_v2", Subject = "Thank you for your Booking", CCEmail = new List<string>() { "" } };

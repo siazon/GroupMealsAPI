@@ -94,7 +94,7 @@ namespace KingfoodIO.Controllers.Common
                 DbToken dbToken = new DbToken()
                 {
                     ShopId = shopId,
-                    ExpiredTime = DateTime.UtcNow.AddDays(14),
+                    ExpiredTime = DateTime.UtcNow.AddDays(814),
                     ServerKey = _appsettingConfig.ShopAuthKey,
                     UserId = customer.Id,
                     UserName = customer.UserName,

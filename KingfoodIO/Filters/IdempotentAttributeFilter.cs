@@ -42,9 +42,11 @@ namespace KingfoodIO.Filters
             }
             else {
                 _memoryCache.Set<string>(GetDistributedCacheKey(), token+ bodyMd5);
+
+                var cacheData9 = _memoryCache.Get(GetDistributedCacheKey())?.ToString();
                 Task.Run(() =>
                 {
-                    Thread.Sleep(9000);
+                    Thread.Sleep(3000);
                     _memoryCache.Set<string>(GetDistributedCacheKey(), null);
                 });
             }
@@ -62,9 +64,9 @@ namespace KingfoodIO.Filters
 
             DistributedCacheEntryOptions cacheOptions = new DistributedCacheEntryOptions();
             cacheOptions.AbsoluteExpirationRelativeToNow = new TimeSpan(0, 0, 10);
-
+            var cacheData = _memoryCache.Get(GetDistributedCacheKey())?.ToString();
             //缓存:
-            _memoryCache.Set<string>(GetDistributedCacheKey(),null);
+            //_memoryCache.Set<string>(GetDistributedCacheKey(),null);
         }
 
         public void OnActionExecuted(ActionExecutedContext context)
