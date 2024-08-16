@@ -48,7 +48,6 @@ using Twilio.Base;
 using static FluentValidation.Validators.PredicateValidator;
 using App.Domain.Config;
 using QuestPDF.Fluent;
-using SixLabors.ImageSharp.Memory;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -92,6 +91,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private readonly IDbCommonRepository<TrDbRestaurantBooking> _restaurantBookingRepository;
         private readonly IDbCommonRepository<StripeCheckoutSeesion> _stripeCheckoutSeesionRepository;
         private readonly IDbCommonRepository<DbCustomer> _customerRepository;
+        private readonly IDbCommonRepository<DbBooking> _bookingRepository;
+        private readonly IDbCommonRepository<DbPaymentInfo> _paymentRepository;
+        private readonly IDbCommonRepository<DbOpearationInfo> _opearationRepository;
         private readonly IShopServiceHandler _shopServiceHandler;
         private readonly IContentBuilder _contentBuilder;
         ISendEmailUtil _sendEmailUtil;
@@ -110,11 +112,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public TrRestaurantBookingServiceHandler(ITwilioUtil twilioUtil, IDbCommonRepository<TrDbRestaurant> restaurantRepository, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository, IDbCommonRepository<DbCustomer> customerRepository,
             IDbCommonRepository<DbShop> shopRepository, ICustomerServiceHandler customerServiceHandler, IHostingEnvironment environment, IStripeUtil stripeUtil, IMemoryCache memoryCache, IShopServiceHandler shopServiceHandler,
             IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, IDateTimeUtil dateTimeUtil, IAmountCalculaterUtil amountCalculaterV1, ISendEmailUtil sendEmailUtil, Microsoft.Extensions.Options.IOptions<AzureStorageConfig> _storageConfig,
-      IPDFUtil pDFUtil, ILogManager logger, IContentBuilder contentBuilder)
+    IDbCommonRepository<DbBooking> bookingRepository, IDbCommonRepository<DbPaymentInfo> paymentRepository, IDbCommonRepository<DbOpearationInfo> opearationRepository,
+        IPDFUtil pDFUtil, ILogManager logger, IContentBuilder contentBuilder)
         {
             _restaurantRepository = restaurantRepository;
             _restaurantBookingRepository = restaurantBookingRepository;
             _stripeCheckoutSeesionRepository = stripeCheckoutSeesionRepository;
+            _bookingRepository = bookingRepository;
+            _paymentRepository = paymentRepository;
+            _opearationRepository = opearationRepository;
             _customerRepository = customerRepository;
             _contentBuilder = contentBuilder;
             _sendEmailUtil = sendEmailUtil;
@@ -353,11 +359,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var opt = new OperationInfo() { Operater = operater, Operation = acceptType == 1 ? "接收预订" : "拒绝预订", UpdateTime = DateTime.UtcNow };
             booking.Operations.Add(opt);
             var temp = await _restaurantBookingRepository.UpsertAsync(booking);
-            string msg = $"您于{booking.BookingDate} {booking.BookingTime} 提交的订单已被接收，请按时就餐";
+            string msg = $"您于{booking.Created.Value.ToString("yyyy-MM-dd HH:mm")}  提交的订单已被接收，请按时就餐";
             if (acceptType == 2)
-            { msg = $"您于{booking.BookingDate} {booking.BookingTime} 提交的订单已被拒绝，请登录groupmeals.com查询别的餐厅";
+            {
+                msg = $"您于{booking.Created.Value.ToString("yyyy-MM-dd HH:mm")}  提交的订单已被拒绝，请登录groupmeals.com查询别的餐厅";
                 _logger.LogInfo($"你有订单[{booking.BookingRef}]被餐厅拒绝了，请登录groupmeal.com查看更多");
-                _twilioUtil.sendSMS("+353874858555", $"你有订单[{ booking.BookingRef}]被餐厅拒绝了，请登录groupmeal.com查看更多");
+                _twilioUtil.sendSMS("+353874858555", $"你有订单[{booking.BookingRef}]被餐厅拒绝了，请登录groupmeal.com查看更多");
             }
             //_twilioUtil.sendSMS(booking.CustomerPhone, msg);
             var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
@@ -478,7 +485,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     return false;
                 }
 
-                if (!string.IsNullOrWhiteSpace(payMethodId))    
+                if (!string.IsNullOrWhiteSpace(payMethodId))
                     booking.PaymentInfos[0].StripePaymentId = payMethodId;
                 if (!string.IsNullOrWhiteSpace(customerId))
                 {
@@ -1032,10 +1039,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 var _content = content.ToLower().Trim();
                 var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.CustomerEmail == email &&
-                (a.BookingRef.ToLower().Contains(_content)||
+                (a.BookingRef.ToLower().Contains(_content) ||
                 a.Details.Any(d => d.RestaurantName.ToLower().Contains(_content)))), pageSize, continuationToken);
 
-               
+
                 res = Bookings.Value.ToList();
                 pageToken = Bookings.Key;
 
@@ -1420,6 +1427,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<bool> OrderCheck()
         {
+            asyncBooking();
             //DateTime time = DateTime.UtcNow.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode("Ireland"));
             //if (time.Hour < 18 && time.Hour > 8)
             //{
@@ -1435,6 +1443,92 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //    }
             //}
             return true;
+        }
+        public async void asyncBooking()
+        {
+            var bookings = await _restaurantBookingRepository.GetManyAsync(a => 1 == 1);
+            foreach (var booking in bookings)
+            {
+                foreach (var book in booking.Details)
+                {
+                    string paymentId = Guid.NewGuid().ToString();
+                    foreach (var pay in booking.PaymentInfos)
+                    {
+                        DbPaymentInfo paymentInfo = new DbPaymentInfo()
+                        {
+                            Id = paymentId,
+
+                            Amount = pay.Amount,
+                            Paid = pay.Paid,
+                            PaidAmount = pay.PaidAmount,
+                            PaymentType = pay.PaymentType,
+                            SetupPay = pay.SetupPay,
+                            StripeChargeId = pay.StripeChargeId,
+                            StripeClientSecretKey = pay.StripeClientSecretKey,
+                            StripeCustomerId = pay.StripeCustomerId,
+                            StripePaymentId = pay.StripePaymentId,
+                            StripePriceId = pay.StripePriceId,
+                            StripeProductId = pay.StripeProductId,
+                            StripeReceiptUrl = pay.StripeReceiptUrl,
+                            StripeSetupIntent = pay.StripeSetupIntent,
+                            ShopId = booking.ShopId,
+                            Created = booking.Created,
+                        };
+                        await _paymentRepository.UpsertAsync(paymentInfo);
+                    }
+                    DbBooking dbBooking = new DbBooking()
+                    {
+                        Id = booking.Id,
+                        PaymentId= paymentId,
+                        AcceptReason = book.AcceptReason,
+                        AcceptStatus = book.AcceptStatus,
+                        BookingRef = book.BookingRef,
+                        Courses = book.Courses,
+                        Created = booking.Created,
+                        Currency = book.Currency,
+                        GroupRef = booking.BookingRef,
+                        IsDeleted = booking.IsDeleted,
+                        SelectDateTime = book.SelectDateTime,
+                        Memo = book.Memo,
+                        ShopId = booking.ShopId,
+                        Remark = book.Remark,
+                        Status = book.Status,
+
+                    };
+                    dbBooking.Customer.ContactEmail = book.ContactEmail;
+                    dbBooking.Customer.ContactWechat = book.ContactWechat;
+                    dbBooking.Customer.ContactPhone = book.ContactPhone;
+                    dbBooking.Customer.ContactName = book.ContactName;
+                    dbBooking.Customer.ContactInfos = book.ContactInfos;
+
+                    dbBooking.Restaurant.RestaurantId = book.RestaurantId;
+                    dbBooking.Restaurant.RestaurantName = book.RestaurantName;
+                    dbBooking.Restaurant.RestaurantAddress = book.RestaurantAddress;
+                    dbBooking.Restaurant.RestaurantPhone = book.RestaurantPhone;
+                    dbBooking.Restaurant.RestaurantEmail = book.RestaurantEmail;
+                    dbBooking.Restaurant.EmergencyPhone = book.EmergencyPhone;
+                    dbBooking.Restaurant.RestaurantWechat = book.RestaurantWechat;
+                    dbBooking.Restaurant.RestaurantCountry = book.RestaurantCountry;
+                    await _bookingRepository.UpsertAsync(dbBooking);
+                   
+                    foreach (var pay in booking.Operations)
+                    {
+                        DbOpearationInfo dbOpearationInfo = new DbOpearationInfo()
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            Created = booking.Created,
+                            ModifyInfos = pay.ModifyInfos,
+                            ModifyType = pay.ModifyType,
+                            Operater = pay.Operater,
+                            Operation = pay.Operation,
+                            ShopId = booking.ShopId,
+                            ReferenceId = book.Id,
+                        };
+                       await _opearationRepository.UpsertAsync(dbOpearationInfo);
+                    }
+
+                }
+            }
         }
 
     }

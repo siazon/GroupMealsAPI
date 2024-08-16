@@ -15,24 +15,21 @@ namespace App.Domain.TravelMeals
         public string CustomerName { get; set; }
         public string CustomerEmail { get; set; }
         public string CustomerPhone { get; set; }
-        public string BookingDate { get; set; } = DateTime.UtcNow.ToString("yyyy-MMM-dd");
-        public string BookingTime { get; set; } = DateTime.UtcNow.ToString("HH:mm");
-        [JsonIgnore]
-        public int NumberOfAdults { get; set; }
-        [JsonIgnore]
-        public int NumberOfChildren { get; set; }
-        [JsonIgnore]
-        public string BookingNotes { get; set; }
         public string PayCurrency { get; set; }
-        public string Creater { get; set; }
         public double Rebate { get; set; }
         public List<BookingDetail> Details { get; set; } = new List<BookingDetail>();
         public List<OperationInfo> Operations { get; set; } = new List<OperationInfo>();
         public List<PaymentInfo> PaymentInfos { get; set; } = new List<PaymentInfo>();
 
     }
-    public class OperationInfo
+    public class DbPaymentInfo: PaymentInfo { }
+    public class DbOpearationInfo: OperationInfo
+    { 
+    
+    }
+    public class OperationInfo: DbEntity
     {
+        public string ReferenceId { get; set; }
         public string Operation { get; set; }
         public string Operater { get; set; }
         public DateTime UpdateTime { get; set; }
@@ -54,22 +51,29 @@ namespace App.Domain.TravelMeals
     }
     public class PaymentInfo : StripeBase
     {
+        public string PaymentType { get; set; }
         public decimal Amount { get; set; }
         public decimal PaidAmount { get; set; }
     }
-    public class BookingDetail
+    public class DbBooking: BookingDetail
+    { 
+    
+
+    }
+    public class BookingDetail: DbEntity
     {
-        public string Id { get; set; }
         public string BookingRef { get; set; }
+        public string PaymentId { get; set; }
+        public BookingRestaurantInfo Restaurant { get; set; }=new BookingRestaurantInfo();
         public string RestaurantId { get; set; }
         public string RestaurantName { get; set; }
+        public string RestaurantAddress { get; set; }
         public string RestaurantPhone { get; set; }
         public string EmergencyPhone { get; set; }
         public string RestaurantWechat { get; set; }
         public string RestaurantEmail { get; set; }
         public string RestaurantCountry { get; set; }
         public string SupporterEmail { get; set; }
-        public string RestaurantAddress { get; set; }
         public string Memo { get; set; }
         public string Currency { get; set; }
         public DateTime? SelectDateTime { get; set; }
@@ -77,18 +81,36 @@ namespace App.Domain.TravelMeals
         public AcceptStatusEnum AcceptStatus { get; set; }//0:Defult, 1:Accepted, 2:Declined
         public bool Modified { get; set; }
         public string AcceptReason { get; set; }
+        public BookingCustomerInfo Customer { get; set; } =new BookingCustomerInfo();
+
         public string ContactName { get; set; }
         public string ContactPhone { get; set; }
         public string ContactEmail { get; set; }
         public string ContactWechat { get; set; }
         public string ContactInfos { get; set; }
         public string GroupRef { get; set; }
-        public bool IsDeleted { get; set; }
         public string Remark { get; set; }
 
         public RestaurantBillInfo BillInfo { get; set; } = new RestaurantBillInfo();
         public List<BookingCourse> Courses { get; set; } = new List<BookingCourse>();
         public List<AmountInfo> AmountInfos { get; set; } = new List<AmountInfo>();
+    }
+    public class BookingRestaurantInfo {
+        public string RestaurantId { get; set; }
+        public string RestaurantName { get; set; }
+        public string RestaurantAddress { get; set; }
+        public string RestaurantPhone { get; set; }
+        public string EmergencyPhone { get; set; }
+        public string RestaurantWechat { get; set; }
+        public string RestaurantEmail { get; set; }
+        public string RestaurantCountry { get; set; }
+    }
+    public class BookingCustomerInfo {
+        public string ContactName { get; set; }
+        public string ContactPhone { get; set; }
+        public string ContactEmail { get; set; }
+        public string ContactWechat { get; set; }
+        public string ContactInfos { get; set; }
     }
     public enum DetailStatusEnum
     {
