@@ -386,15 +386,10 @@ namespace KingfoodIO.Controllers.TravelMeals
             DateTime sdate = DateTime.UtcNow;
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
-            double rate = 1;
-            if (!isModify)
-            {
-                var res = await _shopServiceHandler.GetExchangeRate(shopId);
-                rate = res.Rate;
-            }
+           
             Console.WriteLine("controller: " + (DateTime.UtcNow - sdate).TotalMilliseconds);
             return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantBookingServiceHandler.GetBookingAmount(isModify, currency, user.UserId, rate, cartInfoIds));
+                async () => await _restaurantBookingServiceHandler.GetBookingAmount(isModify, currency, user.UserId,  cartInfoIds));
         }
 
 
