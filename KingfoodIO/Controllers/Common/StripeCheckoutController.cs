@@ -43,6 +43,7 @@ namespace KingfoodIO.Controllers.Common
 
         IMemoryCache _memoryCache;
         private string secret = "";
+      
         /// <summary>
         /// 
         /// </summary>
@@ -51,7 +52,7 @@ namespace KingfoodIO.Controllers.Common
         /// <param name="memoryCache"></param>
         /// <param name="redisCache"></param>
         /// <param name="stripeUtil"></param>
-        /// <param name="amountCaculaterV1"></param>
+        /// <param name="amountCalculaterV1"></param>
         /// <param name="tourBookingServiceHandler"></param>
         /// <param name="tourServiceHandler"></param>
         /// <param name="stripeServiceHandler"></param>
@@ -292,10 +293,9 @@ namespace KingfoodIO.Controllers.Common
                 //var setupService = new SetupIntentService();
                 //var temp = setupService.Get(booking.StripePaymentId);
 
-                var shop = await _shopServiceHandler.GetShopInfo(11);
                 var options = new PaymentIntentCreateOptions
                 {
-                    Amount =  CalculateOrderAmount(booking, shop.ExchangeRate),
+                    Amount =await _amountCalculaterV1. CalculateOrderAmount(booking.Details, booking.PayCurrency, booking.ShopId ?? 11),
                     Currency = "eur",
                     AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
                     {
@@ -376,7 +376,7 @@ namespace KingfoodIO.Controllers.Common
                     if (bill.SetupPay == 1)
                         Amount = 100;
                     else
-                        Amount = _amountCalculaterV1.CalculateOrderPaidAmount(gpBooking, shop.ExchangeRate);//  CalculateOrderAmount(gpBooking, shop.ExchangeRate);
+                        Amount =await _amountCalculaterV1.CalculateOrderPaidAmount(gpBooking.Details, gpBooking.PayCurrency, gpBooking.ShopId ?? 11);//  CalculateOrderAmount(gpBooking, shop.ExchangeRate);
                 }
                 string currency = "eur";
                 if (gpBooking.PayCurrency == "UK")
@@ -500,34 +500,6 @@ namespace KingfoodIO.Controllers.Common
             }
         }
 
-      
-        private long CalculateOrderAmount(TrDbRestaurantBooking booking,double ExRate)
-        {
-            // Calculate the order total on the server to prevent
-            // people from directly manipulating the amount on the client
-            decimal amount = 0;
-            if (booking != null)
-            {
-                foreach (var course in booking.Details)
-                {
-                    if (course.Currency == booking.PayCurrency)
-                    {
-                        amount += getItemPayAmount(course);
-                    }
-                    else
-                    {
-                        if (booking.PayCurrency == "UK")
-                        {
-                            amount += getItemPayAmount(course) * (decimal)ExRate;
-                        }
-                        else
-                            amount += getItemPayAmount(course) / (decimal)ExRate;
-                    }
-                }
-            }
-            decimal temp = Math.Round(amount, 2);
-            return (long)(temp * 100);
-        }
         private decimal getItemAmount(BookingDetail bookingDetail)
         {
             decimal amount = 0;

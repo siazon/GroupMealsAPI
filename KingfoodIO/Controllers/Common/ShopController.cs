@@ -60,7 +60,7 @@ namespace KingfoodIO.Controllers.Common
         }
 
         /// <summary>
-        /// 
+        /// 暂弃用，永远返回固定值
         /// </summary>
         /// <param name="exRateExtra"></param>
         /// <param name="shopId"></param>
@@ -76,7 +76,7 @@ namespace KingfoodIO.Controllers.Common
 
 
         /// <summary>
-        /// 
+        /// 暂弃用，永远返回固定值
         /// </summary>
         /// <param name="shopId"></param>
         /// <returns></returns>

@@ -1,78 +1,99 @@
 ﻿using App.Domain.TravelMeals;
 using App.Domain.TravelMeals.Restaurant;
+using App.Infrastructure.ServiceHandler.Common;
+using Stripe;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static SendGrid.SendGridClient;
 
 namespace App.Infrastructure.Utility.Common
 {
     public interface IAmountCalculaterUtil
     {
-        long CalculateOrderAmount(TrDbRestaurantBooking booking, double ExRate);
-        long CalculateOrderPaidAmount(TrDbRestaurantBooking booking, double ExRate);
+        Task<long> CalculateOrderAmount(List<BookingDetail> details, string payCurrency, int shopId);
+        Task<long> CalculateOrderPaidAmount(List<BookingDetail> details, string payCurrency, int shopId);
+        Task<decimal> CalculateAmountByRate(BookingDetail detail, string payCurrency, int shopId, DbCountry country = null);
+        Task<decimal> CalculatePayAmountByRate(BookingDetail detail, string payCurrency, int shopId, DbCountry country = null);
         decimal getItemAmount(BookingDetail bookingDetail);
         decimal getItemPayAmount(BookingDetail bookingDetail);
     }
 
     public class AmountCalculaterV1Util : IAmountCalculaterUtil
     {
-        public long CalculateOrderAmount(TrDbRestaurantBooking booking, double ExRate)
+        ICountryServiceHandler _countryServiceHandler;
+        public AmountCalculaterV1Util(ICountryServiceHandler countryServiceHandler)
+        {
+            _countryServiceHandler = countryServiceHandler;
+        }
+        public async Task<decimal> CalculateByRate(Func<BookingDetail, decimal> GetAmount, BookingDetail detail, string payCurrency, int shopId, DbCountry country = null)
         {
             decimal amount = 0;
-            if (booking != null)
+            if (country == null)
+                country = await _countryServiceHandler.GetCountry(shopId);
+            var exRate = country.Countries.FirstOrDefault(a => a.Currency == detail.Currency)?.ExchangeRate ?? 1;
+            var UKRate = country.Countries.FirstOrDefault(a => a.Currency == "UK")?.ExchangeRate ?? 1;
+            decimal oAmount=GetAmount(detail);
+            if (detail.Currency == payCurrency)
             {
-                foreach (var course in booking.Details)
+                amount = oAmount;
+            }
+            else
+            {
+                if (payCurrency == "UK")
                 {
-                    if (course.Currency == booking.PayCurrency)
-                    {
-                        amount += getItemAmount(course);
-                    }
-                    else
-                    {
-                        if (booking.PayCurrency == "UK")
-                        {
-                            amount += getItemAmount(course) * (decimal)ExRate;
-                        }
-                        else
-                            amount += getItemAmount(course) / (decimal)ExRate;
-                    }
+                    amount = oAmount * (decimal)exRate/ (decimal)UKRate;
                 }
+                else
+                    amount = oAmount / (decimal)exRate;
+            }
+            return amount;
+        }
+
+        public async Task<decimal> CalculateAmountByRate(BookingDetail detail, string payCurrency, int shopId, DbCountry country = null)
+        {
+
+            decimal amount = await CalculateByRate(getItemAmount, detail, payCurrency, shopId, country);
+
+            return amount;
+        }
+
+
+        public async Task<decimal> CalculatePayAmountByRate(BookingDetail detail, string payCurrency, int shopId, DbCountry country = null)
+        {
+            decimal amount = await CalculateByRate(getItemPayAmount, detail, payCurrency, shopId, country);
+
+            return amount;
+        }
+        public async Task<long> CalculateOrderAmount(List<BookingDetail> details, string payCurrency, int shopId)
+        {
+            decimal amount = 0;
+            var country = await _countryServiceHandler.GetCountry(shopId);
+            foreach (var course in details)
+            {
+                amount += await CalculateAmountByRate(course, payCurrency, shopId, country);
             }
             decimal temp = Math.Round(amount, 2);
             return (long)(temp * 100);
         }
-        public long CalculateOrderPaidAmount(TrDbRestaurantBooking booking, double ExRate)
+        public async Task<long> CalculateOrderPaidAmount(List<BookingDetail> details, string payCurrency, int shopId)
         {
             decimal amount = 0;
-            if (booking != null)
+            var country = await _countryServiceHandler.GetCountry(shopId);
+            foreach (var course in details)
             {
-                foreach (var course in booking.Details)
-                {
-                    if (course.Currency == booking.PayCurrency)
-                    {
-                        amount += getItemPayAmount(course);
-                    }
-                    else
-                    {
-                        if (booking.PayCurrency == "UK")
-                        {
-                            amount += getItemPayAmount(course) * (decimal)ExRate;
-                        }
-                        else
-                            amount += getItemPayAmount(course) / (decimal)ExRate;
-                    }
-                }
+                amount += await CalculatePayAmountByRate(course, payCurrency, shopId, country);
             }
             decimal temp = Math.Round(amount, 2);
             return (long)(temp * 100);
         }
 
-        private decimal getDiscount(int qty,decimal price)
+        private decimal getDiscount(int qty, decimal price)
         {
             decimal discount = 0;
-             if (qty == 4 || qty == 5)
+            if (qty == 4 || qty == 5)
             {
                 discount += 10 * price * 0.2m;
             }
@@ -100,7 +121,7 @@ namespace App.Infrastructure.Utility.Common
             decimal amount = 0;
             foreach (var item in bookingDetail.Courses)
             {
-                int totalQty = item.Qty+item.ChildrenQty;
+                int totalQty = item.Qty + item.ChildrenQty;
                 if (item.MenuCalculateType == MenuCalculateTypeEnum.WesternFood)//西餐按人头算
                 {
                     amount += item.Price * item.Qty;
@@ -125,7 +146,7 @@ namespace App.Infrastructure.Utility.Common
                 }
             }
 
-         
+
             return amount;
         }
 

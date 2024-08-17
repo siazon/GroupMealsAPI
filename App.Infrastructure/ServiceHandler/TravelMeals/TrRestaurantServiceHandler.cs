@@ -484,6 +484,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             _memoryCache.Set<DbShop>(string.Format("motionmedia-{1}-{0}", shopId, typeof(DbShop).Name), null);
             _memoryCache.Set<string>(citycacheKey, null);
+            _memoryCache.Set<DbCountry>(string.Format("motionmedia-{1}-{0}", shopId, typeof(DbCountry).Name), null);
 
             return savedRestaurant;
         }

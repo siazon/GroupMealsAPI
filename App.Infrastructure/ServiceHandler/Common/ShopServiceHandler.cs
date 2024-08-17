@@ -56,23 +56,13 @@ namespace App.Infrastructure.ServiceHandler.Common
         }
         public async Task<DbExchangeRate> UpdateExchangeRateExtra(double exRateExtra, int shopId)
         {
-            var cacheKey = string.Format("motionmedia-{1}-{0}", shopId, typeof(DbShop).Name);
-            _memoryCache.Set<DbShop>(cacheKey, null);
-            var existShop =
-               await _shopRepository.GetOneAsync(a => a.ShopId == shopId);
-            if (existShop == null)
-                throw new ServiceException("shop Not Exists");
-            existShop.ExchangeRateExtra = exRateExtra;
-            var savedShop = await _shopRepository.UpsertAsync(existShop);
-            DbExchangeRate rate = new DbExchangeRate() { Rate = savedShop.ExchangeRate + savedShop.ExchangeRateExtra, UpdateTime = savedShop.RateUpdate };
-            return rate;
+            
+            return null;
         }
         public async Task<DbExchangeRate> GetExchangeRate(int shopId)
         {
-            var savedShop =
-               await _shopRepository.GetOneAsync(a => a.ShopId == shopId);
-            DbExchangeRate rate = new DbExchangeRate() { Rate = savedShop.ExchangeRate + savedShop.ExchangeRateExtra, UpdateTime = savedShop.RateUpdate };
-            return rate;
+           
+            return null;
         }
 
     }

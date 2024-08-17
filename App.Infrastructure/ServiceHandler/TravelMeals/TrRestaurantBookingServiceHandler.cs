@@ -83,7 +83,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
 
         ResponseModel GetBookingItemAmount(List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate);
-        Task<ResponseModel> GetBookingAmount(bool isBookingModify, string currency, string userId, double rate, List<string> Ids);
+        Task<ResponseModel> GetBookingAmount(bool isBookingModify, string currency, string userId, List<string> Ids);
         void SettleOrder();
     }
     public class TrRestaurantBookingServiceHandler : ITrRestaurantBookingServiceHandler
@@ -92,6 +92,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private readonly IDbCommonRepository<TrDbRestaurantBooking> _restaurantBookingRepository;
         private readonly IDbCommonRepository<StripeCheckoutSeesion> _stripeCheckoutSeesionRepository;
         private readonly IDbCommonRepository<DbCustomer> _customerRepository;
+
+        private readonly ICountryServiceHandler _countryHandler;
         private readonly IShopServiceHandler _shopServiceHandler;
         private readonly IContentBuilder _contentBuilder;
         ISendEmailUtil _sendEmailUtil;
@@ -101,6 +103,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         IHostingEnvironment _environment;
         private readonly IDbCommonRepository<DbShop> _shopRepository;
         private readonly ICustomerServiceHandler _customerServiceHandler;
+        private readonly IExchangeUtil _exchangeUtil;
         IMemoryCache _memoryCache;
         private readonly IDateTimeUtil _dateTimeUtil;
         IAmountCalculaterUtil _amountCalculaterV1;
@@ -109,15 +112,17 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         public TrRestaurantBookingServiceHandler(ITwilioUtil twilioUtil, IDbCommonRepository<TrDbRestaurant> restaurantRepository, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository, IDbCommonRepository<DbCustomer> customerRepository,
             IDbCommonRepository<DbShop> shopRepository, ICustomerServiceHandler customerServiceHandler, IHostingEnvironment environment, IStripeUtil stripeUtil, IMemoryCache memoryCache, IShopServiceHandler shopServiceHandler,
-            IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, IDateTimeUtil dateTimeUtil, IAmountCalculaterUtil amountCalculaterV1, ISendEmailUtil sendEmailUtil, Microsoft.Extensions.Options.IOptions<AzureStorageConfig> _storageConfig,
-      IPDFUtil pDFUtil, ILogManager logger, IContentBuilder contentBuilder)
+        ICountryServiceHandler countryHandler, IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, IDateTimeUtil dateTimeUtil, IAmountCalculaterUtil amountCalculaterV1, ISendEmailUtil sendEmailUtil, Microsoft.Extensions.Options.IOptions<AzureStorageConfig> _storageConfig,
+     IExchangeUtil exchangeUtil, IPDFUtil pDFUtil, ILogManager logger, IContentBuilder contentBuilder)
         {
             _restaurantRepository = restaurantRepository;
             _restaurantBookingRepository = restaurantBookingRepository;
             _stripeCheckoutSeesionRepository = stripeCheckoutSeesionRepository;
             _customerRepository = customerRepository;
             _contentBuilder = contentBuilder;
+            _countryHandler = countryHandler;
             _sendEmailUtil = sendEmailUtil;
+            _exchangeUtil = exchangeUtil;
             storageConfig = _storageConfig.Value;
             _logger = logger;
             _pDFUtil = pDFUtil;
@@ -643,15 +648,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             if (isChange > 0)
             {
-                var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
-                if (shopInfo == null)
-                {
-                    _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
-                    return new ResponseModel { msg = "Cannot find shop info", code = 500, };
-                }
-
-                double exchange = (double)shopInfo.ExchangeRate;
-                var temo = _amountCalculaterV1.CalculateOrderPaidAmount(exsitBooking, exchange);
                 exsitBooking.Operations.Add(operationInfo);
                 var savedBooking = await _restaurantBookingRepository.UpsertAsync(exsitBooking);
                 TrDbRestaurantBooking sendBooking = JsonConvert.DeserializeObject<TrDbRestaurantBooking>(JsonConvert.SerializeObject(savedBooking));
@@ -749,15 +745,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             bool noPay = await InitBooking(booking, user.UserId);
 
 
-            var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
-            if (shopInfo == null)
-            {
-                _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
-                return new ResponseModel { msg = "Cannot find shop info", code = 500, };
-            }
-
-            double exchange = (double)shopInfo.ExchangeRate;
-            booking.PaymentInfos.Add(new PaymentInfo() { Amount = _amountCalculaterV1.CalculateOrderAmount(booking, exchange), PaidAmount = _amountCalculaterV1.CalculateOrderPaidAmount(booking, exchange) });
+            booking.PaymentInfos.Add(new PaymentInfo() { Amount = await _amountCalculaterV1.CalculateOrderAmount(booking.Details, booking.PayCurrency, booking.ShopId ?? 11), 
+                PaidAmount = await _amountCalculaterV1.CalculateOrderPaidAmount(booking.Details, booking.PayCurrency, booking.ShopId ?? 11) });
 
             var newItem = await _restaurantBookingRepository.UpsertAsync(booking);
             if (noPay)
@@ -803,7 +792,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         item.RestaurantWechat = rest.Wechat;
                     }
                 }
-
+                if (string.IsNullOrWhiteSpace(item.Currency))
+                {
+                    var rest = await _restaurantRepository.GetOneAsync(a => a.Id == item.RestaurantId);
+                    if (rest != null)
+                    {
+                        item.Currency = rest.Country;
+                    }
+                }
 
                 if (string.IsNullOrWhiteSpace(item.Id))
                     item.Id = Guid.NewGuid().ToString();
@@ -1029,10 +1025,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 var _content = content.ToLower().Trim();
                 var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.CustomerEmail == email &&
-                (a.BookingRef.ToLower().Contains(_content)||
+                (a.BookingRef.ToLower().Contains(_content) ||
                 a.Details.Any(d => d.RestaurantName.ToLower().Contains(_content)))), pageSize, continuationToken);
 
-               
+
                 res = Bookings.Value.ToList();
                 pageToken = Bookings.Key;
 
@@ -1261,7 +1257,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return new ResponseModel { msg = "ok", code = 200, data = new { amount, paidAmount } };
 
         }
-        public async Task<ResponseModel> GetBookingAmount(bool isBookingModify, string currency, string userId, double rate, List<string> Ids)
+        public async Task<ResponseModel> GetBookingAmount(bool isBookingModify, string currency, string userId, List<string> Ids)
         {
             decimal EUAmount = 0, UKAmount = 0, EUPaidAmount = 0, UKPaidAmount = 0, totalPayAmount = 0;
             DateTime sdate = DateTime.UtcNow;
@@ -1275,24 +1271,25 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     return new ResponseModel { msg = "detailId can't find in Order list", code = 500, };
 
                 }
-
+               
                 foreach (var item in Bookings)
                 {
+                  
                     var items = item.Details.FindAll(d => Ids.Contains(d.Id));
                     foreach (var detail in items)
                     {
-                        totalPayAmount += detail.AmountInfos.Sum(a => a.PaidAmount);
+                        totalPayAmount += await _amountCalculaterV1.CalculatePayAmountByRate(detail, currency, item.ShopId ?? 11);
                         if (detail.Currency == "UK")
                         {
-                            UKAmount += _amountCalculaterV1.getItemAmount(detail);
-                            UKPaidAmount += detail.AmountInfos.Sum(a => a.PaidAmount);
+                            UKAmount += await _amountCalculaterV1.CalculateAmountByRate(detail, "UK", item.ShopId ?? 11);
+                            UKPaidAmount += await _amountCalculaterV1.CalculatePayAmountByRate(detail, "UK", item.ShopId ?? 11);
 
 
                         }
                         else
                         {
-                            EUAmount += _amountCalculaterV1.getItemAmount(detail);
-                            EUPaidAmount += detail.AmountInfos.Sum(a => a.PaidAmount);
+                            EUAmount += await _amountCalculaterV1.CalculateAmountByRate(detail, "EU", item.ShopId ?? 11);
+                            EUPaidAmount += await _amountCalculaterV1.CalculatePayAmountByRate(detail, "EU", item.ShopId ?? 11);
                         }
                     }
                 }
@@ -1308,30 +1305,20 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     return new ResponseModel { msg = "detailId can't find in cartinfo", code = 500, };
 
                 }
+
+
                 foreach (var detail in details)
                 {
-                    if (currency == detail.Currency)
-                    {
-                        totalPayAmount += _amountCalculaterV1.getItemPayAmount(detail);
-                    }
-                    else
-                    {
-                        if (detail.Currency == "UK")
-                        {
-                            totalPayAmount += _amountCalculaterV1.getItemPayAmount(detail) / (decimal)rate;
-                        }
-                        else
-                            totalPayAmount += _amountCalculaterV1.getItemPayAmount(detail) * (decimal)rate;
-                    }
+                    totalPayAmount += await _amountCalculaterV1.CalculatePayAmountByRate(detail, currency, user.ShopId ?? 11) ;
                     if (detail.Currency == "UK")
                     {
-                        UKAmount += _amountCalculaterV1.getItemAmount(detail);
-                        UKPaidAmount += _amountCalculaterV1.getItemPayAmount(detail);
+                        UKAmount +=await _amountCalculaterV1.CalculateAmountByRate(detail, "UK", user.ShopId ?? 11);
+                        UKPaidAmount +=await _amountCalculaterV1.CalculatePayAmountByRate(detail,"UK",user.ShopId??11);
                     }
                     else
                     {
-                        EUAmount += _amountCalculaterV1.getItemAmount(detail);
-                        EUPaidAmount += _amountCalculaterV1.getItemPayAmount(detail);
+                        EUAmount +=await _amountCalculaterV1.CalculateAmountByRate(detail, "EU", user.ShopId ?? 11);
+                        EUPaidAmount += await _amountCalculaterV1.CalculatePayAmountByRate(detail, "EU", user.ShopId ?? 11);
                     }
                 }
 
@@ -1417,16 +1404,22 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<bool> OrderCheck()
         {
-            DateTime time = DateTime.UtcNow.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode("Ireland"));
-            if (time.Hour < 18 && time.Hour > 8)
+            var today = DateTime.UtcNow;
+
+            if (today.Hour == 4 && today.Minute < 15)
             {
-                var bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.UnAccepted && (a.Created.Value - DateTime.UtcNow).TotalMinutes > 30));
-                if (bookings != null && bookings.Count() > 0)
-                {
-                    _logger.LogInfo($"你有[{bookings.Count()}]张订单超过30分钟未接单，请登录groupmeal.com查看更多");
-                    _twilioUtil.sendSMS("+353874858555", $"你有[{bookings.Count()}]张订单超过30分钟未接单，请登录groupmeal.com查看更多");
-                }
+                _exchangeUtil.UpdateExchangeRateToDB();
             }
+            //DateTime time = DateTime.UtcNow.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode("Ireland"));
+            //if (time.Hour < 18 && time.Hour > 8)
+            //{
+            //    var bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.UnAccepted && (a.Created.Value - DateTime.UtcNow).TotalMinutes > 30));
+            //    if (bookings != null && bookings.Count() > 0)
+            //    {
+            //        _logger.LogInfo($"你有[{bookings.Count()}]张订单超过30分钟未接单，请登录groupmeal.com查看更多");
+            //        _twilioUtil.sendSMS("+353874858555", $"你有[{bookings.Count()}]张订单超过30分钟未接单，请登录groupmeal.com查看更多");
+            //    }
+            //}
             return true;
         }
 

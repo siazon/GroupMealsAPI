@@ -1,7 +1,9 @@
 ﻿using App.Domain.Common;
 using App.Domain.Common.Shop;
+using App.Domain.TravelMeals.Restaurant;
 using App.Infrastructure.Exceptions;
 using App.Infrastructure.Repository;
+using Microsoft.AspNetCore.Http.Metadata;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NLog.LayoutRenderers.Wrappers;
@@ -17,23 +19,22 @@ namespace App.Infrastructure.Utility.Common
 {
     public interface IExchangeUtil
     {
-        Task<double> getGBPExchangeRate();
-         void UpdateToDB(double rate);
+        Task<ExchangeModel> getGBPExchangeRate();
+        void UpdateExchangeRateToDB();
     }
     public class ExchangeUtil : IExchangeUtil
     {
         private readonly IHttpClientFactory _httpClientFactory;
-        IDbCommonRepository<DbShop> _shopRepository;
+        IDbCommonRepository<DbCountry> _countryRepository;
 
-        public ExchangeUtil(IHttpClientFactory httpClientFactory, IDbCommonRepository<DbShop> shopRepository)
+        public ExchangeUtil(IHttpClientFactory httpClientFactory, IDbCommonRepository<DbCountry> countryRepository)
         {
             _httpClientFactory = httpClientFactory;
-            _shopRepository = shopRepository;
+            _countryRepository = countryRepository;
         }
 
-        public async Task<double> getGBPExchangeRate()
+        public async Task<ExchangeModel> getGBPExchangeRate()
         {
-            double Rate = 1;
             var httpClient = _httpClientFactory.CreateClient();
             var httpResponseMessage = await httpClient.GetAsync(
                 "https://v6.exchangerate-api.com/v6/945925974267e80c40e247cd/latest/EUR");
@@ -43,27 +44,49 @@ namespace App.Infrastructure.Utility.Common
                 try
                 {
                     var str = jsonResponse.Length;
-                    var j=JsonConvert.DeserializeObject<ExchangeModel>(jsonResponse);
-                    var tee = j.conversion_rates["GBP"];
-                    double.TryParse(tee,out Rate);
-                    UpdateToDB(Rate);
+                    var j = JsonConvert.DeserializeObject<ExchangeModel>(jsonResponse);
+                    return j;
                 }
                 catch (Exception ex)
                 {
                     Console.Write(ex.Message);
                 }
             }
-            return Rate;
+            return null;
         }
-        public async void UpdateToDB(double rate)
+        public async void UpdateExchangeRateToDB()
         {
-            var existRate = await _shopRepository.GetOneAsync(r => r.ShopId == 11);
+            var existRate = await _countryRepository.GetOneAsync(r => r.ShopId == 11);
             if (existRate != null)
             {
-                existRate.Updated = DateTime.UtcNow;
-                existRate.RateUpdate = DateTime.UtcNow;
-                existRate.ExchangeRate = rate;
-                var savedShop = await _shopRepository.UpsertAsync(existRate);
+                if ((DateTime.UtcNow - existRate.RateUpdateTime).TotalHours < 23)
+                    return;
+                ExchangeModel exchange = await getGBPExchangeRate();
+                if (exchange == null) return;
+                foreach (var item in existRate.Countries)
+                {
+                    string sValue = "0";
+                    double rate = 1;
+                    switch (item.Currency)
+                    {
+                        case "UK":
+                            sValue = exchange.conversion_rates["GBP"];
+                            double.TryParse(sValue, out rate);
+                            item.ExchangeRate = rate+item.ExchangeRateExtra;
+                            break;
+                        case "EU":
+                            item.ExchangeRate = rate + item.ExchangeRateExtra;
+                            break;
+                        default:
+                            sValue = exchange.conversion_rates[item.Currency];
+                            double.TryParse(sValue, out rate);
+                            item.ExchangeRate = rate + item.ExchangeRateExtra;
+                            break;
+                    }
+                }
+
+                existRate.RateUpdateTime = DateTime.UtcNow;
+                var savedShop = await _countryRepository.UpsertAsync(existRate);
             }
         }
     }

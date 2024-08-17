@@ -4,6 +4,7 @@ using App.Domain.Enum;
 using App.Domain.TravelMeals;
 using App.Infrastructure.Builders.Common;
 using App.Infrastructure.Exceptions;
+using App.Infrastructure.ServiceHandler.Common;
 using App.Infrastructure.ServiceHandler.Tour;
 using App.Infrastructure.Utility.Common;
 using Hangfire;
@@ -32,15 +33,20 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
     public class SendEmailUtil : ISendEmailUtil
     {
 
-        private readonly IEmailUtil _emailUtil; ILogManager _logger;
-        IContentBuilder _contentBuilder; private readonly IDateTimeUtil _dateTimeUtil;
-        public SendEmailUtil(IEmailUtil emailUtil, ILogManager logger, IDateTimeUtil dateTimeUtil, IContentBuilder contentBuilder)
+        private readonly IEmailUtil _emailUtil; 
+        ILogManager _logger;
+        IContentBuilder _contentBuilder;
+        ICountryServiceHandler _coutryHandler;
+        private readonly IDateTimeUtil _dateTimeUtil;
+        IAmountCalculaterUtil _amountCalculaterUtil;
+        public SendEmailUtil(IEmailUtil emailUtil, IAmountCalculaterUtil amountCalculaterUtil, ILogManager logger, IDateTimeUtil dateTimeUtil, ICountryServiceHandler coutryHandler, IContentBuilder contentBuilder)
         {
             _emailUtil = emailUtil;
             _logger = logger;
             _contentBuilder = contentBuilder;
             _dateTimeUtil = dateTimeUtil;
-
+            _coutryHandler= coutryHandler;
+            _amountCalculaterUtil= amountCalculaterUtil;
         }
         public async Task EmailVerifyCode(string email, string code, DbShop shopInfo, string tempName, string wwwPath, string subject, string title, string titleCN)
         {
@@ -274,20 +280,18 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         public async Task SendCancelEmail(DbShop shopInfo, TrDbRestaurantBooking booking, BookingDetail detail, string webPath, string tempName, string subject, params string[] ccEmail)
         {
-            string currencyStr = booking.PayCurrency == "UK" ? "￡" : "€";
-            decimal exRate = (decimal)((double)shopInfo.ExchangeRate);
+            var country =await _coutryHandler.GetCountry(booking.ShopId??11);
+            var con=country.Countries.FirstOrDefault(a=>a.Name==detail.RestaurantCountry);
+            if (con == null) return;
+            string currencyStr = country.Countries.FirstOrDefault(a => a.Currency == booking.PayCurrency).CurrencySymbol;
+            decimal exRate = (decimal)(con.ExchangeRate);
             decimal amount = 0;
             decimal paidAmount = 0; detail.AmountInfos.Sum(x => x.PaidAmount);
 
             paidAmount = detail.AmountInfos.Sum(x => x.PaidAmount);
-            if (booking.PayCurrency == detail.Currency)
-            {
-                amount = detail.AmountInfos.Sum(x => x.Amount);
-            }
-            else if (booking.PayCurrency == "UK")
-                amount = detail.AmountInfos.Sum(x => x.Amount) * exRate;
-            else
-                amount = detail.AmountInfos.Sum(x => x.Amount) / exRate;
+
+            amount =await _amountCalculaterUtil.CalculateAmountByRate(detail, booking.PayCurrency, booking.ShopId??11, country);
+
             paidAmount = Math.Round(paidAmount, 2);
             amount = Math.Round(amount, 2);
 
