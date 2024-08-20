@@ -28,6 +28,8 @@ using System.Threading;
 using Stripe;
 using App.Infrastructure.ServiceHandler.TravelMeals;
 using App.Domain.Common.Email;
+using Microsoft.AspNetCore.Http.Metadata;
+using Microsoft.AspNetCore.Razor.Language.Extensions;
 
 namespace App.Infrastructure.ServiceHandler.Common
 {
@@ -61,6 +63,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         private readonly IDbCommonRepository<DbCustomer> _customerRepository;
         private readonly IDbCommonRepository<DbShop> _shopRepository;
         private readonly IDbCommonRepository<TrDbRestaurant> _restaurantRepository;
+        private readonly IDbCommonRepository<TrDbRestaurantBooking> _restaurantBookingRepository;
         private readonly IDbCommonRepository<DbShopContent> _shopContentRepository;
         private readonly IDbCommonRepository<DbSetting> _settingRepository;
         private readonly IEncryptionHelper _encryptionHelper;
@@ -73,7 +76,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         IHostingEnvironment _environment;
         IMemoryCache _memoryCache;
 
-        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1, IMemoryCache memoryCache,
+        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1, IMemoryCache memoryCache, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository,
         ITwilioUtil twilioUtil, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<TrDbRestaurant> restaurantRepository,
         IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, ISendEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
         {
@@ -83,6 +86,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             _dateTimeUtil = dateTimeUtil;
             _shopRepository = shopRepository;
             _shopContentRepository = shopContentRepository;
+            _restaurantBookingRepository=restaurantBookingRepository;
             _contentBuilder = contentBuilder;
             _emailUtil = emailUtil;
             _twilioUtil = twilioUtil;
@@ -97,9 +101,18 @@ namespace App.Infrastructure.ServiceHandler.Common
         {
             Guard.GreaterThanZero(shopId);
             var customers = await _customerRepository.GetManyAsync(r => r.ShopId == shopId);
+            var bookings = await _restaurantBookingRepository.GetManyAsync(a => 1 == 1);
+            
 
-            var returnCustomers = customers.OrderByDescending(r => r.Created).Take(2000);
+            int aaa = 0;
+            foreach (var item in customers)
+            {
+                int count = bookings.Sum(a => { if (a.CustomerEmail == item.Email) return a.Details.Count(); else return 0; });
+                item.AuthValue =Convert.ToUInt64(count);
+                aaa += count;
+            }
 
+            var returnCustomers = customers .OrderByDescending(r => r.AuthValue);
             return returnCustomers.ToList().ClearForOutPut();
         }
 
