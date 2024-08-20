@@ -31,6 +31,8 @@ namespace App.Domain.Common.Customer
         public virtual ICollection<string> UserRoles { get; set; }
         public bool IsVerity { get; set; }
         public bool IsBoss { get; set; }
+        public bool IsOldCustomer { get; set; }
+        public string StripeCustomerId { get; set; }
         public ulong AuthValue { get; set; }
         public string PayCurrency { get; set; }
         public List<CommonParam> Favorites { get; set; }

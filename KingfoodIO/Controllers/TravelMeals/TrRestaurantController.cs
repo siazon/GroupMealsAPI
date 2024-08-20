@@ -30,6 +30,7 @@ namespace KingfoodIO.Controllers.TravelMeals
     /// PaymentType: Full, Deposit, PayAtStore
     /// Features: Special offers, 4+ stars, New, Halal, Vegetarian(Key为0到4)
     /// Country: Ireland, UK, France (Key为string)
+    /// PaymentMethod: Full, Percentage, Fixed(Key为0到2)
     /// </summary>
     [Route("api/[controller]/[action]")]
     public class TrRestaurantController : BaseController

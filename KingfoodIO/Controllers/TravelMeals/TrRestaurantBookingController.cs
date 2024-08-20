@@ -81,8 +81,23 @@ namespace KingfoodIO.Controllers.TravelMeals
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, false,
+                async () => await _restaurantBookingServiceHandler.RequestTravelMealsBooking(booking, shopId, user));
+        }
+
+        [Idempotent]
+        [HttpPost]
+        [ProducesResponseType(typeof(TrDbRestaurantBooking), (int)HttpStatusCode.OK)]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> MakeABooking([FromBody] TrDbRestaurantBooking booking, int shopId)
+        {
+            string rawRequestBody = await Request.GetRawBodyAsync();
+            _logger.LogDebug("MakeABooking: " + rawRequestBody);
+            var authHeader = Request.Headers["Wauthtoken"];
+            var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            return await ExecuteAsync(shopId, false,
                 async () => await _restaurantBookingServiceHandler.MakeABooking(booking, shopId, user));
         }
+
         [HttpGet]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
@@ -115,9 +130,9 @@ namespace KingfoodIO.Controllers.TravelMeals
         /// <param name="isNotify"></param>
         /// <returns></returns>
         [HttpPost]
-        [ProducesResponseType(typeof(TrDbRestaurantBooking), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(DbBooking), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> ModifyBooking([FromBody] TrDbRestaurantBooking booking, int shopId,bool isNotify=true)
+        public async Task<IActionResult> ModifyBooking([FromBody] DbBooking booking, int shopId,bool isNotify=true)
         {
             string rawRequestBody = await Request.GetRawBodyAsync();
             _logger.LogDebug("ModifyBooking: " + rawRequestBody);

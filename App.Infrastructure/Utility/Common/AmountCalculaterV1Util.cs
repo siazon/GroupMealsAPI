@@ -35,7 +35,7 @@ namespace App.Infrastructure.Utility.Common
                 country = await _countryServiceHandler.GetCountry(shopId);
             var exRate = country.Countries.FirstOrDefault(a => a.Currency == detail.Currency)?.ExchangeRate ?? 1;
             var UKRate = country.Countries.FirstOrDefault(a => a.Currency == "UK")?.ExchangeRate ?? 1;
-            decimal oAmount=GetAmount(detail);
+            decimal oAmount = GetAmount(detail);
             if (detail.Currency == payCurrency)
             {
                 amount = oAmount;
@@ -44,7 +44,7 @@ namespace App.Infrastructure.Utility.Common
             {
                 if (payCurrency == "UK")
                 {
-                    amount = oAmount * (decimal)exRate/ (decimal)UKRate;
+                    amount = oAmount * (decimal)exRate / (decimal)UKRate;
                 }
                 else
                     amount = oAmount / (decimal)exRate;
@@ -153,13 +153,24 @@ namespace App.Infrastructure.Utility.Common
         public decimal getItemPayAmount(BookingDetail bookingDetail)
         {
             decimal amount = getItemAmount(bookingDetail);//付全额
-            if (bookingDetail.BillInfo.PaymentType == PaymentTypeEnum.Deposit)//付押金
+            switch (bookingDetail.BillInfo.PaymentMethod)
             {
-                amount = amount * (decimal)bookingDetail.BillInfo.PayRate;
-            }
-            else if (bookingDetail.BillInfo.PaymentType == PaymentTypeEnum.PayAtStore)//到店付
-            {
-                amount = 0;
+                case PaymentMethodEnum.Full:
+                    break;
+                case PaymentMethodEnum.Percentage:
+                    if (bookingDetail.BillInfo.IsOldCustomer)
+                        amount = 0;
+                    else
+                        amount = amount * (decimal)bookingDetail.BillInfo.PayRate;
+                    break;
+                case PaymentMethodEnum.Fixed:
+                    if (bookingDetail.BillInfo.IsOldCustomer)
+                        amount = 0;
+                    else
+                        amount = (decimal)bookingDetail.BillInfo.PayRate;
+                    break;
+                default:
+                    break;
             }
             return amount;
         }

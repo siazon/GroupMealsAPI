@@ -36,6 +36,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         Task<List<DbCustomer>> List(int shopId);
 
         Task<DbCustomer> LoginCustomer(string email, string password, int shopId);
+        Task<DbCustomer> GetCustomer(string userId, int shopId);
 
         Task<object> SendForgetPasswordVerifyCode(string email, int shopId);
 
@@ -53,7 +54,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         Task<object> UpdateCart(List<BookingDetail> cartInfos, string UserId, int shopId);
         Task<object> GetCart(string UserId, int shopId);
 
-        Task<object> Delete(DbCustomer item,string email,string pwd, int shopId);
+        Task<object> Delete(DbCustomer item, string email, string pwd, int shopId);
     }
 
     public class CustomerServiceHandler : ICustomerServiceHandler
@@ -66,7 +67,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         private readonly IEncryptionHelper _encryptionHelper;
         private readonly IDateTimeUtil _dateTimeUtil;
         private readonly IContentBuilder _contentBuilder;
-        private readonly  ISendEmailUtil _emailUtil;
+        private readonly ISendEmailUtil _emailUtil;
         ITwilioUtil _twilioUtil;
         ILogManager _logger;
         IAmountCalculaterUtil _amountCalculaterV1;
@@ -79,7 +80,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         {
             _customerRepository = customerRepository;
             _encryptionHelper = encryptionHelper;
-            _restaurantRepository= restaurantRepository;
+            _restaurantRepository = restaurantRepository;
             _dateTimeUtil = dateTimeUtil;
             _shopRepository = shopRepository;
             _shopContentRepository = shopContentRepository;
@@ -103,6 +104,13 @@ namespace App.Infrastructure.ServiceHandler.Common
             return returnCustomers.ToList().ClearForOutPut();
         }
 
+        public async Task<DbCustomer> GetCustomer(string userId, int shopId)
+        {
+            Guard.GreaterThanZero(shopId);
+            var customer = await _customerRepository.GetOneAsync(r => r.Id == userId && r.ShopId == shopId);
+
+            return customer;
+        }
         public async Task<DbCustomer> LoginCustomer(string email, string password, int shopId)
         {
 
@@ -123,15 +131,16 @@ namespace App.Infrastructure.ServiceHandler.Common
             var customer = await _customerRepository.GetOneAsync(r =>
                 r.Email == email && r.IsActive.HasValue && r.IsActive.Value && r.ShopId == shopId);
             if (customer == null)
-                return new { msg = "用户不存在",  };
+                return new { msg = "用户不存在", };
 
-          string code= GuidHashUtil.Get6DigitNumber();
+            string code = GuidHashUtil.Get6DigitNumber();
             var cacheKey = string.Format("SendForgetPasswordVerifyCode-{1}-{0}", shopId, email);
             _memoryCache.Set(cacheKey, code);
             var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
             var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.VerifyCode];
             _emailUtil.EmailVerifyCode(email, code, shopInfo, emailParams.TemplateName, _environment.WebRootPath, emailParams.Subject, "Forgot Password", "忘记密码");
-            Task.Run(() => {
+            Task.Run(() =>
+            {
                 Thread.Sleep(60 * 5000);
                 resetCode(cacheKey);
             });
@@ -152,7 +161,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             string code = _memoryCache.Get(cacheKey)?.ToString();
             if (customer.ResetCode != code)
                 return new { msg = "验证码错误或者已过期" };
-            newItem.Id=Guid.NewGuid().ToString();
+            newItem.Id = Guid.NewGuid().ToString();
             newItem.ShopId = shopId;
             newItem.Created = DateTime.UtcNow;
             newItem.Updated = DateTime.UtcNow;
@@ -180,8 +189,9 @@ namespace App.Infrastructure.ServiceHandler.Common
             var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
             var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.VerifyCode];
             _emailUtil.EmailVerifyCode(email, code, shopInfo, emailParams.TemplateName, _environment.WebRootPath, emailParams.Subject, "Verity Code", "注册验证码");
-            Task.Run(() => {
-                Thread.Sleep(60*5000);
+            Task.Run(() =>
+            {
+                Thread.Sleep(60 * 5000);
                 resetCode(cacheKey);
             });
             return new { msg = "ok", };
@@ -218,7 +228,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             var cacheKey = string.Format("SendForgetPasswordVerifyCode-{1}-{0}", shopId, email);
             string code = _memoryCache.Get(cacheKey)?.ToString();
 
-             if (code != resetCode)
+            if (code != resetCode)
                 return new { msg = "验证码错误或已过期", };
 
             customer.Password = _encryptionHelper.EncryptString(password);
@@ -320,10 +330,13 @@ namespace App.Infrastructure.ServiceHandler.Common
         {
             var existingCustomer =
                 await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == userId);
-            foreach (var item in existingCustomer.CartInfos) {
-                var rest = await _restaurantRepository.GetOneAsync(a=>a.Id==item.RestaurantId);
-                if(rest != null)
+            foreach (var item in existingCustomer.CartInfos)
+            {
+                var rest = await _restaurantRepository.GetOneAsync(a => a.Id == item.RestaurantId);
+                if (rest != null)
                 {
+                    item.BillInfo = rest.BillInfo;//更新最新的付款信息
+                    item.BillInfo.IsOldCustomer=existingCustomer.IsOldCustomer;
                     List<TrDbRestaurantMenuItem> courses = new List<TrDbRestaurantMenuItem>();
                     foreach (var cate in rest.Categories)
                     {
@@ -331,12 +344,12 @@ namespace App.Infrastructure.ServiceHandler.Common
                     }
                     foreach (var course in item.Courses)
                     {
-                       var menu=courses.FirstOrDefault(a=>a.Id==course.Id);
+                        var menu = courses.FirstOrDefault(a => a.Id == course.Id);
                         if (menu != null)
                         {
-                            course.MenuItemName=menu.MenuItemName;
-                            course.Price=menu.Price;
-                            course.ChildrenPrice=menu.ChildrenPrice;
+                            course.MenuItemName = menu.MenuItemName;
+                            course.Price = menu.Price;
+                            course.ChildrenPrice = menu.ChildrenPrice;
                         }
 
                     }
@@ -347,8 +360,8 @@ namespace App.Infrastructure.ServiceHandler.Common
                     info.PaidAmount = _amountCalculaterV1.getItemPayAmount(item);
                 }
             }
-            if(existingCustomer.CartInfos.Count>0)
-            existingCustomer=await _customerRepository.UpsertAsync(existingCustomer);
+            if (existingCustomer.CartInfos.Count > 0)
+                existingCustomer = await _customerRepository.UpsertAsync(existingCustomer);
 
             if (existingCustomer == null)
                 return new { msg = "User not found!(用户不存在)", };
@@ -359,14 +372,15 @@ namespace App.Infrastructure.ServiceHandler.Common
         public async Task<object> Delete(DbCustomer item, string email, string pwd, int shopId)
         {
             Guard.NotNull(item);
-            if(item.Email== email)
+            if (item.Email == email)
                 return new { msg = "无法删除你自己的账号", };
             var passwordEncode = _encryptionHelper.EncryptString(pwd);
             var customer = await _customerRepository.GetOneAsync(r =>
                 r.Email == email && r.IsActive.HasValue && r.IsActive.Value
                 && r.ShopId == shopId);
-            if (customer.Password != passwordEncode) {
-                return new { msg = "密码错误",  };
+            if (customer.Password != passwordEncode)
+            {
+                return new { msg = "密码错误", };
             }
 
             var existingItem = await _customerRepository.GetOneAsync(r => r.Id == item.Id && r.ShopId == shopId);
@@ -378,6 +392,6 @@ namespace App.Infrastructure.ServiceHandler.Common
             return new { msg = "ok", };
         }
 
-        
+
     }
 }

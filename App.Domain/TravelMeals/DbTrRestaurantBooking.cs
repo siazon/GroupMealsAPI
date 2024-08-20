@@ -22,7 +22,9 @@ namespace App.Domain.TravelMeals
         public List<PaymentInfo> PaymentInfos { get; set; } = new List<PaymentInfo>();
 
     }
-    public class DbPaymentInfo: PaymentInfo { }
+    public class DbPaymentInfo: PaymentInfo {
+    
+    }
     public class DbOpearationInfo: OperationInfo
     { 
     
@@ -46,6 +48,7 @@ namespace App.Domain.TravelMeals
     public class AmountInfo
     {
         public string Id { get; set; }
+        public string PaymentId { get; set; }
         public decimal Amount { get; set; }
         public decimal PaidAmount { get; set; }
     }
@@ -75,6 +78,7 @@ namespace App.Domain.TravelMeals
         public string RestaurantCountry { get; set; }
         public string SupporterEmail { get; set; }
         public string Memo { get; set; }
+        public string PayCurrency { get; set; }
         public string Currency { get; set; }
         public DateTime? SelectDateTime { get; set; }
         public OrderStatusEnum Status { get; set; }//0:defult,1:canceled
