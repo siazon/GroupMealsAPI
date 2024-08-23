@@ -14,6 +14,7 @@ namespace App.Domain
         public string StripePaymentId { get; set; }
         public string StripeCustomerId { get; set; }
         public string StripeReceiptUrl { get; set; }
+        public string StripeIntentId { get; set; }
         public bool StripeSetupIntent { get; set; }
         public string StripeClientSecretKey { get; set; }
         public bool Paid { get; set; }

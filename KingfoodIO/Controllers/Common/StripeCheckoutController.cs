@@ -15,6 +15,7 @@ using App.Infrastructure.Validation;
 using Azure.Core;
 using KingfoodIO.Application.Filter;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -77,7 +78,7 @@ namespace KingfoodIO.Controllers.Common
             _stripeServiceHandler = stripeServiceHandler;
             _tourBookingServiceHandler = tourBookingServiceHandler;
             _customerServiceHandler = customerServiceHandler;
-            _paymentRepository= paymentRepository;
+            _paymentRepository = paymentRepository;
             _logger = logger;
             _shopServiceHandler = shopServiceHandler;
             _appsettingConfig = appsettingConfig.Value;
@@ -218,12 +219,21 @@ namespace KingfoodIO.Controllers.Common
                         {
                             _logger.LogInfo("SetupIntentSucceeded:" + stripeEvent.Type);
                             var setupIntent = stripeEvent.Data.Object as SetupIntent;
-                            string bookingId = setupIntent.Metadata["bookingId"];
-                            _trRestaurantBookingServiceHandler.BookingPaid(bookingId, setupIntent.CustomerId, "", setupIntent.PaymentMethodId);
+                            string bookingId = setupIntent.Metadata["billId"];
+
+                            var paymentInfos = await _paymentRepository.GetOneAsync(a => a.Id == bookingId);
+                            if (paymentInfos != null)
+                            {
+                                paymentInfos.StripePaymentId = setupIntent.PaymentMethodId;
+                            }
+
+                            await _paymentRepository.UpsertAsync(paymentInfos);
+
                         }
                         break;
                     default:
                         {
+
                             _logger.LogInfo("default:" + stripeEvent.Type);
                             break;
                         }
@@ -257,52 +267,71 @@ namespace KingfoodIO.Controllers.Common
                 var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
 
                 Dictionary<string, string> meta = new Dictionary<string, string>();
-                meta["bookingId"]=bill.BillId;
+                meta["bookingId"] = bill.BillId;
                 meta["billType"] = bill.BillType;
-                meta["customerId"] = "";
-                Customer customer=null;
+                meta["customerId"] = "cus_Qh3EVpxGX20ZM9";
+                var setupIntentService = new SetupIntentService();
+
+                SetupIntent setupIntent = null;
                 try
                 {
-                    var customerService = new CustomerService();
-                     customer = customerService.Get(bill.CustomerId);
+                    setupIntent = setupIntentService.Get(bill.PaymentIntentId);
                 }
                 catch (Exception ex)
                 {
 
                 }
-            
-                if (customer == null)
+                if (setupIntent == null || string.IsNullOrWhiteSpace(setupIntent.CustomerId))
                 {
-                    customer = new CustomerService().Create(new CustomerCreateOptions
+                    string customerId = CreateCustomer(user, setupIntent.CustomerId);
+                    if (string.IsNullOrEmpty(customerId))
                     {
-                        Name = user.UserName,
-                        Email = user.UserEmail,
+                        return BadRequest("无法创建支付客户信息");
+                    }
+                    var paymentIntent = setupIntentService.Create(new SetupIntentCreateOptions
+                    {
+                        //Usage = "on_session",
+                        Customer = customerId,
+                        PaymentMethodTypes = new List<string> { "bancontact", "card", "ideal" },
+                        Metadata = meta
                     });
-                    var cust= _customerServiceHandler.GetCustomer(user.UserId, user.ShopId??11).Result;
-                    cust.StripeCustomerId=customer.Id;
-                    _customerServiceHandler.UpdateAccount(cust,user.ShopId??11);
                 }
-
-
-                var options = new SetupIntentCreateOptions
-                {
-                    //Usage = "on_session",
-                    Customer = customer.Id, 
-                    PaymentMethodTypes = new List<string> { "bancontact", "card", "ideal" },
-                    Metadata = meta
-                };
-
-                var service = new SetupIntentService();
-                var paymentIntent = service.Create(options);
-
-                _trRestaurantBookingServiceHandler.UpdateStripeClientKey(user.UserId, paymentIntent.PaymentMethodId, customer.Id, paymentIntent.ClientSecret);
-                return Json(new { clientSecret = paymentIntent.ClientSecret });
+                _trRestaurantBookingServiceHandler.SavePayKeyCustomerId(user.UserId, setupIntent.CustomerId, setupIntent.Id, setupIntent.ClientSecret);
+                return Json(new { clientSecret = setupIntent.ClientSecret });
             }
             catch (Exception ex)
             {
                 _logger.LogInfo("StripeException.Error" + ex.Message);
                 return BadRequest(ex.Message);
             }
+        }
+
+        private string CreateCustomer(DbToken user, string customerId)
+        {
+            Customer customer = null;
+            if (string.IsNullOrWhiteSpace(customerId))
+            {
+                try
+                {
+                    var customerService = new CustomerService();
+                    customer = customerService.Get(customerId);
+                }
+                catch (Exception ex)
+                {
+                }
+            }
+            if (customer == null)
+            {
+                customer = new CustomerService().Create(new CustomerCreateOptions
+                {
+                    Name = user.UserName,
+                    Email = user.UserEmail,
+                });
+                var cust = _customerServiceHandler.GetCustomer(user.UserId, user.ShopId ?? 11).Result;
+                cust.StripeCustomerId = customer.Id;
+                _customerServiceHandler.UpdateAccount(cust, user.ShopId ?? 11);
+            }
+            return customer?.Id;
         }
 
         /// <summary>
@@ -318,13 +347,13 @@ namespace KingfoodIO.Controllers.Common
             {
                 Dictionary<string, string> meta = new Dictionary<string, string>
                 {
-                    { "bookingId", bookingId}
+                    { "billId", bookingId}
                 };
                 meta["billType"] = "GROUPMEALS";
                 var authHeader = Request.Headers["Wauthtoken"];
                 var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
                 var customer = await _customerServiceHandler.GetCustomer(user.UserId, user.ShopId ?? 11);
-                var paymentInfo = await _paymentRepository.GetOneAsync(a => 1==1);
+                var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == customer.CartInfos[0].AmountInfos[0].PaymentId);
 
 
 
@@ -333,7 +362,7 @@ namespace KingfoodIO.Controllers.Common
                 var options = new PaymentIntentCreateOptions
                 {
                     Amount = Convert.ToInt64(paymentInfo.PaidAmount),
-                    Currency = "eur",
+                    Currency = paymentInfo.Currency,
                     AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
                     {
                         Enabled = true,

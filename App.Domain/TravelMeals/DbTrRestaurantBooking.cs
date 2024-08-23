@@ -57,6 +57,7 @@ namespace App.Domain.TravelMeals
         public string PaymentType { get; set; }
         public decimal Amount { get; set; }
         public decimal PaidAmount { get; set; }
+        public string Currency { get; set; }
     }
     public class DbBooking: BookingDetail
     { 
