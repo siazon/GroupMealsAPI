@@ -13,12 +13,12 @@ namespace App.Infrastructure.Utility.Common
 {
     public interface IAmountCalculaterUtil
     {
-        Task<long> CalculateOrderAmount(List<BookingDetail> details, string payCurrency, int shopId);
-        Task<long> CalculateOrderPaidAmount(List<BookingDetail> details, string payCurrency, int shopId);
-        Task<decimal> CalculateAmountByRate(BookingDetail detail, string payCurrency, int shopId, DbCountry country = null);
-        Task<decimal> CalculatePayAmountByRate(BookingDetail detail, string payCurrency, int shopId, DbCountry country = null);
-        decimal getItemAmount(BookingDetail bookingDetail);
-        decimal getItemPayAmount(BookingDetail bookingDetail);
+        Task<long> CalculateOrderAmount(List<DbBooking> details, string payCurrency, int shopId);
+        Task<long> CalculateOrderPaidAmount(List<DbBooking> details, string payCurrency, int shopId);
+        Task<decimal> CalculateAmountByRate(DbBooking detail, string payCurrency, int shopId, DbCountry country = null);
+        Task<decimal> CalculatePayAmountByRate(DbBooking detail, string payCurrency, int shopId, DbCountry country = null);
+        decimal getItemAmount(DbBooking bookingDetail);
+        decimal getItemPayAmount(DbBooking bookingDetail);
     }
 
     public class AmountCalculaterV1Util : IAmountCalculaterUtil
@@ -28,7 +28,7 @@ namespace App.Infrastructure.Utility.Common
         {
             _countryServiceHandler = countryServiceHandler;
         }
-        public async Task<decimal> CalculateByRate(Func<BookingDetail, decimal> GetAmount, BookingDetail detail, string payCurrency, int shopId, DbCountry country = null)
+        public async Task<decimal> CalculateByRate(Func<DbBooking, decimal> GetAmount, DbBooking detail, string payCurrency, int shopId, DbCountry country = null)
         {
             decimal amount = 0;
             if (country == null)
@@ -52,7 +52,7 @@ namespace App.Infrastructure.Utility.Common
             return amount;
         }
 
-        public async Task<decimal> CalculateAmountByRate(BookingDetail detail, string payCurrency, int shopId, DbCountry country = null)
+        public async Task<decimal> CalculateAmountByRate(DbBooking detail, string payCurrency, int shopId, DbCountry country = null)
         {
 
             decimal amount = await CalculateByRate(getItemAmount, detail, payCurrency, shopId, country);
@@ -61,13 +61,13 @@ namespace App.Infrastructure.Utility.Common
         }
 
 
-        public async Task<decimal> CalculatePayAmountByRate(BookingDetail detail, string payCurrency, int shopId, DbCountry country = null)
+        public async Task<decimal> CalculatePayAmountByRate(DbBooking detail, string payCurrency, int shopId, DbCountry country = null)
         {
             decimal amount = await CalculateByRate(getItemPayAmount, detail, payCurrency, shopId, country);
 
             return amount;
         }
-        public async Task<long> CalculateOrderAmount(List<BookingDetail> details, string payCurrency, int shopId)
+        public async Task<long> CalculateOrderAmount(List<DbBooking> details, string payCurrency, int shopId)
         {
             decimal amount = 0;
             var country = await _countryServiceHandler.GetCountry(shopId);
@@ -78,7 +78,7 @@ namespace App.Infrastructure.Utility.Common
             decimal temp = Math.Round(amount, 2);
             return (long)(temp * 100);
         }
-        public async Task<long> CalculateOrderPaidAmount(List<BookingDetail> details, string payCurrency, int shopId)
+        public async Task<long> CalculateOrderPaidAmount(List<DbBooking> details, string payCurrency, int shopId)
         {
             decimal amount = 0;
             var country = await _countryServiceHandler.GetCountry(shopId);
@@ -116,7 +116,7 @@ namespace App.Infrastructure.Utility.Common
             return discount;
         }
 
-        public decimal getItemAmount(BookingDetail bookingDetail)
+        public decimal getItemAmount(DbBooking bookingDetail)
         {
             decimal amount = 0;
             foreach (var item in bookingDetail.Courses)
@@ -150,7 +150,7 @@ namespace App.Infrastructure.Utility.Common
             return amount;
         }
 
-        public decimal getItemPayAmount(BookingDetail bookingDetail)
+        public decimal getItemPayAmount(DbBooking bookingDetail)
         {
             decimal amount = getItemAmount(bookingDetail);//付全额
             switch (bookingDetail.BillInfo.PaymentMethod)

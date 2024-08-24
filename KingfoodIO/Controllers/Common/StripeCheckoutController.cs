@@ -157,16 +157,16 @@ namespace KingfoodIO.Controllers.Common
                         {
                             _logger.LogInfo("ChargeSucceeded:" + stripeEvent.Type);
                             var paymentIntent = stripeEvent.Data.Object as Charge;
-                            string bookingId = paymentIntent.Metadata["bookingId"];
-                            string billType = paymentIntent.Metadata["billType"];
-                            //if (billType == "TOUR")
-                            //{
-                            //    _tourBookingServiceHandler.BookingPaid(bookingId, paymentIntent.CustomerId, paymentIntent.Id, paymentIntent.PaymentMethod, paymentIntent.ReceiptUrl);
-                            //}
-                            //else
+                            string billId = paymentIntent.Metadata["billId"];
+                            var paymentInfos = await _paymentRepository.GetOneAsync(a => a.Id == billId);
+                            if (paymentInfos != null)
                             {
-                                _trRestaurantBookingServiceHandler.BookingPaid(bookingId, paymentIntent.CustomerId, paymentIntent.Id, paymentIntent.PaymentMethod, paymentIntent.ReceiptUrl);
+                                paymentInfos.StripeChargeId = paymentIntent.Id;
+                                paymentInfos.StripeReceiptUrl = paymentIntent.ReceiptUrl;
+                                paymentInfos.PayTime = DateTime.UtcNow;
+                                paymentInfos.Paid = true;
                             }
+                            await _paymentRepository.UpsertAsync(paymentInfos);
                         }
                         catch (Exception ex)
                         {
@@ -178,22 +178,14 @@ namespace KingfoodIO.Controllers.Common
                         {
                             _logger.LogInfo("ChargeSucceeded:" + stripeEvent.Type);
                             var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
-                            string bookingId = paymentIntent.Metadata["bookingId"];
-                            string billType = paymentIntent.Metadata["billType"];
-                            if (billType == "TOUR")
-                            {
-                                _tourBookingServiceHandler.BookingPaid(bookingId, paymentIntent.CustomerId, paymentIntent.Id, paymentIntent.PaymentMethodId);
-                            }
-                            else
-                            {
-                                _trRestaurantBookingServiceHandler.BookingPaid(bookingId, paymentIntent.CustomerId, paymentIntent.Id, paymentIntent.PaymentMethodId);
-                            }
+                            string billId = paymentIntent.Metadata["billId"];
+
+                            _trRestaurantBookingServiceHandler.BookingPaid(billId, paymentIntent.CustomerId, paymentIntent.Id, paymentIntent.PaymentMethodId);
                         }
                         catch (Exception ex)
                         {
                             _logger.LogInfo("ChargeSucceeded&PaymentIntentSucceeded.Error:" + ex.Message);
                         }
-
                         break;
                     case Events.CheckoutSessionCompleted:
                         {
@@ -201,44 +193,40 @@ namespace KingfoodIO.Controllers.Common
                             _logger.LogInfo("webhook:CheckoutSessionCompleted");
                             var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
                             _logger.LogInfo("webhook:CheckoutSessionCompleted" + session.Id);
-                            Task.Run(() =>
-                            {
-                                //_trRestaurantBookingServiceHandler.BookingPaid(session);
-                            });
+
                         }
                         break;
                     case Events.ChargeRefunded:
+                        _logger.LogInfo("ChargeRefunded:" + stripeEvent.Type);
+                        var charge = stripeEvent.Data.Object as Stripe.Charge;
+
+                        var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == "");
+                        if (paymentInfo != null)
                         {
-                            _logger.LogInfo("ChargeRefunded:" + stripeEvent.Type);
-                            var charge = stripeEvent.Data.Object as Stripe.Charge;
-                            _tourBookingServiceHandler.BookingRefund(charge.Id);
+                            paymentInfo.RefundAmount = charge.AmountRefunded/100; 
                         }
+                        await _paymentRepository.UpsertAsync(paymentInfo);
                         break;
-                    //case Events.SetupIntentCreated: 
                     case Events.SetupIntentSucceeded:
                         {
                             _logger.LogInfo("SetupIntentSucceeded:" + stripeEvent.Type);
                             var setupIntent = stripeEvent.Data.Object as SetupIntent;
-                            string bookingId = setupIntent.Metadata["billId"];
+                            string billId = setupIntent.Metadata["billId"];
 
-                            var paymentInfos = await _paymentRepository.GetOneAsync(a => a.Id == bookingId);
-                            if (paymentInfos != null)
+                            paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == billId);
+                            if (paymentInfo != null)
                             {
-                                paymentInfos.StripePaymentId = setupIntent.PaymentMethodId;
+                                paymentInfo.StripePaymentMethodId = setupIntent.PaymentMethodId;
                             }
-
-                            await _paymentRepository.UpsertAsync(paymentInfos);
-
+                            await _paymentRepository.UpsertAsync(paymentInfo);
                         }
                         break;
                     default:
                         {
-
                             _logger.LogInfo("default:" + stripeEvent.Type);
                             break;
                         }
                 }
-
                 _logger.LogInfo("return OK");
                 return Ok();
             }
@@ -248,9 +236,7 @@ namespace KingfoodIO.Controllers.Common
                 _logger.LogInfo("StripeException.Error" + e);
                 return BadRequest();
             }
-
         }
-
         /// <summary>
         /// 
         /// </summary>
@@ -265,38 +251,7 @@ namespace KingfoodIO.Controllers.Common
             {
                 var authHeader = Request.Headers["Wauthtoken"];
                 var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
-
-                Dictionary<string, string> meta = new Dictionary<string, string>();
-                meta["bookingId"] = bill.BillId;
-                meta["billType"] = bill.BillType;
-                meta["customerId"] = "cus_Qh3EVpxGX20ZM9";
-                var setupIntentService = new SetupIntentService();
-
-                SetupIntent setupIntent = null;
-                try
-                {
-                    setupIntent = setupIntentService.Get(bill.PaymentIntentId);
-                }
-                catch (Exception ex)
-                {
-
-                }
-                if (setupIntent == null || string.IsNullOrWhiteSpace(setupIntent.CustomerId))
-                {
-                    string customerId = CreateCustomer(user, setupIntent.CustomerId);
-                    if (string.IsNullOrEmpty(customerId))
-                    {
-                        return BadRequest("无法创建支付客户信息");
-                    }
-                    var paymentIntent = setupIntentService.Create(new SetupIntentCreateOptions
-                    {
-                        //Usage = "on_session",
-                        Customer = customerId,
-                        PaymentMethodTypes = new List<string> { "bancontact", "card", "ideal" },
-                        Metadata = meta
-                    });
-                }
-                _trRestaurantBookingServiceHandler.SavePayKeyCustomerId(user.UserId, setupIntent.CustomerId, setupIntent.Id, setupIntent.ClientSecret);
+                SetupIntent setupIntent = _stripeServiceHandler.CreateSetupPayIntent(bill, user);
                 return Json(new { clientSecret = setupIntent.ClientSecret });
             }
             catch (Exception ex)
@@ -306,59 +261,25 @@ namespace KingfoodIO.Controllers.Common
             }
         }
 
-        private string CreateCustomer(DbToken user, string customerId)
-        {
-            Customer customer = null;
-            if (string.IsNullOrWhiteSpace(customerId))
-            {
-                try
-                {
-                    var customerService = new CustomerService();
-                    customer = customerService.Get(customerId);
-                }
-                catch (Exception ex)
-                {
-                }
-            }
-            if (customer == null)
-            {
-                customer = new CustomerService().Create(new CustomerCreateOptions
-                {
-                    Name = user.UserName,
-                    Email = user.UserEmail,
-                });
-                var cust = _customerServiceHandler.GetCustomer(user.UserId, user.ShopId ?? 11).Result;
-                cust.StripeCustomerId = customer.Id;
-                _customerServiceHandler.UpdateAccount(cust, user.ShopId ?? 11);
-            }
-            return customer?.Id;
-        }
-
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="bookingId"></param>
+        /// <param name="billId"></param>
         /// <returns></returns>
         [HttpPost]
         [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<ActionResult> SetupPayAction([FromBody] string bookingId)
+        public async Task<ActionResult> SetupPayAction([FromBody] string billId)
         {
             try
             {
                 Dictionary<string, string> meta = new Dictionary<string, string>
                 {
-                    { "billId", bookingId}
+                    { "billId", billId}
                 };
-                meta["billType"] = "GROUPMEALS";
                 var authHeader = Request.Headers["Wauthtoken"];
                 var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
                 var customer = await _customerServiceHandler.GetCustomer(user.UserId, user.ShopId ?? 11);
                 var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == customer.CartInfos[0].AmountInfos[0].PaymentId);
-
-
-
-                //var setupService = new SetupIntentService();
-                //var temp = setupService.Get(booking.StripePaymentId);
                 var options = new PaymentIntentCreateOptions
                 {
                     Amount = Convert.ToInt64(paymentInfo.PaidAmount),
@@ -368,7 +289,7 @@ namespace KingfoodIO.Controllers.Common
                         Enabled = true,
                     },
                     Customer = paymentInfo.StripeCustomerId,
-                    PaymentMethod = paymentInfo.StripePaymentId,
+                    PaymentMethod = paymentInfo.StripePaymentMethodId,
                     Confirm = true,
                     OffSession = true,
                     ReturnUrl = "https://www.groupmeals.com",
@@ -376,25 +297,20 @@ namespace KingfoodIO.Controllers.Common
                 };
                 var service = new PaymentIntentService();
                 service.Create(options);
-
-                //var setupService = new SetupIntentService();
-                //var temp = setupService.Get(booking.StripeClientSecretKey);
-                //setupService.Cancel(temp.Id);
-
-
             }
             catch (StripeException e)
             {
+                _logger.LogError("Error code: " + e.Message);
                 switch (e.StripeError.Type)
                 {
                     case "card_error":
                         // Error code will be authentication_required if authentication is needed
-                        Console.WriteLine("Error code: " + e.StripeError.Code);
+                        _logger.LogError("Error code: " + e.StripeError.Code + " : " + e.Message);
                         var paymentIntentId = e.StripeError.PaymentIntent.Id;
                         var service = new PaymentIntentService();
                         var paymentIntent = service.Get(paymentIntentId);
 
-                        Console.WriteLine(paymentIntent.Id);
+                        _logger.LogError(paymentIntent.Id);
                         break;
                     default:
                         break;
@@ -416,50 +332,38 @@ namespace KingfoodIO.Controllers.Common
             {
                 Dictionary<string, string> meta = new Dictionary<string, string>
                 {
-                    { "bookingId", bill.BillId}
+                    { "billId", bill.BillId}
                 };
                 TrDbRestaurantBooking booking = null;
                 TrDbRestaurantBooking gpBooking = null;
                 long Amount = 0;
-                //if (bill.BillType == "TOUR")
-                //{
-                //    meta["billType"] = "TOUR";
-                //    var tourBooking = await _tourBookingServiceHandler.GetTourBooking(bill.BillId);
-                //    booking = tourBooking;
-                //    Amount = CalculateTourOrderAmount(tourBooking);
-                //}
-                //else
-                {
-                    meta["billType"] = "GROUPMEALS";
 
-                    gpBooking = await _trRestaurantBookingServiceHandler.GetBooking(bill.BillId);
-                    if (gpBooking == null)
-                    {
-                        return BadRequest("Can't find the booking by Id");
-                    }
-                    booking = gpBooking;
-                    var shop = await _shopServiceHandler.GetShopInfo(shopId);
-                    if (bill.SetupPay == 1)
-                        Amount = 100;
-                    else
-                        Amount = await _amountCalculaterV1.CalculateOrderPaidAmount(gpBooking.Details, gpBooking.PayCurrency, gpBooking.ShopId ?? 11);//  CalculateOrderAmount(gpBooking, shop.ExchangeRate);
+
+                gpBooking = await _trRestaurantBookingServiceHandler.GetBooking(bill.BillId);
+                if (gpBooking == null)
+                {
+                    return BadRequest("Can't find the booking by Id");
                 }
+                booking = gpBooking;
+                var shop = await _shopServiceHandler.GetShopInfo(shopId);
+                if (bill.SetupPay == 1)
+                    Amount = 100;
+                else
+                    Amount = await _amountCalculaterV1.CalculateOrderPaidAmount(gpBooking.Details, gpBooking.PayCurrency, gpBooking.ShopId ?? 11);//  CalculateOrderAmount(gpBooking, shop.ExchangeRate);
                 string currency = "eur";
                 if (gpBooking.PayCurrency == "UK")
                     currency = "gbp";
-                if (booking != null && !string.IsNullOrWhiteSpace(booking.PaymentInfos[0].StripePaymentId))//upload exist payment
+                if (booking != null && !string.IsNullOrWhiteSpace(booking.PaymentInfos[0].StripePaymentMethodId))//upload exist payment
                 {
                     var service = new PaymentIntentService();
-                    var existpaymentIntent = service.Get(booking.PaymentInfos[0].StripePaymentId);
+                    var existpaymentIntent = service.Get(booking.PaymentInfos[0].StripePaymentMethodId);
                     if (existpaymentIntent != null && existpaymentIntent.Status == "requires_payment_method")
                     {
-                        var payment = UpdatePaymentIntent(booking.PaymentInfos[0].StripePaymentId, Amount, meta);
+                        var payment = UpdatePaymentIntent(booking.PaymentInfos[0].StripePaymentMethodId, Amount, meta);
                         _logger.LogInfo("UpdatePaymentIntent:" + booking.ToString() + bill.ToString());
                         return Json(new { clientSecret = payment.ClientSecret, paymentIntentId = payment.Id });
                     }
-
                 }
-
                 var options = new PaymentIntentCreateOptions
                 {
                     Amount = Amount,
@@ -474,10 +378,7 @@ namespace KingfoodIO.Controllers.Common
                 var paymentIntentService = new PaymentIntentService();
                 var paymentIntent = paymentIntentService.Create(options);
                 _logger.LogInfo("AddPaymentIntent:" + booking.ToString() + bill.ToString());
-                if (bill.BillType == "TOUR")
-                    _tourBookingServiceHandler.BindingPayInfoToTourBooking(bill.BillId, paymentIntent.Id, paymentIntent.ClientSecret);
-                else
-                    _trRestaurantBookingServiceHandler.BindingPayInfoToTourBooking(gpBooking, paymentIntent.Id, paymentIntent.ClientSecret, bill.SetupPay == 1);
+                _trRestaurantBookingServiceHandler.BindingPayInfoToTourBooking(gpBooking, paymentIntent.Id, paymentIntent.ClientSecret, bill.SetupPay == 1);
                 return Json(new { clientSecret = paymentIntent.ClientSecret, paymentIntentId = paymentIntent.Id });
             }
             catch (Exception ex)
@@ -499,65 +400,31 @@ namespace KingfoodIO.Controllers.Common
             var payment = service.Update(paymentId, options);
             return payment;
         }
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="bill"></param>
-        /// <param name="shopId"></param>
-        /// <returns></returns>
-        [HttpGet]
-        public async Task<ActionResult> TestWebhook(string billId, int shopId)
-        {
-            var booking = await _trRestaurantBookingServiceHandler.GetBooking(billId);
 
-            //_trRestaurantBookingServiceHandler.BookingPaid(billId, booking.PaymentInfos[0].StripeCustomerId, booking.PaymentInfos[0].StripePaymentId, "paymethod", "url");
-            return Json(new { msg = "OK", });
-        }
         /// <summary>
         /// 
         /// </summary>
         /// <param name="bill"></param>
-        /// <param name="shopId"></param>
         /// <returns></returns>
         [HttpPost]
-        public async Task<ActionResult> RefundPay([FromBody] PayIntentParam bill, int shopId)
+        public ActionResult RefundPay([FromBody] PayIntentParam bill)
         {
-            //_stripeUtil.Refund(bill);
-            //return Json(new { msg = "Date Invalid" });
+
             try
             {
                 Dictionary<string, string> meta = new Dictionary<string, string>
                 {
-                    { "bookingId", bill.BillId}
+                    { "billId", bill.BillId}
                 };
-                string chargeId = "";
-                TourBooking tourBooking = null;
-                if (bill.BillType == "TOUR")
-                {
-                    tourBooking = await _tourBookingServiceHandler.GetTourBooking(bill.BillId);
-                    var selectTimeSpan = (DateTime.Parse(tourBooking.SelectDate) - DateTime.UtcNow).TotalHours;
-                    if (selectTimeSpan > 0 && selectTimeSpan < 24)
-                        chargeId = tourBooking.StripeChargeId;
-                    else
-                    {
-                        return Json(new { msg = "Date Invalid" });
-                    }
-                }
-                else
-                {
-                    TrDbRestaurantBooking booking = await _trRestaurantBookingServiceHandler.GetBooking(bill.BillId);
-                    chargeId = booking.PaymentInfos[0].StripeChargeId;
-                }
+                string chargeId = "ch_3Pr72sAwWylbYgqy2FyCO45V";
                 var options = new RefundCreateOptions
                 {
                     Charge = chargeId,
-                    Amount = 1
+                    Amount = 100
                 };
                 var service = new RefundService();
                 var temp = service.Create(options);
-                if (bill.BillType == "TOUR")
-                    _tourBookingServiceHandler.EmailCustomerForRefund(tourBooking);
-                return Json(new { msg = "OK", clientSecret = temp.ChargeId });
+                return Json(new { msg = "OK", billId = temp.ChargeId });
             }
             catch (Exception ex)
             {
@@ -566,59 +433,7 @@ namespace KingfoodIO.Controllers.Common
             }
         }
 
-        private decimal getItemAmount(BookingDetail bookingDetail)
-        {
-            decimal amount = 0;
-            foreach (var item in bookingDetail.Courses)
-            {
-                if (item.Qty < 10)
-                    amount += item.Price * 10;
-                else
-                    amount += item.Price * item.Qty;
-            }
-            return amount;
-        }
-        private decimal getItemPayAmount(BookingDetail bookingDetail)
-        {
-            decimal amount = getItemAmount(bookingDetail) - getDiscount(bookingDetail);
-            if (bookingDetail.BillInfo.PaymentType == PaymentTypeEnum.Deposit)//付押金
-            {
-                amount = amount * (decimal)bookingDetail.BillInfo.PayRate;
-            }
-            else if (bookingDetail.BillInfo.PaymentType == PaymentTypeEnum.PayAtStore)//到店付
-            {
-                amount = 0;
-            }
-            return amount;
-        }
-        private decimal getDiscount(BookingDetail bookingDetail)
-        {
-            decimal discount = 0;
-            foreach (var item in bookingDetail.Courses)
-            {
-                if (item.Qty == 4 || item.Qty == 5)
-                {
-                    discount += 10 * item.Price * 0.2m;
-                }
-                else if (item.Qty == 6 || item.Qty == 7)
-                {
-                    discount += 10 * item.Price * 0.15m;
-                }
-                else if (item.Qty == 8)
-                {
-                    discount += 10 * item.Price * 0.1m;
-                }
-                else if (item.Qty == 9)
-                {
-                    discount += 10 * item.Price * 0.05m;
-                }
-                else
-                {
-                    //discount += item.Price * item.Qty;
-                }
-            }
-            return discount;
-        }
+
     }
 
 }

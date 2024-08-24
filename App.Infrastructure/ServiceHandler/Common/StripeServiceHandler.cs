@@ -19,17 +19,17 @@ namespace App.Infrastructure.ServiceHandler.Common
     public interface IStripeServiceHandler
     {
         Task<StripeBase> GetBooking(string id);
-        Task<StripeBase> BindingPayInfoToBooking(string bookingId, string PaymentId, string stripeClientSecretKey);
         SetupIntent CreateSetupPayIntent(PayIntentParam bill, DbToken user);
     }
-    public class StripeServiceHandler: IStripeServiceHandler
+    public class StripeServiceHandler : IStripeServiceHandler
     {
 
         private readonly IDbCommonRepository<StripeBase> _stripeBaseRepository;
         private readonly IDbCommonRepository<DbPaymentInfo> _dbPaymentInfoRepository;
-        public StripeServiceHandler(IDbCommonRepository<StripeBase> stripeBaseRepository, IDbCommonRepository<DbPaymentInfo> dbPaymentInfoRepository) {
-            _stripeBaseRepository=stripeBaseRepository;
-            _dbPaymentInfoRepository=dbPaymentInfoRepository;
+        public StripeServiceHandler(IDbCommonRepository<StripeBase> stripeBaseRepository, IDbCommonRepository<DbPaymentInfo> dbPaymentInfoRepository)
+        {
+            _stripeBaseRepository = stripeBaseRepository;
+            _dbPaymentInfoRepository = dbPaymentInfoRepository;
         }
         public async Task<StripeBase> GetBooking(string id)
         {
@@ -37,39 +37,29 @@ namespace App.Infrastructure.ServiceHandler.Common
             return Booking;
         }
 
-        public async Task<StripeBase> BindingPayInfoToBooking(string bookingId, string PaymentId, string stripeClientSecretKey)
+
+        public SetupIntent CreateSetupPayIntent(PayIntentParam bill, DbToken user)
         {
-            var booking = await _stripeBaseRepository.GetOneAsync(r => r.Id == bookingId);
-            Guard.NotNull(booking);
-            booking.StripePaymentId = PaymentId;
-            booking.StripeClientSecretKey = stripeClientSecretKey;
-            var res = await _stripeBaseRepository.UpsertAsync(booking);
-            return res;
-        }
-        public SetupIntent CreateSetupPayIntent(PayIntentParam bill, DbToken user) {
 
             Dictionary<string, string> meta = new Dictionary<string, string>();
             meta["billId"] = bill.BillId;
-            meta["billType"] = bill.BillType;
             meta["customerId"] = bill.CustomerId;
             var setupIntentService = new SetupIntentService();
             SetupIntent setupIntent = null;
-            if (string.IsNullOrWhiteSpace(bill.PaymentIntentId))
+            if (!string.IsNullOrWhiteSpace(bill.PaymentIntentId))
             {
                 try
                 {
                     setupIntent = setupIntentService.Get(bill.PaymentIntentId);
                 }
                 catch (Exception ex)
-                {
-
-                }
+                { }
             }
             if (setupIntent == null || string.IsNullOrWhiteSpace(setupIntent?.CustomerId))
             {
-                string customerId =bill.CustomerId;
+                string customerId = bill.CustomerId;
 
-                customerId=CreateCustomer(user, customerId)?.Id;
+                customerId = CreateCustomer(user, customerId)?.Id;
                 if (string.IsNullOrEmpty(customerId))
                 {
                     return null;

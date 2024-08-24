@@ -112,7 +112,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
             if (!string.IsNullOrWhiteSpace(chargeId))
                 booking.StripeChargeId = chargeId;
             if (!string.IsNullOrWhiteSpace(payMethodId))
-                booking.StripePaymentId = payMethodId;
+                booking.StripePaymentMethodId = payMethodId;
             if (!string.IsNullOrWhiteSpace(customerId))
             {
                 booking.StripeCustomerId = customerId;
@@ -264,7 +264,7 @@ namespace App.Infrastructure.ServiceHandler.Tour
         {
             var booking = await _tourBookingRepository.GetOneAsync(r => r.Id == bookingId);
             Guard.NotNull(booking);
-            booking.StripePaymentId = PaymentId;
+            booking.StripePaymentMethodId = PaymentId;
             booking.StripeClientSecretKey = stripeClientSecretKey;
             var res = await _tourBookingRepository.UpsertAsync(booking);
             return res;

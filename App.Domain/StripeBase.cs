@@ -11,7 +11,7 @@ namespace App.Domain
         public string StripeProductId { get; set; }
         public string StripePriceId { get; set; }
         public string StripeChargeId { get; set; }
-        public string StripePaymentId { get; set; }
+        public string StripePaymentMethodId { get; set; }
         public string StripeCustomerId { get; set; }
         public string StripeReceiptUrl { get; set; }
         public string StripeIntentId { get; set; }

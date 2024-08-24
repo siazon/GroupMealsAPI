@@ -36,7 +36,7 @@ namespace App.Domain.Common.Customer
         public ulong AuthValue { get; set; }
         public string PayCurrency { get; set; }
         public List<CommonParam> Favorites { get; set; }
-        public List<BookingDetail> CartInfos { get; set; }=new List<BookingDetail>();
+        public List<DbBooking> CartInfos { get; set; }=new List<DbBooking>();
 
     }
 

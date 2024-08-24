@@ -17,7 +17,7 @@ namespace App.Domain.TravelMeals
         public string CustomerPhone { get; set; }
         public string PayCurrency { get; set; }
         public double Rebate { get; set; }
-        public List<BookingDetail> Details { get; set; } = new List<BookingDetail>();
+        public List<DbBooking> Details { get; set; } = new List<DbBooking>();
         public List<OperationInfo> Operations { get; set; } = new List<OperationInfo>();
         public List<PaymentInfo> PaymentInfos { get; set; } = new List<PaymentInfo>();
 
@@ -57,7 +57,10 @@ namespace App.Domain.TravelMeals
         public string PaymentType { get; set; }
         public decimal Amount { get; set; }
         public decimal PaidAmount { get; set; }
+        public decimal RefundAmount { get; set; }
         public string Currency { get; set; }
+        public DateTime PayTime { get; set; }
+        
     }
     public class DbBooking: BookingDetail
     { 

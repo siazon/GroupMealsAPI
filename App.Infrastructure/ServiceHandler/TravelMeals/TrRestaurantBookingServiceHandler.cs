@@ -57,7 +57,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
     {
         Task<TrDbRestaurantBooking> GetBooking(string id);
         Task<bool> UpdateBooking(string billId, string productId, string priceId);
-        Task<bool> BookingPaid(Stripe.Checkout.Session session);
         Task<bool> BookingPaid(string bookingId, string customerId = "", string chargeId = "", string payMethodId = "", string receiptUrl = "");
         Task<bool> SavePayKeyCustomerId(string userId, string customerId, string intentId, string secertKey);
         Task<TrDbRestaurantBooking> BindingPayInfoToTourBooking(TrDbRestaurantBooking gpBooking, string PaymentId, string stripeClientSecretKey, bool isSetupPay);
@@ -435,9 +434,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 _logger.LogError(ex.Message);
             }
-
-
-
         }
         public async Task<bool> UpdateAcceptedReason(string billId, string subBillId, string reason, string operater)
         {
@@ -456,40 +452,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return true;
         }
 
-        public async Task<bool> BookingPaid(Stripe.Checkout.Session session)
-        {
-            try
-            {
-                _logger.LogInfo("BookingPaid.session");
-                TrDbRestaurantBooking booking = await _restaurantBookingRepository.GetOneAsync(r => r.PaymentInfos[0].StripePriceId == session.Metadata["priceId"]);
-                if (booking == null) return false;
-                booking.PaymentInfos[0].Paid = true;
-
-                _logger.LogInfo("BookingPaid.session.id:" + booking.Id);
-                var temp = await _restaurantBookingRepository.UpsertAsync(booking);
-
-                _logger.LogInfo("BookingPaid.UpdateAsync.session" + temp.Id);
-                var newItem = await _stripeCheckoutSeesionRepository.UpsertAsync(new StripeCheckoutSeesion() { Data = session, BookingId = booking.Id });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogInfo("BookingPaid.session.err" + ex);
-            }
-            return true;
-        }
         public async Task<bool> BookingPaid(string bookingId, string customerId = "", string chargeId = "", string payMethodId = "", string receiptUrl = "")
         {
             try
             {
                 _logger.LogInfo("----------------BookingPaid");
-
-
-
-
-
-
-
-
                 DbBooking booking = await _bookingRepository.GetOneAsync(r => 1 == 1);
                 if (booking == null)
                 {
@@ -498,7 +465,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
                 var PaymentInfos = await _paymentRepository.GetOneAsync(a => a.StripeCustomerId == customerId);
                 if (!string.IsNullOrWhiteSpace(payMethodId))
-                    PaymentInfos.StripePaymentId = payMethodId;
+                    PaymentInfos.StripePaymentMethodId = payMethodId;
                 if (!string.IsNullOrWhiteSpace(customerId))
                 {
                     PaymentInfos.StripeCustomerId = customerId;
@@ -506,7 +473,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
                 if (!string.IsNullOrWhiteSpace(receiptUrl))
                 {
-
                     PaymentInfos.StripeChargeId = chargeId;
                     PaymentInfos.StripeReceiptUrl = receiptUrl;
                     PaymentInfos.Paid = true;
@@ -769,13 +735,36 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             else
             {
+                string currency = "eur";
+                string payCurrency = booking.PayCurrency.Trim().ToLower();
+                switch (payCurrency)
+                {
+                    case "eu":
+                        currency = "eur";
+                        break;
+                    case "uk":
+                        currency = "gbp";
+                        break;
+                    default:
+                        break;
+                }
+                foreach (var item in userInfo.CartInfos)
+                {
+                    await InitBookingDetail(item, user.UserId);
+                    item.BillInfo.IsOldCustomer = userInfo.IsOldCustomer;
+                }
                 DbPaymentInfo dbPaymentInfo = new DbPaymentInfo()
                 {
                     Id = Guid.NewGuid().ToString(),
                     Amount = await _amountCalculaterV1.CalculateOrderAmount(userInfo.CartInfos, booking.PayCurrency, shopId),
                     PaidAmount = await _amountCalculaterV1.CalculateOrderPaidAmount(userInfo.CartInfos, booking.PayCurrency, shopId),
-                    Currency = booking.PayCurrency
+                    Currency = currency
                 };
+                if (dbPaymentInfo.PaidAmount == 0)
+                {
+                    PlaceBooking(userInfo.CartInfos, shopId, user);
+                }
+
                 SetupIntent setupIntent = _stripeServiceHandler.CreateSetupPayIntent(new PayIntentParam()
                 {
                     BillId = dbPaymentInfo.Id,
@@ -787,7 +776,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
                 foreach (var item in userInfo.CartInfos)
                 {
-                    await InitBookingDetail(item, user.UserId);
                     item.AmountInfos[0].PaymentId = dbPaymentInfo.Id;
                 }
 
@@ -802,41 +790,34 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         //SendEmail(bookings, user.ShopId ?? 11);
                     }
                 }
+            }
+            return new ResponseModel { msg = "ok", code = 200, data = null };
+        }
+        private async void PlaceBooking(List<DbBooking> cartInfos,int shopId,DbToken user) {
+            List<DbBooking> bookings = new List<DbBooking>();
+            foreach (var item in cartInfos)
+            {
+                DbBooking dbBooking = new DbBooking()
+                {
+                    BookingRef = "GM" + SnowflakeId.getSnowId(),
+                    ShopId = shopId,
+                    RestaurantId = item.RestaurantId,
+                    Currency = item.Currency,
+                    Memo = item.Memo,
+                    GroupRef = item.GroupRef,
+                    ContactEmail = item.ContactEmail,
+                    ContactName = item.ContactName,
+                    ContactPhone = item.ContactPhone,
+                    ContactWechat = item.ContactWechat,
+                    ContactInfos = item.ContactInfos,
+                    Courses = item.Courses,
+                    BillInfo = item.BillInfo,
+                };
+                await InitBookingDetail(dbBooking, user.UserId);
+                dbBooking.AmountInfos[0].PaymentId = "";
+                bookings.Add(dbBooking);
 
             }
-
-            return new ResponseModel { msg = "ok", code = 200, data = null };
-
-
-
-            //List<DbBooking> bookings = new List<DbBooking>();
-            //foreach (var item in userInfo.CartInfos)
-            //{
-            //    DbBooking dbBooking = new DbBooking()
-            //    {
-            //        BookingRef = "GM" + SnowflakeId.getSnowId(),
-            //        ShopId = shopId,
-            //        RestaurantId = item.RestaurantId,
-            //        Currency = item.Currency,
-            //        Memo = item.Memo,
-            //        GroupRef = item.GroupRef,
-            //        ContactEmail = item.ContactEmail,
-            //        ContactName = item.ContactName,
-            //        ContactPhone = item.ContactPhone,
-            //        ContactWechat = item.ContactWechat,
-            //        ContactInfos = item.ContactInfos,
-            //        Courses = item.Courses,
-            //        BillInfo = item.BillInfo,
-            //    };
-
-            //    dbBooking.BillInfo.IsOldCustomer = userInfo.IsOldCustomer;//同步客户信息
-            //    await InitBookingDetail(dbBooking, user.UserId);
-            //    dbBooking.AmountInfos[0].PaymentId = "";
-            //    bookings.Add(dbBooking);
-
-            //}
-
-
         }
         private async Task<bool> InitBooking(TrDbRestaurantBooking booking, string userId)
         {
@@ -868,7 +849,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             return noPay;
         }
-        private async Task<bool> InitBookingDetail(BookingDetail item, string userId)
+        private async Task<bool> InitBookingDetail(DbBooking item, string userId)
         {
 
             if (string.IsNullOrWhiteSpace(item.BookingRef))
@@ -1032,7 +1013,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<TrDbRestaurantBooking> BindingPayInfoToTourBooking(TrDbRestaurantBooking booking, string PaymentId, string stripeClientSecretKey, bool isSetupPay)
         {
             Guard.NotNull(booking);
-            booking.PaymentInfos[0].StripePaymentId = PaymentId;
+            booking.PaymentInfos[0].StripePaymentMethodId = PaymentId;
             booking.PaymentInfos[0].SetupPay = isSetupPay;
             booking.PaymentInfos[0].StripeClientSecretKey = stripeClientSecretKey;
             var res = await _restaurantBookingRepository.UpsertAsync(booking);
@@ -1325,7 +1306,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (paymentType == PaymentTypeEnum.Deposit && payRate <= 0)
                 return new ResponseModel { msg = "payRate should greater than 0", code = 500 };
             decimal amount = 0, paidAmount = 0;
-            BookingDetail detail = new BookingDetail() { Courses = menuItems, BillInfo = new RestaurantBillInfo() { PaymentType = paymentType, PayRate = payRate } };
+            DbBooking detail = new DbBooking() { Courses = menuItems, BillInfo = new RestaurantBillInfo() { PaymentType = paymentType, PayRate = payRate } };
             paidAmount = _amountCalculaterV1.getItemPayAmount(detail);
             amount = _amountCalculaterV1.getItemAmount(detail);
             return new ResponseModel { msg = "ok", code = 200, data = new { amount, paidAmount } };
@@ -1343,7 +1324,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 if (Bookings == null || Bookings.Count() == 0)
                 {
                     return new ResponseModel { msg = "detailId can't find in Order list", code = 500, };
-
                 }
 
                 foreach (var item in Bookings)
@@ -1357,8 +1337,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         {
                             UKAmount += await _amountCalculaterV1.CalculateAmountByRate(detail, "UK", item.ShopId ?? 11);
                             UKPaidAmount += await _amountCalculaterV1.CalculatePayAmountByRate(detail, "UK", item.ShopId ?? 11);
-
-
                         }
                         else
                         {
@@ -1523,7 +1501,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                             StripeChargeId = pay.StripeChargeId,
                             StripeClientSecretKey = pay.StripeClientSecretKey,
                             StripeCustomerId = pay.StripeCustomerId,
-                            StripePaymentId = pay.StripePaymentId,
+                            StripePaymentMethodId = pay.StripePaymentMethodId,
                             StripePriceId = pay.StripePriceId,
                             StripeProductId = pay.StripeProductId,
                             StripeReceiptUrl = pay.StripeReceiptUrl,

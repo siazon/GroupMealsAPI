@@ -32,7 +32,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         Task EmailCustomer(DbBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject);
         void SendModifiedEmail(DbBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject);
-        Task SendCancelEmail(DbShop shopInfo, TrDbRestaurantBooking booking, BookingDetail detail, string webPath, string tempName, string subject, params string[] ccEmail);
+        Task SendCancelEmail(DbShop shopInfo, TrDbRestaurantBooking booking, DbBooking detail, string webPath, string tempName, string subject, params string[] ccEmail);
     }
     public class SendEmailUtil : ISendEmailUtil
     {
@@ -401,7 +401,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             });
 
         }
-        public async Task SendCancelEmail(DbShop shopInfo, TrDbRestaurantBooking booking, BookingDetail detail, string webPath, string tempName, string subject, params string[] ccEmail)
+        public async Task SendCancelEmail(DbShop shopInfo, TrDbRestaurantBooking booking, DbBooking detail, string webPath, string tempName, string subject, params string[] ccEmail)
         {
             var country = await _coutryHandler.GetCountry(booking.ShopId ?? 11);
             var con = country.Countries.FirstOrDefault(a => a.Name == detail.RestaurantCountry);
