@@ -16,6 +16,7 @@ using Azure.Core;
 using KingfoodIO.Application.Filter;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Azure.Cosmos.Linq;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
@@ -158,6 +159,7 @@ namespace KingfoodIO.Controllers.Common
                             _logger.LogInfo("ChargeSucceeded:" + stripeEvent.Type);
                             var paymentIntent = stripeEvent.Data.Object as Charge;
                             string billId = paymentIntent.Metadata["billId"];
+                            string userId = paymentIntent.Metadata["userId"];
                             var paymentInfos = await _paymentRepository.GetOneAsync(a => a.Id == billId);
                             if (paymentInfos != null)
                             {
@@ -167,6 +169,7 @@ namespace KingfoodIO.Controllers.Common
                                 paymentInfos.Paid = true;
                             }
                             await _paymentRepository.UpsertAsync(paymentInfos);
+
                         }
                         catch (Exception ex)
                         {
@@ -203,7 +206,7 @@ namespace KingfoodIO.Controllers.Common
                         var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == "");
                         if (paymentInfo != null)
                         {
-                            paymentInfo.RefundAmount = charge.AmountRefunded/100; 
+                            paymentInfo.RefundAmount = charge.AmountRefunded / 100;
                         }
                         await _paymentRepository.UpsertAsync(paymentInfo);
                         break;
@@ -212,13 +215,22 @@ namespace KingfoodIO.Controllers.Common
                             _logger.LogInfo("SetupIntentSucceeded:" + stripeEvent.Type);
                             var setupIntent = stripeEvent.Data.Object as SetupIntent;
                             string billId = setupIntent.Metadata["billId"];
+                            string userId = setupIntent.Metadata["userId"];
 
                             paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == billId);
                             if (paymentInfo != null)
                             {
                                 paymentInfo.StripePaymentMethodId = setupIntent.PaymentMethodId;
                             }
-                            await _paymentRepository.UpsertAsync(paymentInfo);
+                            var dbpayment = await _paymentRepository.UpsertAsync(paymentInfo);
+                            if (dbpayment != null)
+                            {
+                                var dbUser = await _customerServiceHandler.GetCustomer(userId, paymentInfo.ShopId ?? 11);
+                               
+                                _trRestaurantBookingServiceHandler.PlaceBooking(dbUser.CartInfos, paymentInfo.ShopId ?? 11, userId);
+                                dbUser.CartInfos.Clear();
+                                await _customerServiceHandler.UpdateCart(dbUser.CartInfos, userId, paymentInfo.ShopId ?? 11);
+                            }
                         }
                         break;
                     default:
@@ -279,7 +291,9 @@ namespace KingfoodIO.Controllers.Common
                 var authHeader = Request.Headers["Wauthtoken"];
                 var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
                 var customer = await _customerServiceHandler.GetCustomer(user.UserId, user.ShopId ?? 11);
-                var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == customer.CartInfos[0].AmountInfos[0].PaymentId);
+                var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == customer.CartInfos[0].PaymentId);
+
+                meta["userId"] = user.UserId;
                 var options = new PaymentIntentCreateOptions
                 {
                     Amount = Convert.ToInt64(paymentInfo.PaidAmount),

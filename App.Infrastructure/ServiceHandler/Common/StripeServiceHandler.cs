@@ -44,6 +44,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             Dictionary<string, string> meta = new Dictionary<string, string>();
             meta["billId"] = bill.BillId;
             meta["customerId"] = bill.CustomerId;
+            meta["userId"] = user.UserId;
             var setupIntentService = new SetupIntentService();
             SetupIntent setupIntent = null;
             if (!string.IsNullOrWhiteSpace(bill.PaymentIntentId))

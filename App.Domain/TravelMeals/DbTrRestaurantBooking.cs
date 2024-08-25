@@ -22,14 +22,15 @@ namespace App.Domain.TravelMeals
         public List<PaymentInfo> PaymentInfos { get; set; } = new List<PaymentInfo>();
 
     }
-    public class DbPaymentInfo: PaymentInfo {
-    
+    public class DbPaymentInfo : PaymentInfo
+    {
+
     }
-    public class DbOpearationInfo: OperationInfo
-    { 
-    
+    public class DbOpearationInfo : OperationInfo
+    {
+
     }
-    public class OperationInfo: DbEntity
+    public class OperationInfo : DbEntity
     {
         public string ReferenceId { get; set; }
         public string Operation { get; set; }
@@ -48,9 +49,13 @@ namespace App.Domain.TravelMeals
     public class AmountInfo
     {
         public string Id { get; set; }
-        public string PaymentId { get; set; }
+        //public string PaymentId { get; set; }
         public decimal Amount { get; set; }
         public decimal PaidAmount { get; set; }
+    }
+    public enum PaymentStatusEnum
+    {
+        NoPayment, UnPaid, Paid
     }
     public class PaymentInfo : StripeBase
     {
@@ -60,18 +65,18 @@ namespace App.Domain.TravelMeals
         public decimal RefundAmount { get; set; }
         public string Currency { get; set; }
         public DateTime PayTime { get; set; }
-        
-    }
-    public class DbBooking: BookingDetail
-    { 
-    
 
     }
-    public class BookingDetail: DbEntity
+    public class DbBooking : BookingDetail
+    {
+
+
+    }
+    public class BookingDetail : DbEntity
     {
         public string BookingRef { get; set; }
         public string PaymentId { get; set; }
-        public BookingRestaurantInfo Restaurant { get; set; }=new BookingRestaurantInfo();
+        public BookingRestaurantInfo Restaurant { get; set; } = new BookingRestaurantInfo();
         public string RestaurantId { get; set; }
         public string RestaurantName { get; set; }
         public string RestaurantAddress { get; set; }
@@ -89,7 +94,7 @@ namespace App.Domain.TravelMeals
         public AcceptStatusEnum AcceptStatus { get; set; }//0:Defult, 1:Accepted, 2:Declined
         public bool Modified { get; set; }
         public string AcceptReason { get; set; }
-        public BookingCustomerInfo Customer { get; set; } =new BookingCustomerInfo();
+        public BookingCustomerInfo Customer { get; set; } = new BookingCustomerInfo();
 
         public string ContactName { get; set; }
         public string ContactPhone { get; set; }
@@ -103,7 +108,8 @@ namespace App.Domain.TravelMeals
         public List<BookingCourse> Courses { get; set; } = new List<BookingCourse>();
         public List<AmountInfo> AmountInfos { get; set; } = new List<AmountInfo>();
     }
-    public class BookingRestaurantInfo {
+    public class BookingRestaurantInfo
+    {
         public string RestaurantId { get; set; }
         public string RestaurantName { get; set; }
         public string RestaurantAddress { get; set; }
@@ -113,7 +119,8 @@ namespace App.Domain.TravelMeals
         public string RestaurantEmail { get; set; }
         public string RestaurantCountry { get; set; }
     }
-    public class BookingCustomerInfo {
+    public class BookingCustomerInfo
+    {
         public string ContactName { get; set; }
         public string ContactPhone { get; set; }
         public string ContactEmail { get; set; }
@@ -138,7 +145,7 @@ namespace App.Domain.TravelMeals
 
         public override string ToString()
         {
-            return  $"id:{Id},name:{MenuItemName},qty:{Qty},childrenQty:{ChildrenQty},price:{Price},childrenPrice{ChildrenPrice},MenuCalculateType:{MenuCalculateType},Category:{Category}" ;
+            return $"id:{Id},name:{MenuItemName},qty:{Qty},childrenQty:{ChildrenQty},price:{Price},childrenPrice{ChildrenPrice},MenuCalculateType:{MenuCalculateType},Category:{Category}";
         }
     }
 }

@@ -53,7 +53,7 @@ namespace App.Infrastructure.ServiceHandler.Common
 
         Task<DbCustomer> UpdatePassword(DbCustomer customer, int shopId);
         Task<DbCustomer> UpdateFavorite(DbCustomer customer, int shopId);
-        Task<object> UpdateCart(List<BookingDetail> cartInfos, string UserId, int shopId);
+        Task<object> UpdateCart(List<DbBooking> cartInfos, string UserId, int shopId);
         Task<object> GetCart(string UserId, int shopId);
 
         Task<object> Delete(DbCustomer item, string email, string pwd, int shopId);
@@ -311,7 +311,7 @@ namespace App.Infrastructure.ServiceHandler.Common
 
             return savedCustomer.ClearForOutPut();
         }
-        public async Task<object> UpdateCart(List<BookingDetail> cartInfos, string userId, int shopId)
+        public async Task<object> UpdateCart(List<DbBooking> cartInfos, string userId, int shopId)
         {
             var existingCustomer =
                 await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == userId);

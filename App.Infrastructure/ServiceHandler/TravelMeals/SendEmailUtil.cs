@@ -44,9 +44,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private readonly IDateTimeUtil _dateTimeUtil;
         IAmountCalculaterUtil _amountCalculaterUtil;
         IOperationServiceHandler _operationServiceHandler;
+        IMsgPusherServiceHandler _msgPusherServiceHandler;
 
         public SendEmailUtil(IEmailUtil emailUtil, IAmountCalculaterUtil amountCalculaterUtil, ILogManager logger, IDateTimeUtil dateTimeUtil, ICountryServiceHandler coutryHandler,
-           IOperationServiceHandler operationServiceHandler, IContentBuilder contentBuilder)
+         IMsgPusherServiceHandler msgPusherServiceHandler, IOperationServiceHandler operationServiceHandler, IContentBuilder contentBuilder)
         {
             _emailUtil = emailUtil;
             _logger = logger;
@@ -55,6 +56,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _coutryHandler = coutryHandler;
             _amountCalculaterUtil = amountCalculaterUtil;
             _operationServiceHandler = operationServiceHandler;
+            _msgPusherServiceHandler= msgPusherServiceHandler;
         }
         public async Task EmailVerifyCode(string email, string code, DbShop shopInfo, string tempName, string wwwPath, string subject, string title, string titleCN)
         {
@@ -190,6 +192,18 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 decimal amount = item.AmountInfos.Sum(x => x.Amount);
                 decimal paidAmount = item.AmountInfos.Sum(x => x.PaidAmount);
 
+                _msgPusherServiceHandler.AddMsg(new Domain.Common.PushMsgModel()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    SendTime = DateTime.UtcNow,
+                    Created = DateTime.UtcNow,
+                    Title = "下单成功通知",
+                    Message = $"{item.RestaurantName} {selectDateTimeStr}",
+                    MessageReference = item.BookingRef,
+                    Receiver = item.Creater,
+                    Sender = "GroupMeals",
+                    ShopId = item.ShopId
+                });
 
                 totalPaidAmount += paidAmount;
                 if (item.Currency == "UK")

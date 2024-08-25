@@ -290,7 +290,7 @@ namespace KingfoodIO.Controllers.Common
         [HttpPost]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> UpdateCartInfos([FromBody] List<BookingDetail> cartInfos, int shopId)
+        public async Task<IActionResult> UpdateCartInfos([FromBody] List<DbBooking> cartInfos, int shopId)
         {
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
