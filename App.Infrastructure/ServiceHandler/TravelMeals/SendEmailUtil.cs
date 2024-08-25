@@ -33,20 +33,23 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
     public class SendEmailUtil : ISendEmailUtil
     {
 
-        private readonly IEmailUtil _emailUtil; 
+        private readonly IEmailUtil _emailUtil;
         ILogManager _logger;
         IContentBuilder _contentBuilder;
         ICountryServiceHandler _coutryHandler;
         private readonly IDateTimeUtil _dateTimeUtil;
         IAmountCalculaterUtil _amountCalculaterUtil;
-        public SendEmailUtil(IEmailUtil emailUtil, IAmountCalculaterUtil amountCalculaterUtil, ILogManager logger, IDateTimeUtil dateTimeUtil, ICountryServiceHandler coutryHandler, IContentBuilder contentBuilder)
+        IMsgPusherServiceHandler _msgPusherServiceHandler;
+        public SendEmailUtil(IEmailUtil emailUtil, IAmountCalculaterUtil amountCalculaterUtil, ILogManager logger, IDateTimeUtil dateTimeUtil, ICountryServiceHandler coutryHandler,
+            IMsgPusherServiceHandler msgPusherServiceHandler, IContentBuilder contentBuilder)
         {
             _emailUtil = emailUtil;
             _logger = logger;
             _contentBuilder = contentBuilder;
             _dateTimeUtil = dateTimeUtil;
-            _coutryHandler= coutryHandler;
-            _amountCalculaterUtil= amountCalculaterUtil;
+            _coutryHandler = coutryHandler;
+            _amountCalculaterUtil = amountCalculaterUtil;
+            _msgPusherServiceHandler = msgPusherServiceHandler;
         }
         public async Task EmailVerifyCode(string email, string code, DbShop shopInfo, string tempName, string wwwPath, string subject, string title, string titleCN)
         {
@@ -116,7 +119,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     try
                     {
                         _logger.LogInfo($"_emailUtil.SendEmailto:{item.RestaurantEmail}" + booking.BookingRef);
-                       await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, item.RestaurantEmail, subject, emailHtml, "sales.ie@groupmeals.com");
+                        await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, item.RestaurantEmail, subject, emailHtml, "sales.ie@groupmeals.com");
 
                         _logger.LogInfo("_emailUtil.SendEmailend:" + booking.BookingRef);
                     }
@@ -137,7 +140,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             detailStr += "紧急: " + item.EmergencyPhone + " <br> ";
             return detailStr;
         }
-        private string AppendCustomerInfo(BookingDetail item )
+        private string AppendCustomerInfo(BookingDetail item)
         {
             string detailStr = "";
             detailStr += "团号: " + item.GroupRef + " <br> ";
@@ -165,6 +168,20 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 Detail += AppendCustomerInfo(item);
                 decimal amount = item.AmountInfos.Sum(x => x.Amount);
                 decimal paidAmount = item.AmountInfos.Sum(x => x.PaidAmount);
+
+
+                _msgPusherServiceHandler.AddMsg(new Domain.Common.PushMsgModel()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    SendTime = DateTime.UtcNow,
+                    Created = DateTime.UtcNow,
+                    Title = "下单成功通知",
+                    Message = $"{item.RestaurantName} {selectDateTimeStr}",
+                    MessageReference = booking.BookingRef,
+                    Receiver = booking.CustomerEmail,
+                    Sender = "GroupMeals",
+                    ShopId = booking.ShopId
+                });
 
 
                 totalPaidAmount += paidAmount;
@@ -225,7 +242,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
                 try
                 {
-                   await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, subject, emailHtml);
+                    await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, subject, emailHtml);
                 }
                 catch (Exception ex)
                 {
@@ -280,8 +297,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         public async Task SendCancelEmail(DbShop shopInfo, TrDbRestaurantBooking booking, BookingDetail detail, string webPath, string tempName, string subject, params string[] ccEmail)
         {
-            var country =await _coutryHandler.GetCountry(booking.ShopId??11);
-            var con=country.Countries.FirstOrDefault(a=>a.Name==detail.RestaurantCountry);
+            var country = await _coutryHandler.GetCountry(booking.ShopId ?? 11);
+            var con = country.Countries.FirstOrDefault(a => a.Name == detail.RestaurantCountry);
             if (con == null) return;
             string currencyStr = country.Countries.FirstOrDefault(a => a.Currency == booking.PayCurrency).CurrencySymbol;
             decimal exRate = (decimal)(con.ExchangeRate);
@@ -290,12 +307,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             paidAmount = detail.AmountInfos.Sum(x => x.PaidAmount);
 
-            amount =await _amountCalculaterUtil.CalculateAmountByRate(detail, booking.PayCurrency, booking.ShopId??11, country);
+            amount = await _amountCalculaterUtil.CalculateAmountByRate(detail, booking.PayCurrency, booking.ShopId ?? 11, country);
 
             paidAmount = Math.Round(paidAmount, 2);
             amount = Math.Round(amount, 2);
 
-           string selectDateTimeStr = detail.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(detail.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm:ss");
+            string selectDateTimeStr = detail.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(detail.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm:ss");
             string Detail = "";
             foreach (var course in detail.Courses)
             {
@@ -309,7 +326,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var emailHtml = "";
             try
             {
-                emailHtml = await _contentBuilder.BuildRazorContent(new { booking, bookingDetail= detail, selectDateTimeStr, Detail = detailstr, Memo = detail.Courses[0].Memo }, htmlTemp);
+                emailHtml = await _contentBuilder.BuildRazorContent(new { booking, bookingDetail = detail, selectDateTimeStr, Detail = detailstr, Memo = detail.Courses[0].Memo }, htmlTemp);
             }
             catch (Exception ex)
             {

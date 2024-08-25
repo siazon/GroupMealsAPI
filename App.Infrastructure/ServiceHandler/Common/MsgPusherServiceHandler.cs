@@ -49,7 +49,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         public async Task<List<PushMsgModel>> ListMsgs(int shopId, DbToken user)
         {
             Guard.GreaterThanZero(shopId);
-            var customers = await _msgRepository.GetManyAsync(r => r.ShopId == shopId&&(r.Receiver==""||r.Receiver==user.UserId));
+            var customers = await _msgRepository.GetManyAsync(r => r.ShopId == shopId&&(r.Receiver==""||r.Receiver==user.UserEmail));
 
             var returnCustomers = customers.OrderByDescending(r => r.Updated).Take(200);
 
@@ -60,6 +60,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         public async Task<PushMsgModel> AddMsg(PushMsgModel msg)
         {
             Guard.NotNull(msg);
+          
             var savedMenu = await _msgRepository.UpsertAsync(msg);
             return savedMenu;
         }
