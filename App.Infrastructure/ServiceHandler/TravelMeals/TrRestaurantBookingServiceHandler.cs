@@ -860,8 +860,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
                 throw new ServiceException("Cannot find shop info");
             }
-            _twilioUtil.sendSMS("+353874858555", $"你有新的订单: {booking.BookingRef}。 请登录groupmeal.com查看更多");
-
+            try
+            {
+                _twilioUtil.sendSMS("+353874858555", $"你有订单被修改: {booking.BookingRef}。 请登录groupmeal.com查看更多");
+            }
+            catch (Exception ex)
+            {
+            }
             var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealCustomer];
             _sendEmailUtil.EmailCustomerTotal(booking, shopInfo, emailParams.TemplateName, this._environment.WebRootPath, emailParams.Subject);
             emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealRestaurant];
@@ -877,7 +882,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
                 throw new ServiceException("Cannot find shop info");
             }
-            _twilioUtil.sendSMS(booking.CustomerPhone, $"你有订单被修改: {booking.BookingRef}。 请登录groupmeal.com查看更多");
+            try
+            {
+                _twilioUtil.sendSMS("+353874858555", $"你有订单被修改: {booking.BookingRef}。 请登录groupmeal.com查看更多");
+            }
+            catch (Exception ex)
+            {
+            }
             var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealModified];
             _sendEmailUtil.EmailCustomerTotal(booking, shopInfo, emailParams.TemplateName, this._environment.WebRootPath, emailParams.Subject);
 
