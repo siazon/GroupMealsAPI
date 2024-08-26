@@ -46,7 +46,7 @@ namespace KingfoodIO.Controllers.Common
             _memoryCache = memoryCache;
             _customerServiceHandler = customerServiceHandler;
             _appsettingConfig = appsettingConfig.Value;
-            _encryptionHelper= encryptionHelper;
+            _encryptionHelper = encryptionHelper;
         }
 
         /// <summary>
@@ -84,13 +84,16 @@ namespace KingfoodIO.Controllers.Common
                 if (customer == null)
                 {
                     return new { msg = "User not found!(用户不存在)", data = customer, token };
-                } else if (customer.Password!=passwordEncode) {
-                    return new { msg = "Wrong Password!(密码错误)",  };
                 }
-                else if (!customer.IsVerity) {
+                else if (customer.Password != passwordEncode)
+                {
+                    return new { msg = "Wrong Password!(密码错误)", };
+                }
+                else if (!customer.IsVerity)
+                {
                     return new { msg = "Email is not verified!(邮箱未验证)", data = customer, token };
                 }
-                customer= customer.ClearForOutPut();
+                customer = customer.ClearForOutPut();
                 DbToken dbToken = new DbToken()
                 {
                     ShopId = shopId,
@@ -165,10 +168,10 @@ namespace KingfoodIO.Controllers.Common
         [HttpGet]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         //[ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> SendRegistrationVerityCode(string email,  int shopId)
+        public async Task<IActionResult> SendRegistrationVerityCode(string email, int shopId)
         {
             return await ExecuteAsync(shopId, false,
-                async () => await _customerServiceHandler.SendRegistrationVerityCode(email,   shopId));
+                async () => await _customerServiceHandler.SendRegistrationVerityCode(email, shopId));
         }
 
         /// <summary>
@@ -182,7 +185,7 @@ namespace KingfoodIO.Controllers.Common
         [HttpGet]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> UpdatePassword( string oldPassword, string password, int shopId)
+        public async Task<IActionResult> UpdatePassword(string oldPassword, string password, int shopId)
         {
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
@@ -257,13 +260,13 @@ namespace KingfoodIO.Controllers.Common
         [ServiceFilter(typeof(AdminAuthFilter))]
         [HttpPost]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> Delete([FromBody] DbCustomer item,string pwd, int shopId)
+        public async Task<IActionResult> Delete([FromBody] DbCustomer item, string pwd, int shopId)
         {
             var authHeader = Request.Headers["Wauthtoken"];
             var userInfo = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             string email = userInfo.UserEmail;
             return await ExecuteAsync(shopId, false,
-                async () => await _customerServiceHandler.Delete(item, email,pwd, shopId));
+                async () => await _customerServiceHandler.Delete(item, email, pwd, shopId));
         }
 
         /// <summary>
@@ -295,14 +298,14 @@ namespace KingfoodIO.Controllers.Common
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, false,
-                async () => await _customerServiceHandler.UpdateCart(cartInfos,user.UserId, shopId));
+                async () => await _customerServiceHandler.UpdateCart(cartInfos, user.UserId, shopId));
         }
 
-      /// <summary>
-      /// 
-      /// </summary>
-      /// <param name="shopId"></param>
-      /// <returns></returns>
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpGet]
         [ProducesResponseType(typeof(List<BookingDetail>), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]

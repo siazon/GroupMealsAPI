@@ -181,7 +181,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             foreach (var item in bookings)
             {
                 if (item.Status == OrderStatusEnum.Canceled) continue;
-                reciveEmail = item.Customer.ContactEmail;
+                reciveEmail = item.ContactEmail;
                 currencyStr = item.PayCurrency;
                 if (tempName != EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealCustomer].TemplateName)
                     Detail += AppendRestaurantInfo(item);

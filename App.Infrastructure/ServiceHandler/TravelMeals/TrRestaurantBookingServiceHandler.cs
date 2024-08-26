@@ -51,6 +51,7 @@ using QuestPDF.Fluent;
 using Twilio.TwiML.Voice;
 using Microsoft.AspNetCore.Http.Metadata;
 using Stripe.Terminal;
+using App.Domain.TravelMeals.VO;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -74,7 +75,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         Task<object> UpsetBookingRemark(string bookingId, string detailId, string remark, string userEmail);
         Task<ResponseModel> RequestTravelMealsBooking(TrDbRestaurantBooking booking, int shopId, DbToken user);
-        Task<ResponseModel> MakeABooking(TrDbRestaurantBooking booking, int shopId, DbToken user);
+        Task<ResponseModel> MakeABooking(PayCurrencyVO booking, int shopId, DbToken user);
         Task<ResponseModel> ModifyBooking(DbBooking booking, int shopId, string email, bool isNotify = true);
         Task<bool> DeleteBooking(string bookingId, int shopId);
         Task<bool> DeleteBookingDetail(string bookingId, string detailId, int shopId);
@@ -245,7 +246,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var temp = await _restaurantBookingRepository.UpsertAsync(booking);
             return true;
         }
-        private void UpdateStatus(BookingDetail item, int acceptType)
+        private void UpdateStatus(DbBooking item, int acceptType)
         {
 
             AcceptStatusEnum statusEnum = (AcceptStatusEnum)acceptType;
@@ -629,7 +630,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return new ResponseModel { msg = "", code = 200, data = null };
         }
 
-        private bool UpdateField(OperationInfo operationInfo, BookingDetail item, BookingDetail detail, string fieldName, bool record = true)
+        private bool UpdateField(OperationInfo operationInfo, DbBooking item, DbBooking detail, string fieldName, bool record = true)
         {
             bool isChange = false;
             try
@@ -659,7 +660,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             return isChange;
         }
-        private bool UpdateListField(OperationInfo operationInfo, BookingDetail item, BookingDetail detail, string fieldName)
+        private bool UpdateListField(OperationInfo operationInfo, DbBooking item, DbBooking detail, string fieldName)
         {
             bool isChange = false;
             var newValue = string.Join(",", (detail.GetType().GetProperty(fieldName).GetValue(detail, null) as List<BookingCourse>));
@@ -724,11 +725,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             return new ResponseModel { msg = "", code = 200, data = newItem };
         }
-        public async Task<ResponseModel> MakeABooking(TrDbRestaurantBooking booking, int shopId, DbToken user)
+        public async Task<ResponseModel> MakeABooking(PayCurrencyVO payCurrencyVO, int shopId, DbToken user)
         {
             _logger.LogInfo("RequestBooking" + user.UserEmail);
-            Guard.NotNull(booking);
-            Guard.AreEqual(booking.ShopId.Value, shopId);
             var userInfo = await _customerRepository.GetOneAsync(r => r.Id == user.UserId && r.CartInfos.Count() > 0);
             if (userInfo == null)
             {
@@ -737,7 +736,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             else
             {
                 string currency = "eur";
-                string payCurrency = booking.PayCurrency.Trim().ToLower();
+                string payCurrency = payCurrencyVO.PayCurrency.Trim().ToLower();
                 switch (payCurrency)
                 {
                     case "eu":
@@ -757,8 +756,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 DbPaymentInfo dbPaymentInfo = new DbPaymentInfo()
                 {
                     Id = Guid.NewGuid().ToString(),
-                    Amount = await _amountCalculaterV1.CalculateOrderAmount(userInfo.CartInfos, booking.PayCurrency, shopId),
-                    PaidAmount = await _amountCalculaterV1.CalculateOrderPaidAmount(userInfo.CartInfos, booking.PayCurrency, shopId),
+                    Amount = await _amountCalculaterV1.CalculateOrderAmount(userInfo.CartInfos, payCurrencyVO.PayCurrency, shopId),
+                    PaidAmount = await _amountCalculaterV1.CalculateOrderPaidAmount(userInfo.CartInfos, payCurrencyVO.PayCurrency, shopId),
                     Currency = currency
                 };
                 if (dbPaymentInfo.PaidAmount == 0)
@@ -1264,7 +1263,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             else
             {
                 content = content.ToLower().Trim();
-                Predicate<BookingDetail> predicate =
+                Predicate<DbBooking> predicate =
                     d => d.RestaurantName.ToLower().Contains(content) || d.RestaurantAddress.ToLower().Contains(content) || d.ContactName.ToLower().Contains(content) || d.GroupRef.ToLower().Contains(content);
 
                 Bookings = await _restaurantBookingRepository.GetManyAsync(a => ((a.Status != OrderStatusEnum.None) &&
@@ -1289,7 +1288,16 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = res };
         }
-
+        public ResponseModel GetBookingItemAmountOld(List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate)
+        {
+            if (paymentType == PaymentTypeEnum.Deposit && payRate <= 0)
+                return new ResponseModel { msg = "payRate should greater than 0", code = 500 };
+            decimal amount = 0, paidAmount = 0;
+            DbBooking detail = new DbBooking() { Courses = menuItems, BillInfo = new RestaurantBillInfo() { PaymentType = paymentType, PayRate = payRate } };
+            paidAmount = _amountCalculaterV1.getItemPayAmount(detail);
+            amount = _amountCalculaterV1.getItemAmount(detail);
+            return new ResponseModel { msg = "ok", code = 200, data = new { amount, paidAmount } };
+        }
         public ResponseModel GetBookingItemAmount(List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate)
         {
             if (paymentType == PaymentTypeEnum.Deposit && payRate <= 0)
@@ -1299,7 +1307,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             paidAmount = _amountCalculaterV1.getItemPayAmount(detail);
             amount = _amountCalculaterV1.getItemAmount(detail);
             return new ResponseModel { msg = "ok", code = 200, data = new { amount, paidAmount } };
-
         }
         public async Task<ResponseModel> GetBookingAmount(bool isBookingModify, string currency, string userId, List<string> Ids)
         {
@@ -1519,20 +1526,20 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         Status = book.Status,
 
                     };
-                    dbBooking.Customer.ContactEmail = book.ContactEmail;
-                    dbBooking.Customer.ContactWechat = book.ContactWechat;
-                    dbBooking.Customer.ContactPhone = book.ContactPhone;
-                    dbBooking.Customer.ContactName = book.ContactName;
-                    dbBooking.Customer.ContactInfos = book.ContactInfos;
+                    dbBooking.ContactEmail = book.ContactEmail;
+                    dbBooking.ContactWechat = book.ContactWechat;
+                    dbBooking.ContactPhone = book.ContactPhone;
+                    dbBooking.ContactName = book.ContactName;
+                    dbBooking.ContactInfos = book.ContactInfos;
 
-                    dbBooking.Restaurant.RestaurantId = book.RestaurantId;
-                    dbBooking.Restaurant.RestaurantName = book.RestaurantName;
-                    dbBooking.Restaurant.RestaurantAddress = book.RestaurantAddress;
-                    dbBooking.Restaurant.RestaurantPhone = book.RestaurantPhone;
-                    dbBooking.Restaurant.RestaurantEmail = book.RestaurantEmail;
-                    dbBooking.Restaurant.EmergencyPhone = book.EmergencyPhone;
-                    dbBooking.Restaurant.RestaurantWechat = book.RestaurantWechat;
-                    dbBooking.Restaurant.RestaurantCountry = book.RestaurantCountry;
+                    dbBooking.RestaurantId = book.RestaurantId;
+                    dbBooking.RestaurantName = book.RestaurantName;
+                    dbBooking.RestaurantAddress = book.RestaurantAddress;
+                    dbBooking.RestaurantPhone = book.RestaurantPhone;
+                    dbBooking.RestaurantEmail = book.RestaurantEmail;
+                    dbBooking.EmergencyPhone = book.EmergencyPhone;
+                    dbBooking.RestaurantWechat = book.RestaurantWechat;
+                    dbBooking.RestaurantCountry = book.RestaurantCountry;
                     await _bookingRepository.UpsertAsync(dbBooking);
 
                     foreach (var pay in booking.Operations)

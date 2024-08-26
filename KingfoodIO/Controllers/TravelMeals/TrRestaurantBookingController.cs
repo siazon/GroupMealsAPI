@@ -9,6 +9,7 @@ using App.Domain.Common.Customer;
 using App.Domain.Config;
 using App.Domain.TravelMeals;
 using App.Domain.TravelMeals.Restaurant;
+using App.Domain.TravelMeals.VO;
 using App.Infrastructure.ServiceHandler.Common;
 using App.Infrastructure.ServiceHandler.TravelMeals;
 using App.Infrastructure.Utility.Common;
@@ -88,14 +89,14 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpPost]
         [ProducesResponseType(typeof(TrDbRestaurantBooking), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> MakeABooking([FromBody] TrDbRestaurantBooking booking, int shopId)
+        public async Task<IActionResult> MakeABooking([FromBody] PayCurrencyVO payCurrencyVO, int shopId)
         {
             string rawRequestBody = await Request.GetRawBodyAsync();
             _logger.LogDebug("MakeABooking: " + rawRequestBody);
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, false,
-                async () => await _restaurantBookingServiceHandler.MakeABooking(booking, shopId, user));
+                async () => await _restaurantBookingServiceHandler.MakeABooking(payCurrencyVO, shopId, user));
         }
 
         [HttpGet]
@@ -377,12 +378,21 @@ namespace KingfoodIO.Controllers.TravelMeals
         /// <param name="payRate">支付方式为1时必填，示例：15%押金传0.15</param>
         /// <returns></returns>
         [HttpPost]
-        //[ServiceFilter(typeof(AuthActionFilter))]
+        [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(ResponseModel), (int)HttpStatusCode.OK)]
         public IActionResult CalculateBookingItemAmount([FromBody] List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate)
         {
             return Ok(_restaurantBookingServiceHandler.GetBookingItemAmount(menuItems, paymentType, payRate));
         }
+
+        [HttpPost]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(ResponseModel), (int)HttpStatusCode.OK)]
+        public IActionResult CalculateBookingItemAmountold([FromBody] List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate)
+        {
+            return Ok(_restaurantBookingServiceHandler.GetBookingItemAmount(menuItems, paymentType, payRate));
+        }
+
 
         /// <summary>
         /// 

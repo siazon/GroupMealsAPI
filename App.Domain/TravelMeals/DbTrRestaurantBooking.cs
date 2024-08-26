@@ -69,15 +69,6 @@ namespace App.Domain.TravelMeals
     }
     public class DbBooking : BookingDetail
     {
-
-
-    }
-    public class BookingDetail : DbEntity
-    {
-        public string BookingRef { get; set; }
-        public string PaymentId { get; set; }
-        public BookingRestaurantInfo Restaurant { get; set; } = new BookingRestaurantInfo();
-        public string RestaurantId { get; set; }
         public string RestaurantName { get; set; }
         public string RestaurantAddress { get; set; }
         public string RestaurantPhone { get; set; }
@@ -85,28 +76,32 @@ namespace App.Domain.TravelMeals
         public string RestaurantWechat { get; set; }
         public string RestaurantEmail { get; set; }
         public string RestaurantCountry { get; set; }
-        public string SupporterEmail { get; set; }
-        public string Memo { get; set; }
-        public string PayCurrency { get; set; }
         public string Currency { get; set; }
-        public DateTime? SelectDateTime { get; set; }
+        public string Remark { get; set; }
+        public string SupporterEmail { get; set; }
+        public string PayCurrency { get; set; }
         public OrderStatusEnum Status { get; set; }//0:defult,1:canceled
         public AcceptStatusEnum AcceptStatus { get; set; }//0:Defult, 1:Accepted, 2:Declined
         public bool Modified { get; set; }
         public string AcceptReason { get; set; }
-        public BookingCustomerInfo Customer { get; set; } = new BookingCustomerInfo();
-
+        public RestaurantBillInfo BillInfo { get; set; } = new RestaurantBillInfo();
+        public List<AmountInfo> AmountInfos { get; set; } = new List<AmountInfo>();
+    }
+    public class BookingDetail : DbEntity
+    {
+        public string BookingRef { get; set; }
+        public string PaymentId { get; set; }
+        public string RestaurantId { get; set; }
+        public List<BookingCourse> Courses { get; set; } = new List<BookingCourse>();
+        public DateTime? SelectDateTime { get; set; }
+        public string Memo { get; set; }
         public string ContactName { get; set; }
         public string ContactPhone { get; set; }
         public string ContactEmail { get; set; }
         public string ContactWechat { get; set; }
         public string ContactInfos { get; set; }
         public string GroupRef { get; set; }
-        public string Remark { get; set; }
 
-        public RestaurantBillInfo BillInfo { get; set; } = new RestaurantBillInfo();
-        public List<BookingCourse> Courses { get; set; } = new List<BookingCourse>();
-        public List<AmountInfo> AmountInfos { get; set; } = new List<AmountInfo>();
     }
     public class BookingRestaurantInfo
     {
