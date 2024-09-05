@@ -23,13 +23,14 @@ namespace KingfoodIO.Controllers.Common
         public MsgPusherController(IOptions<CacheSettingConfig> cachesettingConfig, IMemoryCache memoryCache, IRedisCache redisCache,
             IMsgPusherServiceHandler msgPusherServiceHandler, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
         {
-            this.logger= logger;
-            _memoryCache= memoryCache;
+            this.logger = logger;
+            _memoryCache = memoryCache;
             _msgPusherServiceHandler = msgPusherServiceHandler;
         }
 
         /// <summary>
         /// status 0:新消息，1:已读消息
+        /// MsgType: 0-6 Text, Order, Restaurant, User, OrderHistory, Country, Pement,先只处理0和1
         /// </summary>
         /// <param name="shopId"></param>
         /// <returns></returns>
@@ -41,9 +42,15 @@ namespace KingfoodIO.Controllers.Common
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, false,
-                async () => await _msgPusherServiceHandler.ListMsgs(shopId,user));
+                async () => await _msgPusherServiceHandler.ListMsgs(shopId, user));
         }
-
+        /// <summary>
+        /// Status 0:新消息，1:已读消息
+        /// MsgType: 0-6 Text, Order, Restaurant, User, OrderHistory, Country, Pement,先只处理0和1
+        /// </summary>
+        /// <param name="msg"></param>
+        /// <param name="shopId"></param>
+        /// <returns></returns>
         [HttpPost]
         [ProducesResponseType(typeof(PushMsgModel), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
@@ -66,10 +73,10 @@ namespace KingfoodIO.Controllers.Common
         [HttpGet]
         [ProducesResponseType(typeof(bool), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> DeleteMsg(string  id,int shopId)
+        public async Task<IActionResult> DeleteMsg(string id, int shopId)
         {
-            return await ExecuteAsync(shopId, true,
-                async () => await _msgPusherServiceHandler.DeleteMsg(  id));
+            return await ExecuteAsync(shopId, false,
+                async () => await _msgPusherServiceHandler.DeleteMsg(id));
         }
 
 
@@ -83,10 +90,10 @@ namespace KingfoodIO.Controllers.Common
         [HttpGet]
         [ProducesResponseType(typeof(bool), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> TagMsg(string id,int status, int shopId)
+        public async Task<IActionResult> TagMsg(string id, int status, int shopId)
         {
-            return await ExecuteAsync(shopId, true,
-                async () => await _msgPusherServiceHandler.TagMsg(id,status));
+            return await ExecuteAsync(shopId, false,
+                async () => await _msgPusherServiceHandler.TagMsg(id, status));
         }
     }
 }
