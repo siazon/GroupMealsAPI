@@ -13,10 +13,22 @@ namespace App.Domain.Common
         public string MessageReference { get; set; }
         public string Sender { get; set; }
         public string Receiver { get; set; }
+        public MsgTypeEnum MsgType { get; set; }
         public MSGEnum MsgStatus { get; set; }
         public DateTime SendTime { get; set; }
     }
-    public enum MSGEnum {
-    defult=0,Readed=1
+    public enum MsgTypeEnum
+    {
+        Text,
+        Order,
+        Restaurant,
+        User,
+        OrderHistory,
+        Country,
+        Pement
+    }
+    public enum MSGEnum
+    {
+        New = 0, Readed = 1
     }
 }

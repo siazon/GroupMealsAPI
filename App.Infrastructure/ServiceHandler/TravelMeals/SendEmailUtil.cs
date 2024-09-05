@@ -1,4 +1,5 @@
-﻿using App.Domain.Common.Email;
+﻿using App.Domain.Common;
+using App.Domain.Common.Email;
 using App.Domain.Common.Shop;
 using App.Domain.Enum;
 using App.Domain.TravelMeals;
@@ -173,6 +174,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 _msgPusherServiceHandler.AddMsg(new Domain.Common.PushMsgModel()
                 {
                     Id = Guid.NewGuid().ToString(),
+                    MsgType=MsgTypeEnum.Order,
                     SendTime = DateTime.UtcNow,
                     Created = DateTime.UtcNow,
                     Title = "下单成功通知",
