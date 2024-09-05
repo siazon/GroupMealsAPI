@@ -59,12 +59,13 @@ namespace App.Domain.TravelMeals
     }
     public class PaymentInfo : StripeBase
     {
-        public string PaymentType { get; set; }
+        public int PaymentType { get; set; }//0：订单结束扣款，1：24小时捐款
         public decimal Amount { get; set; }
         public decimal PaidAmount { get; set; }
         public decimal RefundAmount { get; set; }
         public string Currency { get; set; }
         public DateTime PayTime { get; set; }
+        public DateTime CheckoutTime { get; set; }
 
     }
     public class DbBooking : BookingDetail
@@ -83,6 +84,7 @@ namespace App.Domain.TravelMeals
         public OrderStatusEnum Status { get; set; }//0:defult,1:canceled
         public AcceptStatusEnum AcceptStatus { get; set; }//0:Defult, 1:Accepted, 2:Declined
         public bool Modified { get; set; }
+        public bool Charged { get; set; }
         public string AcceptReason { get; set; }
         public RestaurantBillInfo BillInfo { get; set; } = new RestaurantBillInfo();
         public List<AmountInfo> AmountInfos { get; set; } = new List<AmountInfo>();

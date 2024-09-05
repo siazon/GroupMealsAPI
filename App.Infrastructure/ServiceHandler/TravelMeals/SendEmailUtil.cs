@@ -32,7 +32,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         Task EmailCustomer(DbBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject);
         void SendModifiedEmail(DbBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject);
-        Task SendCancelEmail(DbShop shopInfo, TrDbRestaurantBooking booking, DbBooking detail, string webPath, string tempName, string subject, params string[] ccEmail);
+        Task SendCancelEmail(DbShop shopInfo,  DbBooking detail, string webPath, string tempName, string subject, params string[] ccEmail);
     }
     public class SendEmailUtil : ISendEmailUtil
     {
@@ -415,26 +415,26 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             });
 
         }
-        public async Task SendCancelEmail(DbShop shopInfo, TrDbRestaurantBooking booking, DbBooking detail, string webPath, string tempName, string subject, params string[] ccEmail)
+        public async Task SendCancelEmail(DbShop shopInfo,   DbBooking booking, string webPath, string tempName, string subject, params string[] ccEmail)
         {
             var country = await _coutryHandler.GetCountry(booking.ShopId ?? 11);
-            var con = country.Countries.FirstOrDefault(a => a.Name == detail.RestaurantCountry);
+            var con = country.Countries.FirstOrDefault(a => a.Name == booking.RestaurantCountry);
             if (con == null) return;
             string currencyStr = country.Countries.FirstOrDefault(a => a.Currency == booking.PayCurrency).CurrencySymbol;
             decimal exRate = (decimal)(con.ExchangeRate);
             decimal amount = 0;
-            decimal paidAmount = 0; detail.AmountInfos.Sum(x => x.PaidAmount);
+            decimal paidAmount = 0; booking.AmountInfos.Sum(x => x.PaidAmount);
 
-            paidAmount = detail.AmountInfos.Sum(x => x.PaidAmount);
+            paidAmount = booking.AmountInfos.Sum(x => x.PaidAmount);
 
-            amount = await _amountCalculaterUtil.CalculateAmountByRate(detail, booking.PayCurrency, booking.ShopId ?? 11, country);
+            amount = await _amountCalculaterUtil.CalculateAmountByRate(booking, booking.PayCurrency, booking.ShopId ?? 11, country);
 
             paidAmount = Math.Round(paidAmount, 2);
             amount = Math.Round(amount, 2);
 
-            string selectDateTimeStr = detail.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(detail.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm:ss");
+            string selectDateTimeStr = booking.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(booking.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm:ss");
             string Detail = "";
-            foreach (var course in detail.Courses)
+            foreach (var course in booking.Courses)
             {
                 Detail += $"{course.MenuItemName} * {course.Qty} 人 {currencyStr}{paidAmount}/{amount}<br>";
             }
@@ -446,7 +446,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var emailHtml = "";
             try
             {
-                emailHtml = await _contentBuilder.BuildRazorContent(new { booking, bookingDetail = detail, selectDateTimeStr, Detail = detailstr, Memo = detail.Courses[0].Memo }, htmlTemp);
+                emailHtml = await _contentBuilder.BuildRazorContent(new { booking, bookingDetail = booking, selectDateTimeStr, Detail = detailstr, Memo = booking.Courses[0].Memo }, htmlTemp);
             }
             catch (Exception ex)
             {
@@ -454,8 +454,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             try
             {
-                _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, detail.RestaurantEmail, subject, emailHtml, ccEmail);
-                _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.CustomerEmail, subject, emailHtml, ccEmail);
+                _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.RestaurantEmail, subject, emailHtml, ccEmail);
+                _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.ContactEmail, subject, emailHtml, ccEmail);
             }
             catch (Exception ex)
             {

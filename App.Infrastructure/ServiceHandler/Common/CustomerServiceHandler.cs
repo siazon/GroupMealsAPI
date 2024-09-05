@@ -87,7 +87,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             _dateTimeUtil = dateTimeUtil;
             _shopRepository = shopRepository;
             _shopContentRepository = shopContentRepository;
-            _restaurantBookingRepository=restaurantBookingRepository;
+            _restaurantBookingRepository = restaurantBookingRepository;
             _contentBuilder = contentBuilder;
             _emailUtil = emailUtil;
             _twilioUtil = twilioUtil;
@@ -103,17 +103,17 @@ namespace App.Infrastructure.ServiceHandler.Common
             Guard.GreaterThanZero(shopId);
             var customers = await _customerRepository.GetManyAsync(r => r.ShopId == shopId);
             var bookings = await _restaurantBookingRepository.GetManyAsync(a => 1 == 1);
-            
+
 
             int aaa = 0;
             foreach (var item in customers)
             {
                 int count = bookings.Sum(a => { if (a.CustomerEmail == item.Email) return a.Details.Count(); else return 0; });
-                item.AuthValue =Convert.ToUInt64(count);
+                item.AuthValue = Convert.ToUInt64(count);
                 aaa += count;
             }
 
-            var returnCustomers = customers .OrderByDescending(r => r.AuthValue);
+            var returnCustomers = customers.OrderByDescending(r => r.AuthValue);
             return returnCustomers.ToList().ClearForOutPut();
         }
 
@@ -322,34 +322,41 @@ namespace App.Infrastructure.ServiceHandler.Common
             {
                 foreach (var item in cartInfos)
                 {
-
+                    var info = existingCustomer.CartInfos.FirstOrDefault(a => a.Id == item.Id);
+                    if (info != null && string.IsNullOrWhiteSpace(item.PaymentId))
+                    {
+                        item.PaymentId = info.PaymentId;
+                    }
                     if (string.IsNullOrWhiteSpace(item.Id))
                         item.Id = Guid.NewGuid().ToString();
                     if (item.AmountInfos == null)
                         item.AmountInfos = new List<AmountInfo>();
-                    item.AmountInfos?.Clear();
-                    AmountInfo amountInfo = new AmountInfo() { Amount = _amountCalculaterV1.getItemAmount(item), PaidAmount = _amountCalculaterV1.getItemPayAmount(item) };
-                    item.AmountInfos.Add(amountInfo);
                 }
             }
 
 
             existingCustomer.CartInfos = cartInfos;
+            existingCustomer = await RefreshCartInfo(existingCustomer);
             var savedCustomer = await _customerRepository.UpsertAsync(existingCustomer);
 
             return new { msg = "ok", data = savedCustomer.ClearForOutPut() };
         }
-        public async Task<object> GetCart(string userId, int shopId)
+        private async Task<DbCustomer> RefreshCartInfo(DbCustomer customer)
         {
-            var existingCustomer =
-                await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == userId);
-            foreach (var item in existingCustomer.CartInfos)
+            foreach (var item in customer?.CartInfos)
             {
                 var rest = await _restaurantRepository.GetOneAsync(a => a.Id == item.RestaurantId);
                 if (rest != null)
                 {
+                    item.RestaurantName = rest.StoreName;
+                    item.RestaurantEmail = rest.Email;
+                    item.RestaurantAddress = rest.Address;
+                    item.RestaurantPhone = rest.PhoneNumber;
+                    item.EmergencyPhone = rest.ContactPhone;
+                    item.RestaurantWechat = rest.Wechat;
+                    item.Currency = rest.Country;
                     item.BillInfo = rest.BillInfo;//更新最新的付款信息
-                    item.BillInfo.IsOldCustomer=existingCustomer.IsOldCustomer;
+                    item.BillInfo.IsOldCustomer = customer.IsOldCustomer;
                     List<TrDbRestaurantMenuItem> courses = new List<TrDbRestaurantMenuItem>();
                     foreach (var cate in rest.Categories)
                     {
@@ -373,6 +380,13 @@ namespace App.Infrastructure.ServiceHandler.Common
                     info.PaidAmount = _amountCalculaterV1.getItemPayAmount(item);
                 }
             }
+            return customer;
+        }
+        public async Task<object> GetCart(string userId, int shopId)
+        {
+            var existingCustomer =
+                await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == userId);
+            existingCustomer = await RefreshCartInfo(existingCustomer);
             if (existingCustomer.CartInfos.Count > 0)
                 existingCustomer = await _customerRepository.UpsertAsync(existingCustomer);
 

@@ -34,7 +34,6 @@ namespace App.Domain.Common.Customer
         public bool IsOldCustomer { get; set; }
         public string StripeCustomerId { get; set; }
         public ulong AuthValue { get; set; }
-        public string PayCurrency { get; set; }
         public List<CommonParam> Favorites { get; set; }
         public List<DbBooking> CartInfos { get; set; }=new List<DbBooking>();
 
@@ -89,6 +88,8 @@ namespace App.Domain.Common.Customer
             source.IsActive=    copyValue.IsActive;
             source.IsBoss   = copyValue.IsBoss;
             source.Area = copyValue.Area;
+            source.StripeCustomerId = copyValue.StripeCustomerId;
+            source.CartInfos= copyValue.CartInfos;
             return source;
         }
 
