@@ -52,6 +52,7 @@ namespace App.Domain.TravelMeals
         //public string PaymentId { get; set; }
         public decimal Amount { get; set; }
         public decimal PaidAmount { get; set; }
+        public decimal Reward { get; set; }
     }
     public enum PaymentStatusEnum
     {
@@ -61,7 +62,6 @@ namespace App.Domain.TravelMeals
     {
         public int PaymentType { get; set; }//0：订单结束扣款，1：24小时捐款
         public decimal Amount { get; set; }
-        public decimal PaidAmount { get; set; }
         public decimal RefundAmount { get; set; }
         public string Currency { get; set; }
         public DateTime PayTime { get; set; }

@@ -36,7 +36,8 @@ namespace App.Domain.Common.Customer
         public ulong AuthValue { get; set; }
         public List<CommonParam> Favorites { get; set; }
         public List<DbBooking> CartInfos { get; set; }=new List<DbBooking>();
-
+        public PaymentTypeEnum RewardType { get; set; } = PaymentTypeEnum.Percentage;
+        public double Reward { get; set; }
     }
 
 
@@ -76,20 +77,28 @@ namespace App.Domain.Common.Customer
             source.Email = copyValue.Email;
             source.WeChat = copyValue.WeChat;
             source.Phone = copyValue.Phone;
+            source.Password = copyValue.Password;
+            source.ResetCode= copyValue.ResetCode;
             source.Latitude = copyValue.Latitude;
             source.Longitude = copyValue.Longitude;
             source.Address = copyValue.Address;
             source.IpAddress = copyValue.IpAddress;
             source.MarketPermission = copyValue.MarketPermission;
             source.Eircode = copyValue.Eircode;
-            source.IsActive = copyValue.IsActive;
+            source.FirstPurchaseDate = copyValue.FirstPurchaseDate;
+            source.Area = copyValue.Area;
             source.DeliveryCharge = copyValue.DeliveryCharge;
             source.PinCode = copyValue.PinCode;
-            source.IsActive=    copyValue.IsActive;
+            source.IsVerity = copyValue.IsVerity;
+            source.IsActive = copyValue.IsActive;
             source.IsBoss   = copyValue.IsBoss;
-            source.Area = copyValue.Area;
+            source.IsOldCustomer = copyValue.IsOldCustomer;
             source.StripeCustomerId = copyValue.StripeCustomerId;
+            source.AuthValue = copyValue.AuthValue;
+            source.Favorites = copyValue.Favorites;
             source.CartInfos= copyValue.CartInfos;
+            source.RewardType= copyValue.RewardType;
+            source.Reward= copyValue.Reward;
             return source;
         }
 

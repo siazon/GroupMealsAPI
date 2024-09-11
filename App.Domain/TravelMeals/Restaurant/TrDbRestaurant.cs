@@ -34,6 +34,7 @@ namespace App.Domain.TravelMeals.Restaurant
         public string Address { get; set; }
         public string City { get; set; }
         public string Country { get; set; }
+        public string Currency { get; set; }
         public string Email { get; set; }
         public string ContactEmail { get; set; }
         public string SupportName { get; set; }
@@ -115,11 +116,18 @@ namespace App.Domain.TravelMeals.Restaurant
         public PaymentTypeEnum PaymentType { get; set; }//支付方式 全额支付，百分百，固定金额
         public double PayRate { get; set; }//百分比
         public bool IsOldCustomer { get; set; }
-        public int RewardType { get; set; }
+        public PaymentTypeEnum RewardType { get; set; } = PaymentTypeEnum.Percentage;
         public double Reward { get; set; }
 
     }
-
+    public class PaymentAmountInfo
+    { 
+        public decimal TotalPayAmount { get; set; }
+        public string AmountText { get; set; }
+        public string RewardText {  get; set; }
+        public string UnPaidAmountText { get; set; }
+        
+    }
     public class MapPosition
     {
         public double lat { get; set; }

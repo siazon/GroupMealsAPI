@@ -67,7 +67,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private readonly IDateTimeUtil _dateTimeUtil;
         private readonly IDbCommonRepository<DbShop> _shopRepository;
         private readonly ITrBookingDataSetBuilder _bookingDataSetBuilder;
-        private readonly IDbCommonRepository<TrDbRestaurantBooking> _restaurantBookingRepository;
         private readonly IContentBuilder _contentBuilder;
         private readonly IEmailUtil _emailUtil;
         private readonly IEncryptionHelper _encryptionHelper;
@@ -79,7 +78,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         public TrRestaurantServiceHandler(IDbCommonRepository<TrDbRestaurant> restaurantRepository, IDateTimeUtil dateTimeUtil, ILogManager logger, ITwilioUtil twilioUtil,
            IDbCommonRepository<DbShop> shopRepository, ITrBookingDataSetBuilder bookingDataSetBuilder, IEncryptionHelper encryptionHelper, IDbCommonRepository<DbCustomer> customerRepository,
-        IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository, ITrRestaurantBookingServiceHandler trRestaurantBookingServiceHandler, IMemoryCache memoryCache,
+        ITrRestaurantBookingServiceHandler trRestaurantBookingServiceHandler, IMemoryCache memoryCache,
             IContentBuilder contentBuilder, IEmailUtil emailUtil, IDbCommonRepository<DbCountry> countryRepository)
         {
             _restaurantRepository = restaurantRepository;
@@ -87,7 +86,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _dateTimeUtil = dateTimeUtil;
             _shopRepository = shopRepository;
             _bookingDataSetBuilder = bookingDataSetBuilder;
-            _restaurantBookingRepository = restaurantBookingRepository;
             _contentBuilder = contentBuilder;
             _emailUtil = emailUtil;
             _twilioUtil = twilioUtil;

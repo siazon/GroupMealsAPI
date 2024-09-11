@@ -1,4 +1,5 @@
 ﻿using App.Domain.Common;
+using App.Domain.Common.Customer;
 using App.Domain.Common.Email;
 using App.Domain.Common.Shop;
 using App.Domain.Enum;
@@ -6,6 +7,7 @@ using App.Domain.TravelMeals;
 using App.Infrastructure.Builders.Common;
 using App.Infrastructure.Exceptions;
 using App.Infrastructure.Extensions;
+using App.Infrastructure.Repository;
 using App.Infrastructure.ServiceHandler.Common;
 using App.Infrastructure.ServiceHandler.Tour;
 using App.Infrastructure.Utility.Common;
@@ -28,9 +30,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
     {
         Task EmailVerifyCode(string email, string code, DbShop shopInfo, string tempName, string wwwPath, string subject, string title, string titleCN);
         void EmailBoss(List<DbBooking> bookings, DbShop shopInfo, string tempName, string wwwPath, string subject);
-        //Task EmailSupport(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject, ITwilioUtil _twilioUtil, IContentBuilder _contentBuilder, decimal exRate, ILogManager _logger);
-        void EmailCustomerTotal(List<DbBooking> bookings, DbShop shopInfo, string tempName, string wwwPath, string subject);
-
+        void EmailCustomerTotal(List<DbBooking> bookings, DbShop shopInfo, string tempName, string wwwPath, string subject, DbCustomer user);
         Task EmailCustomer(DbBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject);
         void SendModifiedEmail(DbBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject);
         Task SendCancelEmail(DbShop shopInfo,  DbBooking detail, string webPath, string tempName, string subject, params string[] ccEmail);
@@ -46,9 +46,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         IAmountCalculaterUtil _amountCalculaterUtil;
         IOperationServiceHandler _operationServiceHandler;
         IMsgPusherServiceHandler _msgPusherServiceHandler;
+        private readonly ICountryServiceHandler _countryHandler;
+        private readonly ICustomerServiceHandler _customerServiceHandler;
+        private readonly IDbCommonRepository<DbPaymentInfo> _paymentRepository;
 
         public SendEmailUtil(IEmailUtil emailUtil, IAmountCalculaterUtil amountCalculaterUtil, ILogManager logger, IDateTimeUtil dateTimeUtil, ICountryServiceHandler coutryHandler,
-         IMsgPusherServiceHandler msgPusherServiceHandler, IOperationServiceHandler operationServiceHandler, IContentBuilder contentBuilder)
+     ICustomerServiceHandler customerServiceHandler,ICountryServiceHandler countryHandler,  IDbCommonRepository<DbPaymentInfo> paymentRepository, IMsgPusherServiceHandler msgPusherServiceHandler, IOperationServiceHandler operationServiceHandler, IContentBuilder contentBuilder)
         {
             _emailUtil = emailUtil;
             _logger = logger;
@@ -58,6 +61,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _amountCalculaterUtil = amountCalculaterUtil;
             _operationServiceHandler = operationServiceHandler;
             _msgPusherServiceHandler= msgPusherServiceHandler;
+            _paymentRepository= paymentRepository;
+            _countryHandler= countryHandler;
+            _customerServiceHandler= customerServiceHandler;
         }
         public async Task EmailVerifyCode(string email, string code, DbShop shopInfo, string tempName, string wwwPath, string subject, string title, string titleCN)
         {
@@ -74,8 +80,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
         }
 
-        public void EmailBoss(List<DbBooking> bookings, DbShop shopInfo, string tempName, string wwwPath, string subject)
+        public async void EmailBoss(List<DbBooking> bookings, DbShop shopInfo, string tempName, string wwwPath, string subject)
         {
+            var country = await _countryHandler.GetCountry(shopInfo.ShopId??11);
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";
             foreach (var item in bookings)
@@ -107,7 +114,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     int qty = course.Qty + course.ChildrenQty;
                     Detail += $"{course.MenuItemName} * {qty} 人 ";
                 }
-                string itemCurrencyStr = item.Currency == "UK" ? "£" : "€";
+                string itemCurrencyStr = country.Countries.FirstOrDefault(a => a.Currency == item.Currency).CurrencySymbol;
                 //_twilioUtil.sendSMS(item.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
                 Detail += $"<br> Amount(金额)：<b>{itemCurrencyStr}{item.AmountInfos.Sum(x => x.Amount)}</b>, <br> Paid(已付)：<b>{itemCurrencyStr}{paidAmount}</b>,<br>";
                 if (amount - paidAmount > 0)
@@ -138,52 +145,17 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 });
             }
         }
-        private async Task<string> AppendRestaurantInfo(DbBooking booking)
-        {
-            string detailStr = "";
-            string oldValue = await ModifyOldValue(booking, "RestaurantName");
-            detailStr += oldValue.ToDelFormat() + booking.RestaurantName + " <br> ";
-            oldValue = await ModifyOldValue(booking, "RestaurantAddress");
-            detailStr += oldValue.ToDelFormat() + booking.RestaurantAddress + " <br> ";
-            string oldphone = await ModifyOldValue(booking, "RestaurantPhone");
-            string oldEmail = await ModifyOldValue(booking, "RestaurantEmail");
-            detailStr += oldphone.ToDelFormat() + booking.RestaurantPhone + "  " + oldEmail.ToDelFormat() + booking.RestaurantEmail + " <br> ";
-            oldValue = await ModifyOldValue(booking, "RestaurantWechat");
-            detailStr += "微信: " + oldValue.ToDelFormat() + booking.RestaurantWechat + " <br> ";
-            oldValue = await ModifyOldValue(booking, "EmergencyPhone");
-            detailStr += "紧急: " + oldValue.ToDelFormat() + booking.EmergencyPhone + " <br> ";
-            return detailStr;
-        }
-        private async Task<string> AppendCustomerInfo(DbBooking booking)
-        {
-            string detailStr = "";
-            string oldValue = await ModifyOldValue(booking, "GroupRef");
-            detailStr += "团号: " + oldValue.ToDelFormat() + booking.GroupRef + " <br> ";
-            string oldName = await ModifyOldValue(booking, "ContactName");
-            string oldPhone = await ModifyOldValue(booking, "ContactPhone");
-            detailStr += "联系人: " + oldName.ToDelFormat() + booking.ContactName + " " + oldPhone.ToDelFormat() + booking.ContactPhone + " <br> ";
-            oldValue = await ModifyOldValue(booking, "ContactWechat");
-            detailStr += "微信: " + oldValue.ToDelFormat() + booking.ContactWechat + " <br> ";
-            oldValue = await ModifyOldValue(booking, "ContactInfos");
-            detailStr += "更多联系方式: " + oldValue.ToDelFormat() + booking.ContactInfos + "  <br>";
-            oldValue = await ModifyOldValue(booking, "Memo");
-            detailStr += "备注: " + oldValue.ToDelFormat() + booking.Memo + " <br> <br> ";
-            return detailStr;
-        }
+     
 
-        public void EmailCustomerTotal(List<DbBooking> bookings, DbShop shopInfo, string tempName, string wwwPath, string subject)
+        public async void EmailCustomerTotal(List<DbBooking> bookings, DbShop shopInfo, string tempName, string wwwPath, string subject,DbCustomer user)
         {
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";
-            decimal totalAmount = 0, totalPaidAmount = 0;
-            decimal UKAmount = 0, EUAmount = 0, UKUnPaidAmount = 0, EUUnPaidAmount = 0;
-            string currencyStr = "";
-            string reciveEmail = "";//TODO
+
+            var country = await _countryHandler.GetCountry(11);
             foreach (var item in bookings)
             {
                 if (item.Status == OrderStatusEnum.Canceled) continue;
-                reciveEmail = item.ContactEmail;
-                currencyStr = item.PayCurrency;
                 if (tempName != EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealCustomer].TemplateName)
                     Detail += AppendRestaurantInfo(item);
                 string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm");
@@ -207,19 +179,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     ShopId = item.ShopId
                 });
 
-                totalPaidAmount += paidAmount;
-                if (item.Currency == "UK")
-                {
-                    UKAmount += amount;
-                    UKUnPaidAmount += amount - paidAmount;
-                }
-                else
-                {
-                    EUAmount += amount;
-                    EUUnPaidAmount += amount - paidAmount;
-                }
-
-                string itemCurrencyStr = item.Currency == "UK" ? "£" : "€";
+                var itemCurrencyStr = country.Countries.FirstOrDefault(a => a.Currency == item.Currency).CurrencySymbol;
                 List<string> names = new List<string>();
                 foreach (var course in item.Courses)
                 {
@@ -231,22 +191,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     Detail += $"UnPaid(待支付)：<b style ='color: red;'>{itemCurrencyStr}{amount - paidAmount}</b> <br>";
 
                 Detail += "<br>";
-            }
-            string PaidAmountStr = currencyStr + Math.Round(totalPaidAmount, 2);
-            string UnpaidAmountStr = "";
-            string AmountStr = "";
+            } 
+            var AmountInfo = _amountCalculaterUtil.GetOrderPaidInfo(bookings, bookings[0].PayCurrency, bookings[0].ShopId??11,user, country);
+            DbPaymentInfo dbPaymentInfo=await _paymentRepository.GetOneAsync(a=>a.Id== bookings[0].PaymentId);
+          
+          var  currencySymbol = country.Countries.FirstOrDefault(a => a.Currency == dbPaymentInfo.Currency).CurrencySymbol;
+            string PaidAmountStr = currencySymbol + dbPaymentInfo.Amount;
+            string UnpaidAmountStr = AmountInfo.UnPaidAmountText;
+            string AmountStr = AmountInfo.AmountText;
 
-            if (UKAmount > 0 && EUAmount > 0)
-                AmountStr = $"€{Math.Round(EUAmount, 2)} + £{Math.Round(UKAmount, 2)}";
-            else
-                AmountStr = UKAmount > 0 ? $"£{Math.Round(UKAmount, 2)}" : $"€{Math.Round(EUAmount, 2)}";
-
-            if (UKUnPaidAmount > 0 && EUUnPaidAmount > 0)
-                UnpaidAmountStr = $"€{Math.Round(EUUnPaidAmount, 2)} + £{Math.Round(UKUnPaidAmount, 2)}";
-            else
-                UnpaidAmountStr = UKUnPaidAmount > 0 ? $"£{Math.Round(UKUnPaidAmount, 2)}" : $"€{Math.Round(EUUnPaidAmount, 2)}";
-
-            //Detail += $"Amount(金额)：<b>{currencyStr}{totalAmount}</b> Paid(已付)：<b>{currencyStr}{totalPaidAmount}</b> UnPaid(待支付)：<b style=\"color: red;\">{currencyStr}{totalAmount - totalPaidAmount}</b>";
             var detailstr = new HtmlString(Detail);
             var emailHtml = "";
             Task.Run(async () =>
@@ -265,7 +218,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
                 try
                 {
-                    await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, reciveEmail, subject, emailHtml);
+                    await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, user.Email, subject, emailHtml);
                 }
                 catch (Exception ex)
                 {
@@ -429,7 +382,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             paidAmount = booking.AmountInfos.Sum(x => x.PaidAmount);
 
-            amount = await _amountCalculaterUtil.CalculateAmountByRate(booking, booking.PayCurrency, booking.ShopId ?? 11, country);
+            amount =  _amountCalculaterUtil.getItemAmount(booking);
 
             paidAmount = Math.Round(paidAmount, 2);
             amount = Math.Round(amount, 2);
@@ -464,6 +417,38 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 _logger.LogError($"SendCancelEmail.send {ex.Message} -{ex.StackTrace} ");
             }
 
+        }
+        private async Task<string> AppendRestaurantInfo(DbBooking booking)
+        {
+            string detailStr = "";
+            string oldValue = await ModifyOldValue(booking, "RestaurantName");
+            detailStr += oldValue.ToDelFormat() + booking.RestaurantName + " <br> ";
+            oldValue = await ModifyOldValue(booking, "RestaurantAddress");
+            detailStr += oldValue.ToDelFormat() + booking.RestaurantAddress + " <br> ";
+            string oldphone = await ModifyOldValue(booking, "RestaurantPhone");
+            string oldEmail = await ModifyOldValue(booking, "RestaurantEmail");
+            detailStr += oldphone.ToDelFormat() + booking.RestaurantPhone + "  " + oldEmail.ToDelFormat() + booking.RestaurantEmail + " <br> ";
+            oldValue = await ModifyOldValue(booking, "RestaurantWechat");
+            detailStr += "微信: " + oldValue.ToDelFormat() + booking.RestaurantWechat + " <br> ";
+            oldValue = await ModifyOldValue(booking, "EmergencyPhone");
+            detailStr += "紧急: " + oldValue.ToDelFormat() + booking.EmergencyPhone + " <br> ";
+            return detailStr;
+        }
+        private async Task<string> AppendCustomerInfo(DbBooking booking)
+        {
+            string detailStr = "";
+            string oldValue = await ModifyOldValue(booking, "GroupRef");
+            detailStr += "团号: " + oldValue.ToDelFormat() + booking.GroupRef + " <br> ";
+            string oldName = await ModifyOldValue(booking, "ContactName");
+            string oldPhone = await ModifyOldValue(booking, "ContactPhone");
+            detailStr += "联系人: " + oldName.ToDelFormat() + booking.ContactName + " " + oldPhone.ToDelFormat() + booking.ContactPhone + " <br> ";
+            oldValue = await ModifyOldValue(booking, "ContactWechat");
+            detailStr += "微信: " + oldValue.ToDelFormat() + booking.ContactWechat + " <br> ";
+            oldValue = await ModifyOldValue(booking, "ContactInfos");
+            detailStr += "更多联系方式: " + oldValue.ToDelFormat() + booking.ContactInfos + "  <br>";
+            oldValue = await ModifyOldValue(booking, "Memo");
+            detailStr += "备注: " + oldValue.ToDelFormat() + booking.Memo + " <br> <br> ";
+            return detailStr;
         }
     }
 }

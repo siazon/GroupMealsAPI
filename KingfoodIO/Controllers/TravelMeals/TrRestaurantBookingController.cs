@@ -65,25 +65,7 @@ namespace KingfoodIO.Controllers.TravelMeals
             _shopServiceHandler = shopServiceHandler;
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="booking"></param>
-        /// <param name="shopId"></param>
-        /// <returns></returns>
-        [Idempotent]
-        [HttpPost]
-        [ProducesResponseType(typeof(TrDbRestaurantBooking), (int)HttpStatusCode.OK)]
-        [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> RequestTravelMealsBooking([FromBody] TrDbRestaurantBooking booking, int shopId)
-        {
-            string rawRequestBody = await Request.GetRawBodyAsync();
-            _logger.LogDebug("RequestTravelMealsBooking: " + rawRequestBody);
-            var authHeader = Request.Headers["Wauthtoken"];
-            var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
-            return await ExecuteAsync(shopId, false,
-                async () => await _restaurantBookingServiceHandler.RequestTravelMealsBooking(booking, shopId, user));
-        }
+      
 
         [Idempotent]
         [HttpPost]
@@ -374,24 +356,22 @@ namespace KingfoodIO.Controllers.TravelMeals
         /// Json中menuCalculateType，price，childrenPrice，qty，childrenQty必填
         /// </summary>
         /// <param name="menuItems"></param>
-        /// <param name="paymentType">支付方式 0:全额,1:支付押金,2:到店支付</param>
-        /// <param name="payRate">支付方式为1时必填，示例：15%押金传0.15</param>
-        /// <returns></returns>
+        /// <param name="paymentType">来自Restaurant.billInfo 支付方式 0:全额,1:按比例,2:按固定值</param>
+        /// <param name="payRate">来自Restaurant.billInfo 支付方式为1时必填，示例：15%押金传0.15</param>
+        /// <param name="isOldCustomer">来自login中userInfo.isOldCustomer</param>
+        /// <returns>paidAmount返回为0时，支付方式不显示</returns>
         [HttpPost]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(ResponseModel), (int)HttpStatusCode.OK)]
-        public IActionResult CalculateBookingItemAmount([FromBody] List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate)
+        public  IActionResult CalculateBookingItemAmount([FromBody] List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate,bool isOldCustomer)
         {
-            return Ok(_restaurantBookingServiceHandler.GetBookingItemAmount(menuItems, paymentType, payRate));
+            var authHeader = Request.Headers["Wauthtoken"];
+            var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            
+            return Ok( _restaurantBookingServiceHandler.GetBookingItemAmount(menuItems, paymentType, payRate, isOldCustomer));
         }
 
-        [HttpPost]
-        [ServiceFilter(typeof(AuthActionFilter))]
-        [ProducesResponseType(typeof(ResponseModel), (int)HttpStatusCode.OK)]
-        public IActionResult CalculateBookingItemAmountold([FromBody] List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate)
-        {
-            return Ok(_restaurantBookingServiceHandler.GetBookingItemAmount(menuItems, paymentType, payRate));
-        }
+        
 
 
         /// <summary>

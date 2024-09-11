@@ -64,7 +64,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         private readonly IDbCommonRepository<DbCustomer> _customerRepository;
         private readonly IDbCommonRepository<DbShop> _shopRepository;
         private readonly IDbCommonRepository<TrDbRestaurant> _restaurantRepository;
-        private readonly IDbCommonRepository<TrDbRestaurantBooking> _restaurantBookingRepository;
+        private readonly IDbCommonRepository<DbBooking> _bookingRepository;
         private readonly IDbCommonRepository<DbShopContent> _shopContentRepository;
         private readonly IDbCommonRepository<DbSetting> _settingRepository;
         private readonly IEncryptionHelper _encryptionHelper;
@@ -77,7 +77,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         IHostingEnvironment _environment;
         IMemoryCache _memoryCache;
 
-        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1, IMemoryCache memoryCache, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository,
+        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1, IMemoryCache memoryCache, IDbCommonRepository<DbBooking> bookingRepository,
         ITwilioUtil twilioUtil, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<TrDbRestaurant> restaurantRepository,
         IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, ISendEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
         {
@@ -87,7 +87,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             _dateTimeUtil = dateTimeUtil;
             _shopRepository = shopRepository;
             _shopContentRepository = shopContentRepository;
-            _restaurantBookingRepository = restaurantBookingRepository;
+            _bookingRepository = bookingRepository;
             _contentBuilder = contentBuilder;
             _emailUtil = emailUtil;
             _twilioUtil = twilioUtil;
@@ -102,13 +102,13 @@ namespace App.Infrastructure.ServiceHandler.Common
         {
             Guard.GreaterThanZero(shopId);
             var customers = await _customerRepository.GetManyAsync(r => r.ShopId == shopId);
-            var bookings = await _restaurantBookingRepository.GetManyAsync(a => 1 == 1);
+            var bookings = await _bookingRepository.GetManyAsync(a => 1 == 1);
 
 
             int aaa = 0;
             foreach (var item in customers)
             {
-                int count = bookings.Sum(a => { if (a.CustomerEmail == item.Email) return a.Details.Count(); else return 0; });
+                int count = bookings.ToList().FindAll(a=>a.Creater==item.Id).Count;
                 item.AuthValue = Convert.ToUInt64(count);
                 aaa += count;
             }
@@ -268,7 +268,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         {
             Guard.NotNull(customer);
             var existingCustomer =
-               await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Email == customer.Email);
+               await _customerRepository.GetOneAsync(r => r.ShopId == customer.ShopId && r.Id == customer.Id);
             if (existingCustomer == null)
                 throw new ServiceException("Customer Not Exists");
 
@@ -354,7 +354,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                     item.RestaurantPhone = rest.PhoneNumber;
                     item.EmergencyPhone = rest.ContactPhone;
                     item.RestaurantWechat = rest.Wechat;
-                    item.Currency = rest.Country;
+                    item.Currency = rest.Currency;
                     item.BillInfo = rest.BillInfo;//更新最新的付款信息
                     item.BillInfo.IsOldCustomer = customer.IsOldCustomer;
                     List<TrDbRestaurantMenuItem> courses = new List<TrDbRestaurantMenuItem>();
@@ -371,13 +371,13 @@ namespace App.Infrastructure.ServiceHandler.Common
                             course.Price = menu.Price;
                             course.ChildrenPrice = menu.ChildrenPrice;
                         }
-
                     }
                 }
                 foreach (var info in item.AmountInfos)
                 {
                     info.Amount = _amountCalculaterV1.getItemAmount(item);
                     info.PaidAmount = _amountCalculaterV1.getItemPayAmount(item);
+                    info.Reward = _amountCalculaterV1.GetReward(item, customer);
                 }
             }
             return customer;

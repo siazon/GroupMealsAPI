@@ -157,7 +157,7 @@ namespace KingfoodIO.Controllers.Common
 
                 switch (stripeEvent.Type)
                 {
-                    case Events.ChargeSucceeded:
+                    case Events.ChargeSucceeded://支付成功
 
                         try
                         {
@@ -219,7 +219,7 @@ namespace KingfoodIO.Controllers.Common
                         dbUser.StripeCustomerId = customer.Id;
                         await _customerServiceHandler.UpdateAccount(dbUser,  11);
                         break;
-                    case Events.SetupIntentSucceeded:
+                    case Events.SetupIntentSucceeded://下单成功
 
                         _logger.LogInfo("SetupIntentSucceeded:" + stripeEvent.Type);
                        var setupIntent = stripeEvent.Data.Object as SetupIntent;
@@ -238,7 +238,7 @@ namespace KingfoodIO.Controllers.Common
                             dbUser = await _customerServiceHandler.GetCustomer(userId, paymentInfo.ShopId ?? 11);
                             List<DbBooking> bookings = dbUser.CartInfos.FindAll(a => a.PaymentId == dbpayment.Id);
 
-                            _trRestaurantBookingServiceHandler.PlaceBooking(bookings, paymentInfo.ShopId ?? 11, userId);
+                            _trRestaurantBookingServiceHandler.PlaceBooking(bookings, paymentInfo.ShopId ?? 11, dbUser);
                             var leftBooking = dbUser.CartInfos.FindAll(a => a.PaymentId != dbpayment.Id);
                             dbUser.CartInfos = leftBooking;
                             dbUser.StripeCustomerId = setupIntent.CustomerId;
