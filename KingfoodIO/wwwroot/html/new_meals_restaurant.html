@@ -194,11 +194,7 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 12px; mso-line-height-alt: 33px;"><span style="font-size:22px;">@Model.bookingDetail.RestaurantName</span></p>
-																		<p style="margin: 0; font-size: 12px; mso-line-height-alt: 33px;"><span style="font-size:22px;">@Model.bookingDetail.RestaurantAddress</span></p>
-																		<!--<p style="margin: 0; font-size: 12px; mso-line-height-alt: 33px;"><span style="font-size:22px;">@Model.bookingDetail.RestaurantPhone</span></p>																</p>
-																		<p style="margin: 0; font-size: 12px; mso-line-height-alt: 33px;"><span style="font-size:22px;">@Model.bookingDetail.RestaurantEmail</span></p>															</p>
-																		<p style="margin: 0; font-size: 12px; mso-line-height-alt: 33px;"><span style="font-size:22px;">微信：@Model.bookingDetail.RestaurantWechat</span></p>-->
+																		<p style="margin: 0; font-size: 12px; mso-line-height-alt: 33px;"><span style="font-size:22px;">@Model.RestaurantInfo</span></p>
 																	</div>
 																</div>
 															</td>
@@ -268,7 +264,7 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;">@Model.selectDateTimeStr</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;">@Model.MealTime</span></p>
 																	</div>
 																</div>
 															</td>
@@ -339,7 +335,7 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 24px;"><span style="font-size:16px;">@Model.Detail</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 24px;"><span style="font-size:16px;">@Model.Details</span></p>
 																	</div>
 																</div>
 															</td>
@@ -409,7 +405,7 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 24px;"><span style="font-size:16px;">@Model.bookingDetail.Memo</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 24px;"><span style="font-size:16px;">@Model.Memo</span></p>
 																	</div>
 																</div>
 															</td>
@@ -480,7 +476,7 @@
 																		style="text-decoration:none;display:inline-block;color:#ffffff;background-color:#f08619;border-radius:4px;width:auto;border-top:0px solid transparent;font-weight:400;border-right:0px solid transparent;border-bottom:0px solid transparent;border-left:0px solid transparent;padding-top:5px;padding-bottom:5px;font-family:Oswald, Arial, Helvetica Neue, Helvetica, sans-serif;font-size:16px;text-align:center;mso-border-alt:none;word-break:keep-all;">
 																		<span
 																			style="padding-left:20px;padding-right:20px;font-size:16px;display:inline-block;letter-spacing:normal;"><a
-																			href="https://order.groupmeals.com/AcceptOrder/@Model.booking.Id?opt=1&sub=@Model.bookingDetail.Id&e=@Model.bookingDetail.RestaurantEmail" target="_blank" style="word-break: break-word; text-decoration:none;color:#fefefe; line-height: 32px;"> Accept
+																			href="https://order.groupmeals.com/AcceptOrder/@Model.BookingId?opt=1&sub=@Model.BookingId&e=@Model.ReceiverEmail" target="_blank" style="word-break: break-word; text-decoration:none;color:#fefefe; line-height: 32px;"> Accept
 																				接收</a></span></div>
 																	<!--[if mso]></center></v:textbox></v:roundrect><![endif]-->
 																</div>
@@ -499,7 +495,7 @@
 																		style="text-decoration:none;display:inline-block;color:#ffffff;background-color:#bc3f3f;border-radius:4px;width:auto;border-top:0px solid transparent;font-weight:400;border-right:0px solid transparent;border-bottom:0px solid transparent;border-left:0px solid transparent;padding-top:5px;padding-bottom:5px;font-family:Oswald, Arial, Helvetica Neue, Helvetica, sans-serif;font-size:16px;text-align:center;mso-border-alt:none;word-break:keep-all;">
 																		<span
 																			style="padding-left:20px;padding-right:20px;font-size:16px;display:inline-block;letter-spacing:normal;"><a
-																			href="https://order.groupmeals.com/AcceptOrder/@Model.booking.Id?opt=2&sub=@Model.bookingDetail.Id&e=@Model.bookingDetail.RestaurantEmail" target="_blank" style="word-break: break-word; text-decoration:none;color:#fefefe; line-height: 32px;">Decline
+																			href="https://order.groupmeals.com/AcceptOrder/@Model.BookingId?opt=2&sub=@Model.BookingId&e=@Model.ReceiverEmail" target="_blank" style="word-break: break-word; text-decoration:none;color:#fefefe; line-height: 32px;">Decline
 																				拒绝</a></span></div>
 																	<!--[if mso]></center></v:textbox></v:roundrect><![endif]-->
 																</div>

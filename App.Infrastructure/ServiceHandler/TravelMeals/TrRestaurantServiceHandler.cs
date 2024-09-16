@@ -178,15 +178,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     var cacheKey = string.Format("motionmedia-{1}-{0}-{2}", shopId, typeof(TrDbRestaurant).Name, 50);
                     var cacheResult = _memoryCache.Get<KeyValuePair<string, IEnumerable<TrDbRestaurant>>>(cacheKey);
-                    if (cacheResult.Value != null && cacheResult.Value.Count() > 0&&string.IsNullOrWhiteSpace(continuationToke))
+                    if (cacheResult.Value != null && cacheResult.Value.Count() > 0 && string.IsNullOrWhiteSpace(continuationToke))
                     {
                         currentPage = cacheResult;
                     }
                     else
                     {
                         currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId, pageSize, continuationToke);
-                        if(string.IsNullOrWhiteSpace(continuationToke))
-                        _memoryCache.Set(cacheKey, currentPage);
+                        if (string.IsNullOrWhiteSpace(continuationToke))
+                            _memoryCache.Set(cacheKey, currentPage);
                     }
                 }
                 else
@@ -194,8 +194,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     string lowContent = content?.ToLower();
                     if (isContentEmpty)
                     {
-                        if(isAllCity)
-                        currentPage = await _restaurantRepository.GetManyAsync(a => a.Country == country , pageSize, continuationToke);
+                        if (isAllCity)
+                            currentPage = await _restaurantRepository.GetManyAsync(a => a.Country == country, pageSize, continuationToke);
                         else
                             currentPage = await _restaurantRepository.GetManyAsync(a => a.Country == country && a.City == city, pageSize, continuationToke);
 
@@ -358,11 +358,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var cacheKeycitys = string.Format("motionmedia-{1}-{0}", shopId, "citys");
             _memoryCache.Set<DbCountry>(cacheKey, null);
             _memoryCache.Set<Dictionary<string, List<string>>>(cacheKeycitys, null);
-            var cities = await _countryRepository.GetOneAsync(a => a.ShopId == shopId);
-            if (cities != null)
-                countries.Id = cities.Id;
-            else
-                countries.Id = Guid.NewGuid().ToString();
+            //var cities = await _countryRepository.GetOneAsync(a => a.Id == countries.Id);
+            countries.Updated = DateTime.UtcNow;
             await _countryRepository.UpsertAsync(countries);
 
             _memoryCache.Set<DbCountry>(cacheKey, null);
@@ -411,13 +408,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 return new ResponseModel { msg = "ok", code = 200, data = cacheResult };
             }
-            var existingCities = await _countryRepository.GetOneAsync(a => a.ShopId == shopId);
+            var existingCities = await _countryRepository.GetManyAsync(a => a.ShopId == shopId);
             if (existingCities == null)
                 return new ResponseModel { msg = "Cities can't fund", code = 501, };
-    
 
-            existingCities.Countries = existingCities.Countries.OrderBy(x => x.SortOrder).ToList();
-            existingCities.Countries.ForEach(x => { x.Cities = x.Cities.OrderBy(a => a.SortOrder).ToList(); });
+
+            existingCities = existingCities.OrderBy(x => x.SortOrder).ToList();
+            existingCities.ToList().ForEach(x => { x.Cities = x.Cities.OrderBy(a => a.SortOrder).ToList(); });
 
             _memoryCache.Set(cacheKey, existingCities);
 

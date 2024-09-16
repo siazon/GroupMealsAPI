@@ -208,22 +208,6 @@ namespace KingfoodIO.Controllers.TravelMeals
         /// </summary>
         /// <param name="shopId"></param>
         /// <param name="bookingId"></param>
-        /// <param name="cache"></param>
-        /// <returns></returns>
-        [HttpGet]
-        [ServiceFilter(typeof(AuthActionFilter))]
-        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> DeleteBookingDetail(int shopId, string bookingId, string detailId, bool cache = false)
-        {
-            return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantBookingServiceHandler.DeleteBookingDetail(bookingId, detailId, shopId));
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="shopId"></param>
-        /// <param name="bookingId"></param>
         /// <param name="detailId"></param>
         /// <param name="cache"></param>
         /// <returns></returns>

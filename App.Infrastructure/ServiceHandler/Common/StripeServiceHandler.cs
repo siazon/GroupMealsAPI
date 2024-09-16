@@ -119,7 +119,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                 meta["userId"] = userId;
                 var options = new PaymentIntentCreateOptions
                 {
-                    Amount = Convert.ToInt64(paymentInfo.Amount),
+                    Amount = Convert.ToInt64(paymentInfo.Amount*100),
                     Currency = paymentInfo.Currency,
                     AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
                     {

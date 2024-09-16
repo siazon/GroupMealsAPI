@@ -18,12 +18,12 @@ namespace App.Infrastructure.Utility.Common
 {
     public interface IAmountCalculaterUtil
     {
-        PaymentAmountInfo GetOrderPaidInfo(List<DbBooking> details, string payCurrency, int shopId, DbCustomer customer, DbCountry country);
+        PaymentAmountInfo GetOrderPaidInfo(List<DbBooking> details, string payCurrency, int shopId, DbCustomer customer, List<DbCountry> country);
         decimal CalculateOrderPaidAmount(List<DbBooking> details, string PayCurrency, DbCustomer customer);
         decimal getItemAmount(DbBooking bookingDetail);
         decimal getItemPayAmount(DbBooking bookingDetail, double VAT = 0.125);
         decimal GetReward(DbBooking detail, DbCustomer user);
-        decimal CalculatePayAmountByRate(decimal amount, string currency, string payCurrency, int shopId, DbCountry country);
+        decimal CalculatePayAmountByRate(decimal amount, string currency, string payCurrency, int shopId, List<DbCountry> country);
     }
 
     public class AmountCalculaterV1Util : IAmountCalculaterUtil
@@ -34,12 +34,13 @@ namespace App.Infrastructure.Utility.Common
             _countryServiceHandler = countryServiceHandler;
         }
 
-        public PaymentAmountInfo GetOrderPaidInfo(List<DbBooking> details, string currency, int shopId, DbCustomer customer, DbCountry countries)
+        public PaymentAmountInfo GetOrderPaidInfo(List<DbBooking> details, string currency, int shopId, DbCustomer customer, List<DbCountry> countries)
         {
             PaymentAmountInfo paymentAmountInfo = new PaymentAmountInfo();
             Dictionary<string, decimal> dicAmount = new Dictionary<string, decimal>();
             Dictionary<string, decimal> dicReward = new Dictionary<string, decimal>();
             Dictionary<string, decimal> dicUnPaidAmount = new Dictionary<string, decimal>();
+            Dictionary<string, DicModel> dicInfo=new Dictionary<string, DicModel>();
             foreach (var item in details)
             {
                 var amount = getItemAmount(item);//总金额
@@ -48,30 +49,43 @@ namespace App.Infrastructure.Utility.Common
                 var payAmountWithReward = payAmount - reward;//减去返钱
 
                 paymentAmountInfo.TotalPayAmount += CalculatePayAmountByRate(payAmountWithReward, item.Currency, currency, shopId, countries);
-                if (dicAmount.ContainsKey(item.RestaurantCountry))
-                    dicAmount[item.RestaurantCountry] += Math.Round(amount, 2);
-                else
-                    dicAmount[item.RestaurantCountry] = Math.Round(amount, 2);
-
-                if (dicUnPaidAmount.ContainsKey(item.RestaurantCountry))
-                    dicUnPaidAmount[item.RestaurantCountry] += Math.Round(amount - payAmount, 2);
-                else
-                    dicUnPaidAmount[item.RestaurantCountry] = Math.Round(amount - payAmount, 2);
-
-
-                if (reward > 0)
+                if (dicInfo.ContainsKey(item.Currency))
                 {
-                    if (dicReward.ContainsKey(item.RestaurantCountry))
-                        dicReward[item.RestaurantCountry] += Math.Round(reward, 2);
-                    else
-                        dicReward[item.RestaurantCountry] = Math.Round(reward, 2);
+                    dicInfo[item.Currency].Amount += Math.Round(amount, 2);
+                    dicInfo[item.Currency].UnPaidAmount += Math.Round(amount - payAmount, 2);
+                    if (reward > 0)
+                        dicInfo[item.Currency].Reward += Math.Round(reward, 2);
                 }
+                else
+                {
+                    dicInfo.Add(item.Currency,new DicModel());
+                    dicInfo[item.Currency].Amount = Math.Round(amount, 2); 
+                    dicInfo[item.Currency].UnPaidAmount = Math.Round(amount - payAmount, 2);
+                    if (reward > 0)
+                        dicInfo[item.Currency].Reward = Math.Round(reward, 2);
+                }
+                //if (dicAmount.ContainsKey(item.Currency))
+                //    dicAmount[item.Currency] += Math.Round(amount, 2);
+                //else
+                //    dicAmount[item.Currency] = Math.Round(amount, 2);
+
+                //if (dicUnPaidAmount.ContainsKey(item.Currency))
+                //    dicUnPaidAmount[item.Currency] += Math.Round(amount - payAmount, 2);
+                //else
+                //    dicUnPaidAmount[item.Currency] = Math.Round(amount - payAmount, 2);
+                //if (reward > 0)
+                //{
+                //    if (dicReward.ContainsKey(item.Currency))
+                //        dicReward[item.Currency] += Math.Round(reward, 2);
+                //    else
+                //        dicReward[item.Currency] = Math.Round(reward, 2);
+                //}
             }
 
-            paymentAmountInfo.AmountText = JionDictionary(dicAmount, countries);
-            paymentAmountInfo.UnPaidAmountText = JionDictionary(dicUnPaidAmount, countries);
-            string rewardText = JionDictionary(dicReward, countries);
-            paymentAmountInfo.RewardText = string.IsNullOrWhiteSpace(rewardText) ? "暂无优惠" : rewardText;
+            paymentAmountInfo.AmountText = JionDictionary(dicInfo, countries, "amount");
+            paymentAmountInfo.UnPaidAmountText = JionDictionary(dicInfo, countries,"unpaid");
+            string rewardText = JionDictionary(dicInfo, countries,"reward");
+            paymentAmountInfo.RewardText =  rewardText;
 
             return paymentAmountInfo;
 
@@ -90,18 +104,25 @@ namespace App.Infrastructure.Utility.Common
             return amount;
         }
 
-        private string JionDictionary(Dictionary<string, decimal> dicAmount, DbCountry dbCountry)
+        private string JionDictionary(Dictionary<string, DicModel> dicAmount, List<DbCountry> dbCountry,string amountType)
         {
             List<string> temp = new List<string>();
             foreach (var item in dicAmount)
             {
                 string symbol = "";
-                var country = dbCountry.Countries.FirstOrDefault(c => c.Name == item.Key);
+                var country = dbCountry.FirstOrDefault(c => c.Currency == item.Key);
                 if (country != null)
                 {
                     symbol = country.CurrencySymbol;
                 }
-                var _amount = item.Value.ToString("0.00");
+                var _amount ="";
+                if (amountType == "amount"  )
+                    _amount = item.Value.Amount.ToString("0.00");
+                if (amountType=="reward"&&item.Value.Reward>0)
+                    _amount = item.Value.Reward.ToString("0.00");
+                if (amountType == "unpaid")
+                    _amount = item.Value.UnPaidAmount.ToString("0.00");
+                if(!string.IsNullOrWhiteSpace(_amount))
                 temp.Add($"{symbol} {_amount}");
             }
             string amountText = string.Join(" + ", temp);
@@ -111,20 +132,20 @@ namespace App.Infrastructure.Utility.Common
         #region 按汇率计算
 
 
-        public decimal CalculatePayAmountByRate(decimal oAmount, string currency, string payCurrency, int shopId, DbCountry country)
+        public decimal CalculatePayAmountByRate(decimal oAmount, string currency, string payCurrency, int shopId, List<DbCountry> country)
         {
             decimal amount = 0;
-            var exRate = country.Countries.FirstOrDefault(a => a.Currency == currency)?.ExchangeRate ?? 1;
-            var UKRate = country.Countries.FirstOrDefault(a => a.Currency == "UK")?.ExchangeRate ?? 1;
+            var exRate = country.FirstOrDefault(a => a.Currency == currency)?.ExchangeRate ?? 1;
+            var UKRate = country.FirstOrDefault(a => a.Currency == "UK")?.ExchangeRate ?? 1;
             amount = CalculateByRate(oAmount, currency, payCurrency, country);
             return amount;
         }
 
-        private decimal CalculateByRate(decimal oAmount, string Currency, string payCurrency, DbCountry country)
+        private decimal CalculateByRate(decimal oAmount, string Currency, string payCurrency, List<DbCountry> country)
         {
             decimal amount = 0;
-            var exRate = country.Countries.FirstOrDefault(a => a.Currency == Currency)?.ExchangeRate ?? 1;
-            var UKRate = country.Countries.FirstOrDefault(a => a.Currency == "UK")?.ExchangeRate ?? 1;
+            var exRate = country.FirstOrDefault(a => a.Currency == Currency)?.ExchangeRate ?? 1;
+            var UKRate = country.FirstOrDefault(a => a.Currency == "UK")?.ExchangeRate ?? 1;
             if (Currency == payCurrency)
             {
                 amount = oAmount;
@@ -143,6 +164,7 @@ namespace App.Infrastructure.Utility.Common
         public decimal GetReward(DbBooking detail,  DbCustomer user )
         {
             decimal amount = 0;
+            if(user.IsOldCustomer) return amount;
             var _amount = getItemAmount(detail);
             var restaurantReward = FindValueByType(_amount, detail.BillInfo.RewardType, detail.BillInfo.Reward);
             if (user.Reward == 0)
@@ -179,21 +201,17 @@ namespace App.Infrastructure.Utility.Common
         /// <returns></returns>
         public decimal getItemPayAmount(DbBooking bookingDetail, double VAT = 0.125)
         {
-            decimal amount = getItemAmount(bookingDetail);//付全额
+            if (bookingDetail.BillInfo.IsOldCustomer)
+                return 0;
+                decimal amount = getItemAmount(bookingDetail);//付全额
             switch (bookingDetail.BillInfo.PaymentType)
             {
                 case PaymentTypeEnum.Full:
                     break;
                 case PaymentTypeEnum.Percentage:
-                    if (bookingDetail.BillInfo.IsOldCustomer)
-                        amount = 0;
-                    else
                         amount = amount * (decimal)bookingDetail.BillInfo.PayRate;
                     break;
                 case PaymentTypeEnum.Fixed:
-                    if (bookingDetail.BillInfo.IsOldCustomer)
-                        amount = 0;
-                    else
                         amount = (decimal)bookingDetail.BillInfo.PayRate;
                     break;
                 default:
@@ -261,5 +279,10 @@ namespace App.Infrastructure.Utility.Common
         }
 
         #endregion
+    }
+    public class DicModel {
+        public decimal Amount { get; set; }
+        public decimal Reward { get; set; }
+        public decimal UnPaidAmount { get; set; }
     }
 }

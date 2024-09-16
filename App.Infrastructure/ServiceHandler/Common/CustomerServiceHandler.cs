@@ -354,7 +354,9 @@ namespace App.Infrastructure.ServiceHandler.Common
                     item.RestaurantPhone = rest.PhoneNumber;
                     item.EmergencyPhone = rest.ContactPhone;
                     item.RestaurantWechat = rest.Wechat;
+                    item.RestaurantCountry = rest.Country;
                     item.Currency = rest.Currency;
+                    item.RestaurantTimeZone = rest.TimeZone;
                     item.BillInfo = rest.BillInfo;//更新最新的付款信息
                     item.BillInfo.IsOldCustomer = customer.IsOldCustomer;
                     List<TrDbRestaurantMenuItem> courses = new List<TrDbRestaurantMenuItem>();

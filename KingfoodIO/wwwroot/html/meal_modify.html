@@ -194,7 +194,7 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 12px; mso-line-height-alt: 33px;"><span style="font-size:22px;">@Model.booking.BookingRef</span></p>
+																		<p style="margin: 0; font-size: 12px; mso-line-height-alt: 33px;"><span style="font-size:22px;">@Model.BookingRef</span></p>
 																	</div>
 																</div>
 															</td>
@@ -252,7 +252,7 @@
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Roboto Slab', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
 																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;color:#f08619;">Paid:</span></p>
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;color:#f08619;">支付金额:</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;color:#f08619;">线上预支付金额:</span></p>
 																	</div>
 																</div>
 															</td>
@@ -265,7 +265,7 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;">@Model.PaidAmountStr</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;">@Model.PaidAmount</span></p>
 																	</div>
 																</div>
 															</td>
@@ -322,7 +322,7 @@
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Roboto Slab', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
 																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;color:#f08619;">Unpaid:</span></p>
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;color:#f08619;">待支付金额:</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;color:#f08619;">到店待支付金额:</span></p>
 																	</div>
 																</div>
 															</td>
@@ -335,7 +335,7 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size: 17px; color: red;">@Model.UnpaidAmountStr</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size: 17px; color: red;">@Model.UnPaidAmount</span></p>
 																	</div>
 																</div>
 															</td>
@@ -406,7 +406,7 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 24px;"><span style="font-size: 16px; white-space: pre-line">@Model.Detail</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 24px;"><span style="font-size: 16px; white-space: pre-line">@Model.Details</span></p>
 																	</div>
 																</div>
 															</td>
@@ -475,7 +475,7 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;">@Model.AmountStr</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 25.5px;"><span style="font-size:17px;">@Model.Amount</span></p>
 																	</div>
 																</div>
 															</td>
@@ -545,7 +545,7 @@
 															<td class="pad" style="padding-bottom:5px;padding-left:35px;padding-right:20px;padding-top:0px;">
 																<div style="font-family: Arial, sans-serif">
 																	<div class style="font-size: 12px; font-family: 'Oswald', Arial, 'Helvetica Neue', Helvetica, sans-serif; mso-line-height-alt: 18px; color: #f08619; line-height: 1.5;">
-																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 24px;"><span style="font-size:16px;">@Model.bookingDetail.Memo</span></p>
+																		<p style="margin: 0; font-size: 14px; text-align: left; mso-line-height-alt: 24px;"><span style="font-size:16px;">@Model.Memo</span></p>
 																	</div>
 																</div>
 															</td>

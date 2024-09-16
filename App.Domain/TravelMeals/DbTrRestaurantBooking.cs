@@ -77,6 +77,7 @@ namespace App.Domain.TravelMeals
         public string RestaurantWechat { get; set; }
         public string RestaurantEmail { get; set; }
         public string RestaurantCountry { get; set; }
+        public string RestaurantTimeZone { get; set; }
         public string Currency { get; set; }
         public string Remark { get; set; }
         public string SupporterEmail { get; set; }

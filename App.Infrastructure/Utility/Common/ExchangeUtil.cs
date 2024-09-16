@@ -56,14 +56,15 @@ namespace App.Infrastructure.Utility.Common
         }
         public async void UpdateExchangeRateToDB()
         {
-            var existRate = await _countryRepository.GetOneAsync(r => r.ShopId == 11);
+            var existRate = await _countryRepository.GetManyAsync(r => r.ShopId == 11);
             if (existRate != null)
             {
-                if ((DateTime.UtcNow - existRate.RateUpdateTime).TotalHours < 23)
+                var contries = existRate.ToList();
+                if ((DateTime.UtcNow - contries[0].Updated.Value).TotalHours < 23)
                     return;
                 ExchangeModel exchange = await getGBPExchangeRate();
                 if (exchange == null) return;
-                foreach (var item in existRate.Countries)
+                foreach (var item in contries)
                 {
                     string sValue = "0";
                     double rate = 1;
@@ -83,10 +84,11 @@ namespace App.Infrastructure.Utility.Common
                             item.ExchangeRate = rate + item.ExchangeRateExtra;
                             break;
                     }
+                    item.Updated = DateTime.UtcNow;
+                    var savedShop = await _countryRepository.UpsertAsync(item);
                 }
 
-                existRate.RateUpdateTime = DateTime.UtcNow;
-                var savedShop = await _countryRepository.UpsertAsync(existRate);
+              
             }
         }
     }

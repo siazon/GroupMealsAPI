@@ -33,6 +33,7 @@ namespace App.Domain.TravelMeals.Restaurant
         public string Image { get; set; }
         public string Address { get; set; }
         public string City { get; set; }
+        public string TimeZone { get; set; }
         public string Country { get; set; }
         public string Currency { get; set; }
         public string Email { get; set; }
