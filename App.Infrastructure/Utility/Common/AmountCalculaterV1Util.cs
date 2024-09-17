@@ -22,7 +22,7 @@ namespace App.Infrastructure.Utility.Common
         decimal CalculateOrderPaidAmount(List<DbBooking> details, string PayCurrency, DbCustomer customer);
         decimal getItemAmount(DbBooking bookingDetail);
         decimal getItemPayAmount(DbBooking bookingDetail, double VAT = 0.125);
-        decimal GetReward(DbBooking detail, DbCustomer user);
+        decimal GetReward(decimal _amount, PaymentTypeEnum rewardType, double reward, DbCustomer user);
         decimal CalculatePayAmountByRate(decimal amount, string currency, string payCurrency, int shopId, List<DbCountry> country);
     }
 
@@ -45,7 +45,7 @@ namespace App.Infrastructure.Utility.Common
             {
                 var amount = getItemAmount(item);//总金额
                 var payAmount = getItemPayAmount(item);//线上支付金额
-                var reward = GetReward(item,  customer);
+                var reward = GetReward(amount, item.BillInfo.RewardType,item.BillInfo.Reward, customer);
                 var payAmountWithReward = payAmount - reward;//减去返钱
 
                 paymentAmountInfo.TotalPayAmount += CalculatePayAmountByRate(payAmountWithReward, item.Currency, currency, shopId, countries);
@@ -96,7 +96,8 @@ namespace App.Infrastructure.Utility.Common
             foreach (DbBooking item in details)
             {
                 var payAmount = getItemPayAmount(item);//线上支付金额
-                var reward = GetReward(item, customer);
+                var _amount = getItemAmount(item);//总金额
+                var reward = GetReward(_amount, item.BillInfo.RewardType,item.BillInfo.Reward, customer);
                 var payAmountWithReward = payAmount - reward;//减去返钱
                 amount += payAmountWithReward;
             }
@@ -161,12 +162,11 @@ namespace App.Infrastructure.Utility.Common
             }
             return amount;
         }
-        public decimal GetReward(DbBooking detail,  DbCustomer user )
+        public decimal GetReward(decimal _amount, PaymentTypeEnum rewardType, double reward, DbCustomer user )
         {
             decimal amount = 0;
             if(user.IsOldCustomer) return amount;
-            var _amount = getItemAmount(detail);
-            var restaurantReward = FindValueByType(_amount, detail.BillInfo.RewardType, detail.BillInfo.Reward);
+            var restaurantReward = FindValueByType(_amount, rewardType, reward);
             if (user.Reward == 0)
                 return restaurantReward;
             var userReward = FindValueByType(_amount, user.RewardType, user.Reward);
@@ -175,14 +175,14 @@ namespace App.Infrastructure.Utility.Common
             return amount;
         }
 
-        private decimal FindValueByType(decimal amount, PaymentTypeEnum paymentType, double rate)
+        private decimal FindValueByType(decimal amount, PaymentTypeEnum rewardType, double rate)
         {
             decimal reward = 0;
-            if (paymentType == PaymentTypeEnum.Percentage)
+            if (rewardType == PaymentTypeEnum.Percentage)
             {
                 reward = amount * (decimal)rate;
             }
-            else if (paymentType == PaymentTypeEnum.Fixed)
+            else if (rewardType == PaymentTypeEnum.Fixed)
             {
                 reward = (decimal)rate;
             }

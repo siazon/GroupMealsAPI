@@ -379,7 +379,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                 {
                     info.Amount = _amountCalculaterV1.getItemAmount(item);
                     info.PaidAmount = _amountCalculaterV1.getItemPayAmount(item);
-                    info.Reward = _amountCalculaterV1.GetReward(item, customer);
+                    info.Reward = _amountCalculaterV1.GetReward (info.Amount, item.BillInfo.RewardType, item.BillInfo.Reward, customer);
                 }
             }
             return customer;

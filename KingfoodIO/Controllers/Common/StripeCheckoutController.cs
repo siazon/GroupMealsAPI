@@ -88,7 +88,10 @@ namespace KingfoodIO.Controllers.Common
             _stripeUtil = stripeUtil; _memoryCache = memoryCache;
             _amountCalculaterV1 = amountCalculaterV1;
         }
-
+        [HttpGet]
+        public string WebhookTest() {
+            return "Running";
+        }
         /// <summary>
         /// 
         /// </summary>

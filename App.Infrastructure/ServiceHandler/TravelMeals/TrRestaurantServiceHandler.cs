@@ -39,6 +39,7 @@ using Quartz.Logging;
 using System.Threading;
 using Microsoft.Azure.Cosmos.Linq;
 using QuestPDF.Helpers;
+using App.Infrastructure.ServiceHandler.Common;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -63,7 +64,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private readonly IDbCommonRepository<TrDbRestaurant> _restaurantRepository;
         private readonly IDbCommonRepository<DbCustomer> _customerRepository;
 
-        private readonly IDbCommonRepository<DbCountry> _countryRepository;
+        ICountryServiceHandler _countryRepository;
         private readonly IDateTimeUtil _dateTimeUtil;
         private readonly IDbCommonRepository<DbShop> _shopRepository;
         private readonly ITrBookingDataSetBuilder _bookingDataSetBuilder;
@@ -79,7 +80,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public TrRestaurantServiceHandler(IDbCommonRepository<TrDbRestaurant> restaurantRepository, IDateTimeUtil dateTimeUtil, ILogManager logger, ITwilioUtil twilioUtil,
            IDbCommonRepository<DbShop> shopRepository, ITrBookingDataSetBuilder bookingDataSetBuilder, IEncryptionHelper encryptionHelper, IDbCommonRepository<DbCustomer> customerRepository,
         ITrRestaurantBookingServiceHandler trRestaurantBookingServiceHandler, IMemoryCache memoryCache,
-            IContentBuilder contentBuilder, IEmailUtil emailUtil, IDbCommonRepository<DbCountry> countryRepository)
+            IContentBuilder contentBuilder, IEmailUtil emailUtil, ICountryServiceHandler countryRepository)
         {
             _restaurantRepository = restaurantRepository;
             _customerRepository = customerRepository;
@@ -360,7 +361,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _memoryCache.Set<Dictionary<string, List<string>>>(cacheKeycitys, null);
             //var cities = await _countryRepository.GetOneAsync(a => a.Id == countries.Id);
             countries.Updated = DateTime.UtcNow;
-            await _countryRepository.UpsertAsync(countries);
+            _countryRepository.UpsertCountry(countries);
 
             _memoryCache.Set<DbCountry>(cacheKey, null);
             _memoryCache.Set<Dictionary<string, List<string>>>(cacheKeycitys, null);
@@ -408,7 +409,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 return new ResponseModel { msg = "ok", code = 200, data = cacheResult };
             }
-            var existingCities = await _countryRepository.GetManyAsync(a => a.ShopId == shopId);
+            var existingCities = await _countryRepository.GetCountry(shopId);
             if (existingCities == null)
                 return new ResponseModel { msg = "Cities can't fund", code = 501, };
 

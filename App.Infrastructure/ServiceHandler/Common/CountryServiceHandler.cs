@@ -12,12 +12,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using static Pipelines.Sockets.Unofficial.SocketConnection;
 
 namespace App.Infrastructure.ServiceHandler.Common
 {
     public interface ICountryServiceHandler
     {
         Task<List<DbCountry>> GetCountry(int shopId);
+        void UpsertCountry(DbCountry country);
     }
 
     public class CountryServiceHandler : ICountryServiceHandler
@@ -39,13 +41,15 @@ namespace App.Infrastructure.ServiceHandler.Common
             {
                 return cacheResult;
             }
-            var countryInfo = await _countryRepository.GetManyAsync(a=>a.ShopId==shopId);
+            var countryInfo = await _countryRepository.GetManyAsync(a=>a.Id!= "oldCities" && a.ShopId==shopId);
             var contries = countryInfo.ToList();
             _memoryCache.Set(cacheKey, contries);
             return contries;
         }
+        public async void UpsertCountry(DbCountry country) {
+            await _countryRepository.UpsertAsync(country);
+        }
 
-       
 
     }
 }

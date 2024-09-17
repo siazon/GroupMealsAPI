@@ -166,7 +166,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             booking.Status = OrderStatusEnum.Settled;
             await _bookingRepository.UpsertAsync(booking);
             var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == booking.PaymentId);
-            PayAction(paymentInfo);
+            PayAction(paymentInfo,true);
             return new { code = 0, msg = "ok", };
         }
         public async Task<object> UpsetBookingRemark(string bookingId, string detailId, string remark, string userEmail)
@@ -183,7 +183,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
 
             var booking = await _bookingRepository.GetOneAsync(a => a.Id == bookingId);
-            if (booking.Status == OrderStatusEnum.Canceled)
+            if (booking==null|| booking.Status == OrderStatusEnum.Canceled)
                 return new { code = 0, msg = "订单已取消", };
             else
             {
@@ -209,7 +209,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealCancelled];
             emailParams.ReceiverEmail = booking.RestaurantEmail;
             emailParams.isShortInfo = 1;
-            _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParams);
+            await _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParams);
             booking.Status = OrderStatusEnum.Canceled;
             booking.Updated = DateTime.UtcNow;
             booking.Updater = userEmail;
@@ -276,8 +276,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<object> UpdateAccepted(string billId, string subBillId, int acceptType, string operater)
         {
-            DbBooking booking = await _bookingRepository.GetOneAsync(a => a.Id == billId);
-            if (booking.IsDeleted)
+            DbBooking booking = await _bookingRepository.GetOneAsync(a => a.Id == subBillId);
+
+            if (booking == null || booking.IsDeleted)
                 return new { code = 1, msg = "Order Deleted(无效操作，订单已删除)", };
             switch (booking.AcceptStatus)
             {
@@ -374,26 +375,25 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     //System.Threading.Thread.Sleep(1000 * 60);
                     if (acceptType == 1)
                     {
-                        var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealAccepted];
-                        var userInfo = await _customerRepository.GetOneAsync(r => r.Id == booking.Creater);
-                        emailParams.ReceiverEmail = userInfo.Email;
-                        emailParams.isShortInfo = 0;
-                        _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParams);
+                        //   var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealAccepted];
+                        //   var userInfo = await _customerRepository.GetOneAsync(r => r.Id == booking.Creater);
+                        //   emailParams.ReceiverEmail = userInfo.Email;
+                        //   emailParams.isShortInfo = 0;
+                        //await   _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParams);
 
                         var emailParamsRest = EmailConfigs.Instance.Emails[EmailTypeEnum.MealAcceptedRestaurant];
-
-                        emailParams.ReceiverEmail = booking.RestaurantEmail;
-                        emailParams.isShortInfo = 1;
-                        _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParams);
+                        emailParamsRest.ReceiverEmail = booking.RestaurantEmail;
+                        emailParamsRest.isShortInfo = 1;
+                        await _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParamsRest);
 
                     }
                     else if (acceptType == 2)
                     {
-                        var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealDeclined];
-                        var userInfo = await _customerRepository.GetOneAsync(r => r.Id == booking.Creater);
-                        emailParams.ReceiverEmail = userInfo.Email;
-                        emailParams.isShortInfo = 0;
-                        _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParams);
+                        // var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealDeclined];
+                        // var userInfo = await _customerRepository.GetOneAsync(r => r.Id == booking.Creater);
+                        // emailParams.ReceiverEmail = userInfo.Email;
+                        // emailParams.isShortInfo = 0;
+                        //await _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParams);
                     }
                 }
                 catch (Exception ex)
@@ -488,6 +488,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 return new ResponseModel { msg = "订单已捐款，不可再修改", code = 500, data = null };
             var dbBooking = await _bookingRepository.GetOneAsync(r => !r.IsDeleted && r.Id == newBooking.Id);
             if (dbBooking == null) return new ResponseModel { msg = "booking not found", code = 200, data = null };
+            newBooking.BillInfo = dbBooking.BillInfo;
             DbOpearationInfo operationInfo = new DbOpearationInfo() { Id = Guid.NewGuid().ToString(), ModifyType = 4, Operater = email, UpdateTime = DateTime.UtcNow, Operation = "订单修改" };
             int isChange = 0; int isDtlChanged = 0;
 
@@ -550,7 +551,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
                     AmountInfo amountInfo = new AmountInfo() { Id = Guid.NewGuid().ToString() };
                     amountInfo.Amount = amount - Oldamount;//新增差价记录
-                    amountInfo.PaidAmount = payAmount - oldPayAmount;
+                    if (!dbBooking.BillInfo.IsOldCustomer)
+                    {
+                        amountInfo.PaidAmount = payAmount - oldPayAmount;
+                        var user = await _customerServiceHandler.GetCustomer(dbBooking.Creater, 11);
+                        amountInfo.Reward = _amountCalculaterV1.GetReward(amountInfo.Amount, dbBooking.BillInfo.RewardType, dbBooking.BillInfo.Reward, user);
+                    }
                     dbBooking.AmountInfos.Add(amountInfo);
                 }
                 if (dbBooking.Courses.Count != newBooking.Courses.Count)
@@ -806,7 +812,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 item.EmergencyPhone = rest.ContactPhone;
                 item.RestaurantWechat = rest.Wechat;
                 item.RestaurantTimeZone = rest.TimeZone;
-                item.Currency=rest.Currency;
+                item.Currency = rest.Currency;
                 item.Currency = rest.Country;
                 item.BillInfo = rest.BillInfo;
             }
@@ -830,12 +836,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 if (user == null)
                     user = await _customerRepository.GetOneAsync(a => a.Id == userId);
+                var amount = _amountCalculaterV1.getItemAmount(item);
                 AmountInfo amountInfo = new AmountInfo()
                 {
                     Id = Guid.NewGuid().ToString(),
-                    Amount = _amountCalculaterV1.getItemAmount(item),
+                    Amount = amount,
                     PaidAmount = _amountCalculaterV1.getItemPayAmount(item),
-                    Reward = _amountCalculaterV1.GetReward(item, user)
+                    Reward = _amountCalculaterV1.GetReward(amount, item.BillInfo.RewardType, item.BillInfo.Reward, user)
                 };
                 item.AmountInfos.Add(amountInfo);
             }
@@ -865,12 +872,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealCustomer];
             emailParams.ReceiverEmail = user.Email;
             emailParams.isShortInfo = 0;
-            _sendEmailUtil.EmailGroup(bookings, shopInfo, emailParams, user);
+            await _sendEmailUtil.EmailGroup(bookings, shopInfo, emailParams, user);
 
             emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealRestaurant];
             emailParams.ReceiverEmail = bookings[0].RestaurantEmail;
             emailParams.isShortInfo = 1;
-            _sendEmailUtil.EmailEach(bookings, shopInfo, emailParams);
+            await _sendEmailUtil.EmailEach(bookings, shopInfo, emailParams);
             //EmailUtils.EmailSupport(booking, shopInfo, "new_meals_support", this._environment.WebRootPath, "New Booking", _twilioUtil, _contentBuilder,  _logger);
 
         }
@@ -891,12 +898,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealModified];
             emailParams.ReceiverEmail = booking.RestaurantEmail;
             emailParams.isShortInfo = 1;
-            _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParams);
+            await _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParams);
 
             var userInfo = await _customerRepository.GetOneAsync(r => r.Id == booking.Creater);
-            emailParams.ReceiverEmail = userInfo.Email;
-            emailParams.isShortInfo = 0;
-            _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParams);
+            var emailParamsUser = EmailConfigs.Instance.Emails[EmailTypeEnum.MealModified];
+            emailParamsUser.ReceiverEmail = userInfo.Email;
+            emailParamsUser.isShortInfo = 0;
+            await _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParamsUser);
 
         }
         public async Task<bool> DoRebate(string bookingId, double rebate)
@@ -929,11 +937,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     {
                         throw new ServiceException("Cannot find shop info");
                     }
-                    var user =await _customerRepository.GetOneAsync(a => a.Id == booking.Creater);
+                    var user = await _customerRepository.GetOneAsync(a => a.Id == booking.Creater);
                     var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealCustomer];
                     emailParams.ReceiverEmail = user.Email;
                     emailParams.isShortInfo = 0;
-                    _sendEmailUtil.EmailGroup(new List<DbBooking>() { booking}, shopInfo, emailParams, user);
+                    await _sendEmailUtil.EmailGroup(new List<DbBooking>() { booking }, shopInfo, emailParams, user);
                 }
             }
             catch (Exception ex)
@@ -994,7 +1002,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string pageToken = "";
             if (string.IsNullOrWhiteSpace(content))
             {
-                var Bookings = await _bookingRepository.GetManyAsync(a => (  !a.IsDeleted && a.Creater == userId), pageSize, continuationToken);
+                var Bookings = await _bookingRepository.GetManyAsync(a => (!a.IsDeleted && a.Creater == userId), pageSize, continuationToken);
                 res = Bookings.Value.ToList();
                 pageToken = Bookings.Key;
 
@@ -1003,7 +1011,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             else
             {
                 var _content = content.ToLower().Trim();
-                var Bookings = await _bookingRepository.GetManyAsync(a => ( !a.IsDeleted && a.Creater == userId &&
+                var Bookings = await _bookingRepository.GetManyAsync(a => (!a.IsDeleted && a.Creater == userId &&
                 (a.BookingRef.ToLower().Contains(_content) ||
                 a.RestaurantName.ToLower().Contains(_content))), pageSize, continuationToken);
 
@@ -1022,7 +1030,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             try
             {
                 DateTime stime = DateTime.UtcNow;
-                var Bookings = await _bookingRepository.GetManyAsync(a => ( !a.IsDeleted));
+                var Bookings = await _bookingRepository.GetManyAsync(a => (!a.IsDeleted));
                 var span = (DateTime.UtcNow - stime).TotalMilliseconds;
                 Console.WriteLine(DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss.fff") + " : " + span);
                 var list = Bookings.ToList();
@@ -1350,7 +1358,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 _logger.LogError("autoPayment:" + ex.Message);
             }
         }
-        private async void PayAction(DbPaymentInfo item)
+        private async void PayAction(DbPaymentInfo item,bool byadmin=false)
         {
 
             if (item.PaymentType == 0)
@@ -1364,7 +1372,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         isTimePass = false;
                     }
                 }
-                if (isTimePass)
+                if (byadmin|| isTimePass)
                 {
                     SetupPaymentAction(item.Id, item.Creater);
                 }
@@ -1448,7 +1456,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         dbBooking.Currency = rest.Country;
                     }
                     dbBooking.BillInfo = book.BillInfo;
-                 
+
                     await _bookingRepository.UpsertAsync(dbBooking);
 
                     foreach (var pay in booking.Operations)

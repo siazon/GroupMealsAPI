@@ -32,10 +32,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
     public interface ISendEmailUtil
     {
         Task EmailVerifyCode(string email, string code, DbShop shopInfo, string tempName, string wwwPath, string subject, string title, string titleCN);
-        void EmailEach(List<DbBooking> bookings, DbShop shopInfo, EmailSenderParams senderParams);
-        void EmailGroup(List<DbBooking> bookings, DbShop shopInfo, EmailSenderParams senderParams, DbCustomer user);
+        Task<bool> EmailEach(List<DbBooking> bookings, DbShop shopInfo, EmailSenderParams senderParams);
+        Task<bool> EmailGroup(List<DbBooking> bookings, DbShop shopInfo, EmailSenderParams senderParams, DbCustomer user);
         Task EmailCustomer(DbBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject);
-        void SendModifiedEmail(DbBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject);
+        Task<bool> SendModifiedEmail(DbBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject);
         Task SendCancelEmail(DbShop shopInfo, DbBooking detail, string webPath, string tempName, string subject, params string[] ccEmail);
     }
     public class SendEmailUtil : ISendEmailUtil
@@ -83,7 +83,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
         }
 
-        public async void EmailEach(List<DbBooking> bookings, DbShop shopInfo, EmailSenderParams senderParams)
+        public async Task<bool> EmailEach(List<DbBooking> bookings, DbShop shopInfo, EmailSenderParams senderParams)
         {
             var country = await _countryHandler.GetCountry(shopInfo.ShopId ?? 11);
             string Detail = "";
@@ -91,8 +91,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 decimal paidAmount = item.AmountInfos.Sum(x => x.PaidAmount);
                 decimal amount = item.AmountInfos.Sum(x => x.Amount);
+                decimal reward=item.AmountInfos.Sum(x => x.Reward);
                 paidAmount = Math.Round(paidAmount, 2);
                 amount = Math.Round(amount, 2);
+                reward=Math.Round(reward, 2);
                 Detail = "";
                 string restaurantInfo = await AppendRestaurantInfo(item, senderParams.isShortInfo);
                 string customerInfo = await AppendCustomerInfo(item,senderParams.isShortInfo);
@@ -120,7 +122,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     Detail += $"<b style=\"color: red;\"> UnPaid(待支付)：{itemCurrencyStr}{amount - paidAmount}</b>";
                 senderParams.BookingRef = item.BookingRef;
                 senderParams.BookingId = item.Id;
-                senderParams.PaidAmount = itemCurrencyStr + ": "+ Math.Round(paidAmount, 2);
+                senderParams.PaidAmount = itemCurrencyStr + ": "+ Math.Round(paidAmount, 2)+"（立减："+ reward+")";
                 senderParams.UnPaidAmount = itemCurrencyStr + ": " + Math.Round((amount - paidAmount),2);
                 senderParams.Amount = itemCurrencyStr + ": " +Math.Round( amount,2);
                 senderParams.MealTime = selectDateTimeStr;
@@ -129,13 +131,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 senderParams.CustomerInfo = customerInfo;
                 senderParams.Details = Detail;
                 senderParams.ShopSettings = shopInfo.ShopSettings;
-                Send(senderParams);
+               await Send(senderParams);
             }
+            return true;
         }
-        private void Send(EmailSenderParams senderParams)
+        private async Task<bool> Send(EmailSenderParams senderParams)
         {
-            Task.Run(async () =>
-            {
+            //Task.Run(async () =>
+            //{
 
                 string emailHtml = "";
                 try
@@ -159,7 +162,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     _logger.LogError($"Email Error {ex.Message} -{ex.StackTrace} ");
                 }
-            });
+            return true;
+            //});
         }
         private void SendToTalCustomer(DbShop shopInfo, DbCustomer user, string subject, string wwwPath, string tempName, string AmountStr, string PaidAmountStr, string UnpaidAmountStr, HtmlString detailstr)
         {
@@ -192,7 +196,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             });
         }
 
-        public async void EmailGroup(List<DbBooking> bookings, DbShop shopInfo,   EmailSenderParams senderParams, DbCustomer user)
+        public async Task<bool> EmailGroup(List<DbBooking> bookings, DbShop shopInfo,   EmailSenderParams senderParams, DbCustomer user)
         {
             string Detail = "";
             var country = await _countryHandler.GetCountry(11);
@@ -231,7 +235,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 DbPaymentInfo dbPaymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == bookings[0].PaymentId);
 
-                var currencySymbol = country.FirstOrDefault(a => a.Currency == dbPaymentInfo.Currency).CurrencySymbol;
+                var currencySymbol = country.FirstOrDefault(a => a.Currency.ToLower() == dbPaymentInfo.Currency.ToLower()).CurrencySymbol;
                  PaidAmountStr = currencySymbol + Math.Round(dbPaymentInfo.Amount, 2);
             }
             string UnpaidAmountStr = AmountInfo.UnPaidAmountText;
@@ -243,9 +247,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             senderParams.Details = Detail;
             senderParams.ShopSettings = shopInfo.ShopSettings;
 
-            Send(senderParams);
+            await Send(senderParams);
             //SendToTalCustomer(shopInfo, user, senderParams.Subject, wwwPath, senderParams.TemplateName, AmountStr, PaidAmountStr, UnpaidAmountStr, detailstr);
-
+            return true;
         }
         private void SaveMsgPush(DbBooking item,string mealTime) {
             _msgPusherServiceHandler.AddMsg(new Domain.Common.PushMsgModel()
@@ -328,7 +332,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return oldValue;
 
         }
-        public async void SendModifiedEmail(DbBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject)
+        public async Task<bool> SendModifiedEmail(DbBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject)
         {
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";
@@ -403,7 +407,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     _logger.LogError($"EmailBossError {ex.Message} -{ex.StackTrace} ");
                 }
             });
-
+            return true;
         }
         public async Task SendCancelEmail(DbShop shopInfo, DbBooking booking, string webPath, string tempName, string subject, params string[] ccEmail)
         {

@@ -88,6 +88,8 @@ namespace App.Domain.TravelMeals.Restaurant
                 FoodCategory = this.FoodCategory,
                 City = this.City,
                 Country = this.Country,
+                TimeZone = this.TimeZone,
+                Currency= this.Currency,
                 Email = this.Email,
                 ContactEmail = this.ContactEmail,
                 OpenHours = this.OpenHours,

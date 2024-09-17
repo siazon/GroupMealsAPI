@@ -23,19 +23,19 @@ namespace App.Infrastructure.ServiceHandler.Common
 
     public class OperationServiceHandler : IOperationServiceHandler
     {
-        private readonly IDbCommonRepository<DbOpearationInfo> _countryRepository;
+        private readonly IDbCommonRepository<DbOpearationInfo> _opearationRepository;
         IMemoryCache _memoryCache;
 
         public OperationServiceHandler(IDbCommonRepository<DbOpearationInfo> countryRepository, IMemoryCache memoryCache)
         {
             _memoryCache = memoryCache;
-            _countryRepository = countryRepository;
+            _opearationRepository = countryRepository;
         }
 
         public async Task<List<DbOpearationInfo>> GetOpearations(string referenceId)
         {
           
-            var countryInfo = await _countryRepository.GetManyAsync(a=>a.ReferenceId==referenceId);
+            var countryInfo = await _opearationRepository.GetManyAsync(a=>a.ReferenceId==referenceId);
             return countryInfo.ToList();
         }
 
