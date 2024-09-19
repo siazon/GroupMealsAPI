@@ -54,6 +54,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         Task<DbCustomer> UpdatePassword(DbCustomer customer, int shopId);
         Task<DbCustomer> UpdateFavorite(DbCustomer customer, int shopId);
         Task<object> UpdateCart(List<DbBooking> cartInfos, string UserId, int shopId);
+        Task<object> UpdateCartInfo(List<DbBooking> cartInfos, DbCustomer user);
         Task<object> GetCart(string UserId, int shopId);
 
         Task<object> Delete(DbCustomer item, string email, string pwd, int shopId);
@@ -108,7 +109,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             int aaa = 0;
             foreach (var item in customers)
             {
-                int count = bookings.ToList().FindAll(a=>a.Creater==item.Id).Count;
+                int count = bookings.ToList().FindAll(a => a.Creater == item.Id).Count;
                 item.AuthValue = Convert.ToUInt64(count);
                 aaa += count;
             }
@@ -136,7 +137,6 @@ namespace App.Infrastructure.ServiceHandler.Common
 
             return customer;
         }
-
         public async Task<object> SendForgetPasswordVerifyCode(string email, int shopId)
         {
             Guard.NotNull(email);
@@ -327,6 +327,11 @@ namespace App.Infrastructure.ServiceHandler.Common
                     {
                         item.PaymentId = info.PaymentId;
                     }
+                    var cart = existingCustomer.CartInfos.FirstOrDefault(a => !string.IsNullOrWhiteSpace(a.PaymentId));
+                    if (cart != null && string.IsNullOrWhiteSpace(item.PaymentId))
+                    {
+                        item.PaymentId = cart.PaymentId;
+                    }
                     if (string.IsNullOrWhiteSpace(item.Id))
                         item.Id = Guid.NewGuid().ToString();
                     if (item.AmountInfos == null)
@@ -339,6 +344,17 @@ namespace App.Infrastructure.ServiceHandler.Common
             existingCustomer = await RefreshCartInfo(existingCustomer);
             var savedCustomer = await _customerRepository.UpsertAsync(existingCustomer);
 
+            return new { msg = "ok", data = savedCustomer.ClearForOutPut() };
+        }
+        public async Task<object> UpdateCartInfo(List<DbBooking> cartInfos, DbCustomer existingCustomer)
+        {
+            foreach (var item in cartInfos)
+            {
+                int idx = existingCustomer.CartInfos.FindIndex(a => a.Id == item.Id);
+                existingCustomer.CartInfos[idx] = item;
+            }
+            existingCustomer = await RefreshCartInfo(existingCustomer);
+            var savedCustomer = await _customerRepository.UpsertAsync(existingCustomer);
             return new { msg = "ok", data = savedCustomer.ClearForOutPut() };
         }
         private async Task<DbCustomer> RefreshCartInfo(DbCustomer customer)
@@ -379,7 +395,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                 {
                     info.Amount = _amountCalculaterV1.getItemAmount(item);
                     info.PaidAmount = _amountCalculaterV1.getItemPayAmount(item);
-                    info.Reward = _amountCalculaterV1.GetReward (info.Amount, item.BillInfo.RewardType, item.BillInfo.Reward, customer);
+                    info.Reward = _amountCalculaterV1.GetReward(info.Amount, item.BillInfo.RewardType, item.BillInfo.Reward, customer);
                 }
             }
             return customer;

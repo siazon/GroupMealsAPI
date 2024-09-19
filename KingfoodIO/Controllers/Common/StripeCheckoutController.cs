@@ -89,7 +89,8 @@ namespace KingfoodIO.Controllers.Common
             _amountCalculaterV1 = amountCalculaterV1;
         }
         [HttpGet]
-        public string WebhookTest() {
+        public string WebhookTest()
+        {
             return "Running";
         }
         /// <summary>
@@ -172,7 +173,7 @@ namespace KingfoodIO.Controllers.Common
                             paymentIntent.Metadata.TryGetValue("userId", out userId);
 
                             _trRestaurantBookingServiceHandler.BookingCharged(billId, paymentIntent.Id, paymentIntent.ReceiptUrl);
-                            
+
 
                         }
                         catch (Exception ex)
@@ -220,14 +221,15 @@ namespace KingfoodIO.Controllers.Common
                         var tmeo = customer.Email;
                         var dbUser = await _customerServiceHandler.GetCustomer(userId, 11);
                         dbUser.StripeCustomerId = customer.Id;
-                        await _customerServiceHandler.UpdateAccount(dbUser,  11);
+                        await _customerServiceHandler.UpdateAccount(dbUser, 11);
                         break;
                     case Events.SetupIntentSucceeded://下单成功
 
                         _logger.LogInfo("SetupIntentSucceeded:" + stripeEvent.Type);
-                       var setupIntent = stripeEvent.Data.Object as SetupIntent;
+                        var setupIntent = stripeEvent.Data.Object as SetupIntent;
                         billId = setupIntent.Metadata["billId"];
                         userId = setupIntent.Metadata["userId"];
+                        string bookingIds = setupIntent.Metadata["bookingIds"];
 
                         paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == billId);
                         if (paymentInfo != null)
@@ -239,13 +241,12 @@ namespace KingfoodIO.Controllers.Common
                         if (dbpayment != null)
                         {
                             dbUser = await _customerServiceHandler.GetCustomer(userId, paymentInfo.ShopId ?? 11);
-                            List<DbBooking> bookings = dbUser.CartInfos.FindAll(a => a.PaymentId == dbpayment.Id);
-
-                            _trRestaurantBookingServiceHandler.PlaceBooking(bookings, paymentInfo.ShopId ?? 11, dbUser);
-                            var leftBooking = dbUser.CartInfos.FindAll(a => a.PaymentId != dbpayment.Id);
-                            dbUser.CartInfos = leftBooking;
+                            List<DbBooking> bookings = dbUser.CartInfos.FindAll(a => a.PaymentId == dbpayment.Id && bookingIds.Contains(a.Id));
                             dbUser.StripeCustomerId = setupIntent.CustomerId;
-                            await _customerServiceHandler.UpdateAccount(dbUser,  paymentInfo.ShopId ?? 11);
+                            await _customerServiceHandler.UpdateAccount(dbUser, paymentInfo.ShopId ?? 11);
+                            await _trRestaurantBookingServiceHandler.PlaceBooking(bookings, paymentInfo.ShopId ?? 11, dbUser);
+
+
                         }
 
                         break;
@@ -279,7 +280,7 @@ namespace KingfoodIO.Controllers.Common
             {
                 var authHeader = Request.Headers["Wauthtoken"];
                 var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
-                SetupIntent setupIntent = _stripeServiceHandler.CreateSetupPayIntent(bill, user);
+                SetupIntent setupIntent = _stripeServiceHandler.CreateSetupPayIntent(bill, "", user);
                 return Json(new { clientSecret = setupIntent.ClientSecret });
             }
             catch (Exception ex)
@@ -367,7 +368,7 @@ namespace KingfoodIO.Controllers.Common
                 //_logger.LogInfo("AddPaymentIntent:" + booking.ToString() + bill.ToString());
                 //_trRestaurantBookingServiceHandler.BindingPayInfoToTourBooking(gpBooking, paymentIntent.Id, paymentIntent.ClientSecret, bill.SetupPay == 1);
                 //return Json(new { clientSecret = paymentIntent.ClientSecret, paymentIntentId = paymentIntent.Id });
-                return Json(new {   });
+                return Json(new { });
             }
             catch (Exception ex)
             {

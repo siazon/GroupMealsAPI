@@ -211,7 +211,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 Detail +=await AppendCustomerInfo(item);
                 decimal amount = item.AmountInfos.Sum(x => x.Amount);
                 decimal paidAmount = item.AmountInfos.Sum(x => x.PaidAmount);
-
+                decimal reward=item.AmountInfos.Sum(x=>x.Reward);
                 SaveMsgPush(item, selectDateTimeStr);
 
                  var itemCurrencyStr = country.FirstOrDefault(a => a.Currency == item.Currency).CurrencySymbol;
@@ -221,7 +221,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     int qty = course.Qty + course.ChildrenQty;
                     Detail += $"{course.MenuItemName} * {qty} 人 ";
                 }
-                Detail += $"<br> Amount(金额)：{itemCurrencyStr}{Math.Round(amount, 2)}，    Paid(已付){itemCurrencyStr}{Math.Round(paidAmount, 2)}, <br>";
+                Detail += $"<br> Amount(金额)：{itemCurrencyStr}{Math.Round(amount, 2)}，    Paid(已付){itemCurrencyStr}" +
+                    $"{Math.Round(paidAmount, 2)}（立减{itemCurrencyStr}{Math.Round(reward, 2)}）, <br>";
                 if (amount - paidAmount > 0)
                 {
                     decimal unpaid = Math.Round((amount - paidAmount),2);

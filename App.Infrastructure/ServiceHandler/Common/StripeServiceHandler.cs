@@ -20,7 +20,7 @@ namespace App.Infrastructure.ServiceHandler.Common
     public interface IStripeServiceHandler
     {
         Task<StripeBase> GetBooking(string id);
-        SetupIntent CreateSetupPayIntent(PayIntentParam bill, DbToken user);
+        SetupIntent CreateSetupPayIntent(PayIntentParam bill, string bookingIds, DbToken user);
         void SetupPaymentAction(DbPaymentInfo paymentInfo, string userId);
     }
     public class StripeServiceHandler : IStripeServiceHandler
@@ -42,11 +42,12 @@ namespace App.Infrastructure.ServiceHandler.Common
         }
 
 
-        public SetupIntent CreateSetupPayIntent(PayIntentParam bill, DbToken user)
+        public SetupIntent CreateSetupPayIntent(PayIntentParam bill,string bookingIds, DbToken user)
         {
 
             Dictionary<string, string> meta = new Dictionary<string, string>();
             meta["billId"] = bill.BillId;
+            meta["bookingIds"] = bookingIds;
             meta["customerId"] = bill.CustomerId;
             meta["userId"] = user.UserId;
             var setupIntentService = new SetupIntentService();
@@ -60,7 +61,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                 catch (Exception ex)
                 { }
             }
-            if (setupIntent == null || string.IsNullOrWhiteSpace(setupIntent?.CustomerId))
+            if (setupIntent == null||setupIntent.Status== "succeeded" || string.IsNullOrWhiteSpace(setupIntent?.CustomerId))
             {
                 string customerId = bill.CustomerId;
 

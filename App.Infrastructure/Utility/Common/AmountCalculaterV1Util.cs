@@ -19,7 +19,7 @@ namespace App.Infrastructure.Utility.Common
     public interface IAmountCalculaterUtil
     {
         PaymentAmountInfo GetOrderPaidInfo(List<DbBooking> details, string payCurrency, int shopId, DbCustomer customer, List<DbCountry> country);
-        decimal CalculateOrderPaidAmount(List<DbBooking> details, string PayCurrency, DbCustomer customer);
+        decimal CalculateOrderPaidAmount(List<DbBooking> details, string PayCurrency, DbCustomer customer, List<DbCountry> countries);
         decimal getItemAmount(DbBooking bookingDetail);
         decimal getItemPayAmount(DbBooking bookingDetail, double VAT = 0.125);
         decimal GetReward(decimal _amount, PaymentTypeEnum rewardType, double reward, DbCustomer user);
@@ -90,7 +90,7 @@ namespace App.Infrastructure.Utility.Common
             return paymentAmountInfo;
 
         }
-        public decimal CalculateOrderPaidAmount(List<DbBooking> details, string PayCurrency,  DbCustomer customer )
+        public  decimal CalculateOrderPaidAmount(List<DbBooking> details, string PayCurrency,  DbCustomer customer,List<DbCountry> countries)
         {
             decimal amount = 0;
             foreach (DbBooking item in details)
@@ -99,9 +99,9 @@ namespace App.Infrastructure.Utility.Common
                 var _amount = getItemAmount(item);//总金额
                 var reward = GetReward(_amount, item.BillInfo.RewardType,item.BillInfo.Reward, customer);
                 var payAmountWithReward = payAmount - reward;//减去返钱
-                amount += payAmountWithReward;
+                var amountByRate= CalculatePayAmountByRate(payAmountWithReward, item.Currency, PayCurrency, customer.ShopId ?? 11, countries);
+                amount += amountByRate;
             }
-
             return amount;
         }
 
@@ -207,6 +207,7 @@ namespace App.Infrastructure.Utility.Common
             switch (bookingDetail.BillInfo.PaymentType)
             {
                 case PaymentTypeEnum.Full:
+                    return amount;
                     break;
                 case PaymentTypeEnum.Percentage:
                         amount = amount * (decimal)bookingDetail.BillInfo.PayRate;

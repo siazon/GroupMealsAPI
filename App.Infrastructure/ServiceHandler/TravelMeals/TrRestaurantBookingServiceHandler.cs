@@ -81,7 +81,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<ResponseModel> SearchBookings(int shopId, string userId, string content, int pageSize = -1, string continuationToke = null);
         Task<ResponseModel> SearchBookingsByRestaurant(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
         Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, int filterTime, DateTime stime, DateTime etime, int status, int pageSize = -1, string continuationToke = null);
-        List<DbBooking> PlaceBooking(List<DbBooking> cartInfos, int shopId, DbCustomer user);
+        Task<List<DbBooking>> PlaceBooking(List<DbBooking> cartInfos, int shopId, DbCustomer user);
 
         ResponseModel GetBookingItemAmount(List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate, bool isOldCustomer);
         Task<ResponseModel> GetBookingAmount(bool isBookingModify, string currency, string userId, List<string> Ids);
@@ -162,11 +162,16 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<object> SettleBooking(string bookingId, string detailId, string userEmail)
         {
             var booking = await _bookingRepository.GetOneAsync(a => a.Id == bookingId);
+            if (booking == null || booking.AcceptStatus == AcceptStatusEnum.Declined || booking.AcceptStatus == AcceptStatusEnum.CanceledBeforeAccepted ||
+                booking.AcceptStatus == AcceptStatusEnum.CanceledAfterAccepted || booking.Status == OrderStatusEnum.Canceled || booking.Status == OrderStatusEnum.None)
+            {
+                return new { code = 501, msg = "订单状态不对，无法结单", };
+            }
             booking.AcceptStatus = AcceptStatusEnum.SettledByAdmin;
             booking.Status = OrderStatusEnum.Settled;
             await _bookingRepository.UpsertAsync(booking);
             var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == booking.PaymentId);
-            PayAction(paymentInfo,true);
+            PayAction(paymentInfo, true);
             return new { code = 0, msg = "ok", };
         }
         public async Task<object> UpsetBookingRemark(string bookingId, string detailId, string remark, string userEmail)
@@ -183,7 +188,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
 
             var booking = await _bookingRepository.GetOneAsync(a => a.Id == bookingId);
-            if (booking==null|| booking.Status == OrderStatusEnum.Canceled)
+            if (booking == null || booking.Status == OrderStatusEnum.Canceled)
                 return new { code = 0, msg = "订单已取消", };
             else
             {
@@ -650,8 +655,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             else
             {
-                string currency = "eur";
-                string payCurrency = payCurrencyVO.PayCurrency.Trim().ToLower();
+                string currency = "EUR";
+                string payCurrency = payCurrencyVO.PayCurrency.Trim().ToUpper();
                 switch (payCurrency)
                 {
                     case "eu":
@@ -664,22 +669,29 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         break;
                 }
                 List<DbBooking> bookings = new List<DbBooking>();
-
+                List<string> bookingIdList = new List<string>();
+                string paymentId = "";
                 foreach (var item in userInfo.CartInfos)
                 {
                     if (payCurrencyVO.BookingIds.Count > 0 && !payCurrencyVO.BookingIds.Contains(item.Id)) continue;
                     await InitBookingDetail(item, user.UserId);
                     item.BillInfo.IsOldCustomer = userInfo.IsOldCustomer;
                     bookings.Add(item);
+                    bookingIdList.Add(item.Id);
+                    paymentId = item.PaymentId;
                 }
-                DbPaymentInfo dbPaymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == userInfo.CartInfos[0].PaymentId);
+                DbPaymentInfo dbPaymentInfo = null;
+                if (!string.IsNullOrWhiteSpace(paymentId))
+                    dbPaymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == paymentId);
                 if (dbPaymentInfo == null)
                 {
                     dbPaymentInfo = new DbPaymentInfo();
                     dbPaymentInfo.Id = Guid.NewGuid().ToString();
                     dbPaymentInfo.Creater = userInfo.Id;
                 }
-                dbPaymentInfo.Amount = _amountCalculaterV1.CalculateOrderPaidAmount(bookings, payCurrencyVO.PayCurrency, userInfo);
+
+                var countries = await _countryHandler.GetCountry(userInfo.ShopId ?? 11);
+                dbPaymentInfo.Amount = _amountCalculaterV1.CalculateOrderPaidAmount(bookings, payCurrencyVO.PayCurrency, userInfo, countries);
                 dbPaymentInfo.Currency = currency;
 
                 if (dbPaymentInfo.Amount == 0)
@@ -687,15 +699,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     var dbUser = await _customerServiceHandler.UpdateCart(bookings, user.UserId, user.ShopId ?? 11);
                     var booking = PlaceBooking(bookings, shopId, userInfo);
                     return new ResponseModel { msg = "ok", code = 200, data = null };
-
                 }
-
+                string bookingIds = string.Join(',', bookingIdList);
                 SetupIntent setupIntent = _stripeServiceHandler.CreateSetupPayIntent(new PayIntentParam()
                 {
                     BillId = dbPaymentInfo.Id,
                     PaymentIntentId = dbPaymentInfo.StripeIntentId,
                     CustomerId = userInfo.StripeCustomerId
-                }, user);
+                }, bookingIds, user);
                 dbPaymentInfo.StripeIntentId = setupIntent.Id;
                 userInfo.StripeCustomerId = dbPaymentInfo.StripeCustomerId = setupIntent.CustomerId;
                 dbPaymentInfo.StripeClientSecretKey = setupIntent.ClientSecret;
@@ -709,14 +720,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 var payment = await _paymentRepository.UpsertAsync(dbPaymentInfo);
                 if (payment != null)
                 {
-                    var temo = await _customerServiceHandler.UpdateCart(bookings, user.UserId, user.ShopId ?? 11);
-
+                    var temo = await _customerServiceHandler.UpdateCartInfo(bookings, userInfo);
                 }
                 return new ResponseModel { msg = "ok", code = 200, data = setupIntent.ClientSecret };
             }
             return new ResponseModel { msg = "ok", code = 200, data = null };
         }
-        public List<DbBooking> PlaceBooking(List<DbBooking> cartInfos, int shopId, DbCustomer user)
+        public async Task<List<DbBooking>> PlaceBooking(List<DbBooking> cartInfos, int shopId, DbCustomer user)
         {
 
             foreach (var item in cartInfos)
@@ -727,12 +737,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 item.ShopId = shopId;
                 item.Created = DateTime.UtcNow;
                 item.Status = OrderStatusEnum.UnAccepted;
-                _bookingRepository.UpsertAsync(item);
+                await _bookingRepository.UpsertAsync(item);
                 var booking = user.CartInfos.FirstOrDefault(a => a.Id == item.Id);
                 user.CartInfos.Remove(booking);
             }
-            _customerServiceHandler.UpdateAccount(user, shopId);
-            SendEmail(cartInfos, shopId, user);
+            await SendEmail(cartInfos, shopId, user);
+            await _customerServiceHandler.UpdateAccount(user, shopId);
             return cartInfos;
         }
         public async void SetupPaymentAction(string billId, string userId)
@@ -741,7 +751,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == billId);
             var bookings = await _bookingRepository.GetManyAsync(a => a.PaymentId == billId);
             var bookingList = bookings.ToList();
-            paymentInfo.Amount = _amountCalculaterV1.CalculateOrderPaidAmount(bookingList, paymentInfo.Currency, user);
+            var countries = await _countryHandler.GetCountry(user.ShopId ?? 11);
+            paymentInfo.Amount = _amountCalculaterV1.CalculateOrderPaidAmount(bookingList, paymentInfo.Currency, user, countries);
             _stripeServiceHandler.SetupPaymentAction(paymentInfo, userId);
         }
         public async void BookingCharged(string billId, string ChargeId, string ReceiptUrl)
@@ -813,7 +824,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 item.RestaurantWechat = rest.Wechat;
                 item.RestaurantTimeZone = rest.TimeZone;
                 item.Currency = rest.Currency;
-                item.Currency = rest.Country;
+                item.RestaurantCountry = rest.Country;
                 item.BillInfo = rest.BillInfo;
             }
 
@@ -855,8 +866,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             return true;
         }
-        private async void SendEmail(List<DbBooking> bookings, int shopId, DbCustomer user)
+        private async Task<bool> SendEmail(List<DbBooking> bookings, int shopId, DbCustomer user)
         {
+            if (bookings.Count == 0) return false;
             var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
             if (shopInfo == null)
             {
@@ -879,7 +891,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             emailParams.isShortInfo = 1;
             await _sendEmailUtil.EmailEach(bookings, shopInfo, emailParams);
             //EmailUtils.EmailSupport(booking, shopInfo, "new_meals_support", this._environment.WebRootPath, "New Booking", _twilioUtil, _contentBuilder,  _logger);
-
+            return true;
         }
         private async void SendModifyEmail(DbBooking booking)
         {
@@ -1246,8 +1258,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<ResponseModel> GetSchedulePdf(DbToken userId)
         {
             List<PDFModel> pdfData = new List<PDFModel>();
-            var Bookings = await _bookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted &&
-        a.IsDeleted && a.Status != OrderStatusEnum.Canceled && a.Status != OrderStatusEnum.Settled && a.Creater == userId.UserId));
+            var test = await _bookingRepository.GetManyAsync(a => 1 == 1);
+
+
+            var Bookings = await _bookingRepository.GetManyAsync(a => a.Status != OrderStatusEnum.None &&
+        !a.IsDeleted && a.Status != OrderStatusEnum.Canceled && a.Status != OrderStatusEnum.Settled && a.Creater == userId.UserId);
             foreach (var Booking in Bookings)
             {
                 if (Booking.IsDeleted || Booking.Status == OrderStatusEnum.Canceled || Booking.Status == OrderStatusEnum.Settled) continue;
@@ -1324,7 +1339,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 _exchangeUtil.UpdateExchangeRateToDB();
             }
-            //asyncBooking();
+            asyncBooking();
             //DateTime time = DateTime.UtcNow.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode("Ireland"));
             //if (time.Hour < 18 && time.Hour > 8)
             //{
@@ -1358,21 +1373,24 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 _logger.LogError("autoPayment:" + ex.Message);
             }
         }
-        private async void PayAction(DbPaymentInfo item,bool byadmin=false)
+        private async void PayAction(DbPaymentInfo item, bool byadmin = false)
         {
 
             if (item.PaymentType == 0)
             {
                 var bookings = await _bookingRepository.GetManyAsync(a => a.PaymentId == item.Id);
                 bool isTimePass = true;
+                bool isAllSettle = true;
                 foreach (var booking in bookings)
                 {
                     if (booking.SelectDateTime.Value > DateTime.UtcNow)
                     {
                         isTimePass = false;
                     }
+                    if (booking.Status != OrderStatusEnum.Settled)
+                        isAllSettle = false;
                 }
-                if (byadmin|| isTimePass)
+                if ((byadmin && isAllSettle) || isTimePass)
                 {
                     SetupPaymentAction(item.Id, item.Creater);
                 }
@@ -1387,6 +1405,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async void asyncBooking()
         {
+            var rests = await _customerRepository.GetManyAsync(a => a.ShopId == 11);
+            foreach (var restaurant in rests)
+            {
+                restaurant.IsOldCustomer = true;
+                await _customerRepository.UpsertAsync(restaurant);
+            }
+
+
             var bookings = await _restaurantBookingRepository.GetManyAsync(a => 1 == 1);
             foreach (var booking in bookings)
             {
@@ -1453,7 +1479,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         dbBooking.RestaurantWechat = rest.Wechat;
                         dbBooking.RestaurantTimeZone = rest.TimeZone;
                         dbBooking.Currency = rest.Currency;
-                        dbBooking.Currency = rest.Country;
+                        dbBooking.RestaurantCountry = rest.Country;
                     }
                     dbBooking.BillInfo = book.BillInfo;
 
