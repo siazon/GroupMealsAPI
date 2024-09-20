@@ -131,12 +131,14 @@ namespace KingfoodIO.Controllers.Common
         [HttpGet]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<object> CloseAccount(int shopId)
+        public async Task<object> CloseAccount(int shopId,string email, string pwd)
         {
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            var passwordEncode = _encryptionHelper.EncryptString(pwd);
+
             return await ExecuteAsync(shopId, false,
-          async () => await _customerServiceHandler.CloseAccount(user.UserId));
+          async () => await _customerServiceHandler.CloseAccount(user.UserId,email, passwordEncode));
         }
 
         /// <summary>
