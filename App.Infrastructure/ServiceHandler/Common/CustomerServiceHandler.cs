@@ -38,7 +38,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         Task<List<DbCustomer>> List(int shopId);
 
         Task<DbCustomer> LoginCustomer(string email, string password, int shopId);
-        Task<object> CloseAccount(string userId);
+        Task<object> CloseAccount(string userId,string email,string pwd);
 
         Task<object> SendForgetPasswordVerifyCode(string email, int shopId);
 
@@ -129,12 +129,14 @@ namespace App.Infrastructure.ServiceHandler.Common
 
             return customer;
         }
-        public async Task<object> CloseAccount(string userId)
+        public async Task<object> CloseAccount(string userId,string email, string pwd)
         {
             var customer = await _customerRepository.GetOneAsync(r => r.Id == userId);
-            if (customer != null)
-                await _customerRepository.DeleteAsync(customer);
-            return true;
+            if (customer != null && customer.Password == pwd)
+            { await _customerRepository.DeleteAsync(customer);
+                return new { msg = "ok", };
+            }
+            return new { msg = "用户不存在或密码错误", };
         }
         public async Task<object> SendForgetPasswordVerifyCode(string email, int shopId)
         {

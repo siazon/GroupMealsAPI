@@ -413,7 +413,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 return new ResponseModel { msg = "ok", code = 200, data = cacheResult };
             }
-            var existingCities = await _countryRepository.GetOneAsync(a => a.ShopId == shopId&&a.Id== "oldCities");
+            var existingCities = await _countryRepository.GetOneAsync(a => a.ShopId == shopId &&a.IsActive==true);
             if (existingCities == null)
                 return new ResponseModel { msg = "Cities can't fund", code = 501, };
     
