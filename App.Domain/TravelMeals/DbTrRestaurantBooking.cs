@@ -15,24 +15,24 @@ namespace App.Domain.TravelMeals
         public string CustomerName { get; set; }
         public string CustomerEmail { get; set; }
         public string CustomerPhone { get; set; }
+        public string BookingDate { get; set; } = DateTime.UtcNow.ToString("yyyy-MMM-dd");
+        public string BookingTime { get; set; } = DateTime.UtcNow.ToString("HH:mm");
+        [JsonIgnore]
+        public int NumberOfAdults { get; set; }
+        [JsonIgnore]
+        public int NumberOfChildren { get; set; }
+        [JsonIgnore]
+        public string BookingNotes { get; set; }
         public string PayCurrency { get; set; }
+        public string Creater { get; set; }
         public double Rebate { get; set; }
-        public List<DbBooking> Details { get; set; } = new List<DbBooking>();
+        public List<BookingDetail> Details { get; set; } = new List<BookingDetail>();
         public List<OperationInfo> Operations { get; set; } = new List<OperationInfo>();
         public List<PaymentInfo> PaymentInfos { get; set; } = new List<PaymentInfo>();
 
     }
-    public class DbPaymentInfo : PaymentInfo
+    public class OperationInfo
     {
-
-    }
-    public class DbOpearationInfo : OperationInfo
-    {
-
-    }
-    public class OperationInfo : DbEntity
-    {
-        public string ReferenceId { get; set; }
         public string Operation { get; set; }
         public string Operater { get; set; }
         public DateTime UpdateTime { get; set; }
@@ -49,81 +49,47 @@ namespace App.Domain.TravelMeals
     public class AmountInfo
     {
         public string Id { get; set; }
-        //public string PaymentId { get; set; }
         public decimal Amount { get; set; }
         public decimal PaidAmount { get; set; }
-        public decimal Reward { get; set; }
-    }
-    public enum PaymentStatusEnum
-    {
-        NoPayment, UnPaid, Paid
     }
     public class PaymentInfo : StripeBase
     {
-        public int PaymentType { get; set; }//0：订单结束扣款，1：24小时捐款
         public decimal Amount { get; set; }
-        public decimal RefundAmount { get; set; }
-        public string Currency { get; set; }
-        public DateTime PayTime { get; set; }
-        public DateTime CheckoutTime { get; set; }
-
+        public decimal PaidAmount { get; set; }
     }
-    public class DbBooking : BookingDetail
+    public class BookingDetail
     {
+        public string Id { get; set; }
+        public string BookingRef { get; set; }
+        public string RestaurantId { get; set; }
         public string RestaurantName { get; set; }
-        public string RestaurantAddress { get; set; }
         public string RestaurantPhone { get; set; }
         public string EmergencyPhone { get; set; }
         public string RestaurantWechat { get; set; }
         public string RestaurantEmail { get; set; }
         public string RestaurantCountry { get; set; }
-        public string RestaurantTimeZone { get; set; }
-        public string Currency { get; set; }
-        public string Remark { get; set; }
         public string SupporterEmail { get; set; }
-        public string PayCurrency { get; set; }
+        public string RestaurantAddress { get; set; }
+        public string Memo { get; set; }
+        public string Currency { get; set; }
+        public DateTime? SelectDateTime { get; set; }
+        public string MealTime { get; set; }
         public OrderStatusEnum Status { get; set; }//0:defult,1:canceled
         public AcceptStatusEnum AcceptStatus { get; set; }//0:Defult, 1:Accepted, 2:Declined
         public bool Modified { get; set; }
-        public bool Charged { get; set; }
         public string AcceptReason { get; set; }
-        public RestaurantBillInfo BillInfo { get; set; } = new RestaurantBillInfo();
-        public List<AmountInfo> AmountInfos { get; set; } = new List<AmountInfo>();
-    }
-    public class BookingDetail : DbEntity
-    {
-        public string BookingRef { get; set; }
-        public string PaymentId { get; set; }
-        public string RestaurantId { get; set; }
-        public List<BookingCourse> Courses { get; set; } = new List<BookingCourse>();
-        public DateTime? SelectDateTime { get; set; }
-        public string Memo { get; set; }
         public string ContactName { get; set; }
         public string ContactPhone { get; set; }
         public string ContactEmail { get; set; }
         public string ContactWechat { get; set; }
         public string ContactInfos { get; set; }
         public string GroupRef { get; set; }
+        public bool IsDeleted { get; set; }
+        public string Remark { get; set; }
 
-    }
-    public class BookingRestaurantInfo
-    {
-        public string RestaurantId { get; set; }
-        public string RestaurantName { get; set; }
-        public string RestaurantAddress { get; set; }
-        public string RestaurantPhone { get; set; }
-        public string EmergencyPhone { get; set; }
-        public string RestaurantWechat { get; set; }
-        public string RestaurantEmail { get; set; }
-        public string RestaurantCountry { get; set; }
-    }
-    public class BookingCustomerInfo
-    {
-        public string ContactName { get; set; }
-        public string ContactPhone { get; set; }
-        public string ContactEmail { get; set; }
-        public string ContactWechat { get; set; }
-        public string ContactInfos { get; set; }
+        public RestaurantBillInfo BillInfo { get; set; } = new RestaurantBillInfo();
+        public List<BookingCourse> Courses { get; set; } = new List<BookingCourse>();
+        public List<AmountInfo> AmountInfos { get; set; } = new List<AmountInfo>();
     }
     public enum DetailStatusEnum
     {
@@ -143,7 +109,7 @@ namespace App.Domain.TravelMeals
 
         public override string ToString()
         {
-            return $"id:{Id},name:{MenuItemName},qty:{Qty},childrenQty:{ChildrenQty},price:{Price},childrenPrice{ChildrenPrice},MenuCalculateType:{MenuCalculateType},Category:{Category}";
+            return  $"id:{Id},name:{MenuItemName},qty:{Qty},childrenQty:{ChildrenQty},price:{Price},childrenPrice{ChildrenPrice},MenuCalculateType:{MenuCalculateType},Category:{Category}" ;
         }
     }
 }
