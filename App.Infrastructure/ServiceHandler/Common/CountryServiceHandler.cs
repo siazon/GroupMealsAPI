@@ -47,6 +47,8 @@ namespace App.Infrastructure.ServiceHandler.Common
             return contries;
         }
         public async void UpsertCountry(DbCountry country) {
+            var cacheKey = string.Format("motionmedia-{1}-{0}", country.ShopId, typeof(DbCountry).Name);
+            _memoryCache.Set<List<DbCountry>>(cacheKey, null);
             await _countryRepository.UpsertAsync(country);
         }
 

@@ -36,9 +36,9 @@ namespace App.Infrastructure.ServiceHandler.Common
     public interface ICustomerServiceHandler
     {
         Task<List<DbCustomer>> List(int shopId);
-
+        Task<DbCustomer> GetCustomer(string userId, int shopId);
         Task<DbCustomer> LoginCustomer(string email, string password, int shopId);
-        Task<object> CloseAccount(string userId,string email,string pwd);
+        Task<object> CloseAccount(string userId, string email, string pwd);
 
         Task<object> SendForgetPasswordVerifyCode(string email, int shopId);
 
@@ -137,14 +137,24 @@ namespace App.Infrastructure.ServiceHandler.Common
 
             return customer;
         }
-        public async Task<object> CloseAccount(string userId,string email, string pwd)
+        public async Task<object> CloseAccount(string userId, string email, string pwd)
         {
             var customer = await _customerRepository.GetOneAsync(r => r.Id == userId);
             if (customer != null && customer.Password == pwd)
-            { await _customerRepository.DeleteAsync(customer);
-                return new { msg = "ok", };
+            {
+                return new { msg = "用户不存在", };
             }
-            return new { msg = "用户不存在或密码错误", };
+            if (customer != null && customer.Password == pwd)
+            {
+                return new { msg = "密码错误", };
+            }
+            var bookings = await _bookingRepository.GetManyAsync(a => a.Creater == customer.Id&&a.Status!=OrderStatusEnum.Settled&&a.Status!=OrderStatusEnum.Canceled&&a.Status!=OrderStatusEnum.None);
+            if (bookings != null && bookings.Count() > 0)
+            {
+                return new { msg = "您有订单未完成，请联系客服完成订单后再注销订单", };
+            }
+            await _customerRepository.DeleteAsync(customer);
+            return new { msg = "ok", };
         }
         public async Task<object> SendForgetPasswordVerifyCode(string email, int shopId)
         {
@@ -413,12 +423,13 @@ namespace App.Infrastructure.ServiceHandler.Common
         {
             var existingCustomer =
                 await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == userId);
+            if (existingCustomer == null)
+                return new { msg = "User not found!(用户不存在)", };
             existingCustomer = await RefreshCartInfo(existingCustomer);
             if (existingCustomer.CartInfos.Count > 0)
                 existingCustomer = await _customerRepository.UpsertAsync(existingCustomer);
 
-            if (existingCustomer == null)
-                return new { msg = "User not found!(用户不存在)", };
+
 
 
             return new { msg = "ok", data = existingCustomer.CartInfos };

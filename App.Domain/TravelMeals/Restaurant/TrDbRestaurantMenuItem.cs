@@ -1,4 +1,5 @@
 using App.Domain.Enum;
+using Newtonsoft.Json;
 
 namespace App.Domain.TravelMeals.Restaurant
 {
@@ -20,6 +21,7 @@ namespace App.Domain.TravelMeals.Restaurant
         /// 计算时必填
         /// </summary>
         public decimal Price { get; set; }
+        public decimal WeBuyPrice { get; set; }
         /// <summary>
         /// 最小人数
         /// </summary>
