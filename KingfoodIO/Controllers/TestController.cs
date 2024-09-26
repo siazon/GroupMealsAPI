@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
+using App.Domain.Common.Customer;
 using App.Domain.Common.Shop;
+using App.Domain.TravelMeals.Restaurant;
 using App.Infrastructure.ServiceHandler.Common;
 using App.Infrastructure.ServiceHandler.Tour;
 using App.Infrastructure.ServiceHandler.TravelMeals;
@@ -13,7 +15,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace KingfoodIO.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/[controller]/[action]")]
     public class TestController : Controller
     {
         private readonly IShopServiceHandler _shopServiceHandler;
@@ -57,6 +59,19 @@ namespace KingfoodIO.Controllers
         {
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="logInfo">[当地时间]_[操作人邮箱]_[关键信息如字段名字段内容]</param>
+        /// <returns></returns>
+        [HttpPost]
+        public string DebugLog([FromBody] string logInfo)
+        {
+            _logger.LogDebug("FontEnd.Log: " + logInfo);
+            return "value";
+        }
+
+       
         // PUT api/values/5
         [HttpPut("{id}")]
         public void Put(int id, [FromBody] string value)
