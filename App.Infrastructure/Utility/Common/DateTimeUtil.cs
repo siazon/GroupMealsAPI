@@ -32,6 +32,10 @@ namespace App.Infrastructure.Utility.Common
             _DicTimeZone["Switzerland"] = "Europe/Zurich";
             _DicTimeZone["Spain"] = "Europe/Madrid";
             _DicTimeZone["Portugal"] = "Europe/Lisbon";
+            _DicTimeZone["Germany"] = "Europe/Berlin";
+            _DicTimeZone["Norway"] = "Europe/Oslo";
+            _DicTimeZone["Czech Republic"] = "Europe/Prague";
+            _DicTimeZone["Serbia"] = "Europe/Belgrade";
         }
 
         public DateTime GetCurrentTime()
