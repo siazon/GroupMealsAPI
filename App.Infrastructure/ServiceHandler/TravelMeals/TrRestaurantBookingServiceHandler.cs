@@ -742,11 +742,35 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 var opt = new OperationInfo() { Operater = user.UserEmail, Operation = "新增订单", UpdateTime = DateTime.UtcNow };
                 booking.Operations.Add(opt);
             }
+            foreach (var item in booking.Details)
+            {
+                if (string.IsNullOrWhiteSpace(item.Currency))
+                {
+                    var rest = await _restaurantRepository.GetOneAsync(a => a.Id == item.RestaurantId);
+                    if (rest != null)
+                    {
+                        item.Currency = rest.Country;
+                    }
+                }
+                DateTime dateTime = item.SelectDateTime.Value;
+                DateTime.TryParse(item.MealTime,out dateTime);
+                item.SelectDateTime = dateTime.GetTimeZoneByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry));
+                if (item.SelectDateTime.Value.Year - DateTime.UtcNow.Year > 5)
+                    return new ResponseModel { msg = "用餐时间不正确", code = 501, data = null };
+
+                if (item.SelectDateTime.Value.Hour < 11 || item.SelectDateTime.Value.Hour > 23)
+                    return new ResponseModel { msg = "用餐时间不正确", code = 501, data = null };
+            }
+
+
             bool noPay = await InitBooking(booking, user.UserId);
 
 
-            booking.PaymentInfos.Add(new PaymentInfo() { Amount = await _amountCalculaterV1.CalculateOrderAmount(booking.Details, booking.PayCurrency, booking.ShopId ?? 11), 
-                PaidAmount = await _amountCalculaterV1.CalculateOrderPaidAmount(booking.Details, booking.PayCurrency, booking.ShopId ?? 11) });
+            booking.PaymentInfos.Add(new PaymentInfo()
+            {
+                Amount = await _amountCalculaterV1.CalculateOrderAmount(booking.Details, booking.PayCurrency, booking.ShopId ?? 11),
+                PaidAmount = await _amountCalculaterV1.CalculateOrderPaidAmount(booking.Details, booking.PayCurrency, booking.ShopId ?? 11)
+            });
 
             var newItem = await _restaurantBookingRepository.UpsertAsync(booking);
             if (noPay)
@@ -792,14 +816,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         item.RestaurantWechat = rest.Wechat;
                     }
                 }
-                if (string.IsNullOrWhiteSpace(item.Currency))
-                {
-                    var rest = await _restaurantRepository.GetOneAsync(a => a.Id == item.RestaurantId);
-                    if (rest != null)
-                    {
-                        item.Currency = rest.Country;
-                    }
-                }
+
+
+
 
                 if (string.IsNullOrWhiteSpace(item.Id))
                     item.Id = Guid.NewGuid().ToString();
@@ -1282,10 +1301,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     return new ResponseModel { msg = "detailId can't find in Order list", code = 500, };
 
                 }
-               
+
                 foreach (var item in Bookings)
                 {
-                  
+
                     var items = item.Details.FindAll(d => Ids.Contains(d.Id));
                     foreach (var detail in items)
                     {
@@ -1320,15 +1339,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
                 foreach (var detail in details)
                 {
-                    totalPayAmount += await _amountCalculaterV1.CalculatePayAmountByRate(detail, currency, user.ShopId ?? 11) ;
+                    totalPayAmount += await _amountCalculaterV1.CalculatePayAmountByRate(detail, currency, user.ShopId ?? 11);
                     if (detail.Currency == "UK")
                     {
-                        UKAmount +=await _amountCalculaterV1.CalculateAmountByRate(detail, "UK", user.ShopId ?? 11);
-                        UKPaidAmount +=await _amountCalculaterV1.CalculatePayAmountByRate(detail,"UK",user.ShopId??11);
+                        UKAmount += await _amountCalculaterV1.CalculateAmountByRate(detail, "UK", user.ShopId ?? 11);
+                        UKPaidAmount += await _amountCalculaterV1.CalculatePayAmountByRate(detail, "UK", user.ShopId ?? 11);
                     }
                     else
                     {
-                        EUAmount +=await _amountCalculaterV1.CalculateAmountByRate(detail, "EU", user.ShopId ?? 11);
+                        EUAmount += await _amountCalculaterV1.CalculateAmountByRate(detail, "EU", user.ShopId ?? 11);
                         EUPaidAmount += await _amountCalculaterV1.CalculatePayAmountByRate(detail, "EU", user.ShopId ?? 11);
                     }
                 }

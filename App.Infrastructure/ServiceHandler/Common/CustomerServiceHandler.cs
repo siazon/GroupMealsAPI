@@ -323,6 +323,9 @@ namespace App.Infrastructure.ServiceHandler.Common
             {
                 foreach (var item in cartInfos)
                 {
+                    DateTime dateTime = item.SelectDateTime.Value;
+                    DateTime.TryParse(item.MealTime, out dateTime);
+                    item.SelectDateTime = dateTime.GetTimeZoneByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry));
 
                     if (string.IsNullOrWhiteSpace(item.Id))
                         item.Id = Guid.NewGuid().ToString();

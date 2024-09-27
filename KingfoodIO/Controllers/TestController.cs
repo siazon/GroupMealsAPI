@@ -65,7 +65,7 @@ namespace KingfoodIO.Controllers
         /// <param name="logInfo">[当地时间]_[操作人邮箱]_[关键信息如字段名字段内容]</param>
         /// <returns></returns>
         [HttpPost]
-        public string DebugLog([FromBody] string logInfo)
+        public string DebugLog([FromBody] object logInfo)
         {
             _logger.LogDebug("FontEnd.Log: " + logInfo);
             return "value";

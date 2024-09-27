@@ -103,9 +103,6 @@ namespace App.Infrastructure.Utility.Common
 
         public static DateTime GetLocaTimeByIANACode(this DateTime dateTime, string IANACode)
         {
-         
-
-          
             var time = DateTime.UtcNow;
             try
             {
@@ -120,6 +117,20 @@ namespace App.Infrastructure.Utility.Common
             }
             return time;
         }
+        public static DateTime GetTimeZoneByIANACode(this DateTime dateTime, string IANACode)
+        {
+            var time = DateTime.UtcNow;
+            try
+            {
 
+                time = TimeZoneInfo.ConvertTimeToUtc(dateTime, TZConvert.GetTimeZoneInfo(IANACode));
+            }
+            catch (Exception ex)
+            {
+
+                throw;
+            }
+            return time;
+        }
     }
 }
