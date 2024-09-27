@@ -360,7 +360,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var cacheKeycitys = string.Format("motionmedia-{1}-{0}", shopId, "citys");
             _memoryCache.Set<DbCountry>(cacheKey, null);
             _memoryCache.Set<Dictionary<string, List<string>>>(cacheKeycitys, null);
-            var cities = await _countryRepository.GetOneAsync(a => a.ShopId == shopId);
+            var cities = await _countryRepository.GetOneAsync(a => a.ShopId == shopId && a.IsActive == true);
             if (cities != null)
                 countries.Id = cities.Id;
             else
