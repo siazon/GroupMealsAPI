@@ -63,7 +63,6 @@ namespace App.Domain.TravelMeals.Restaurant
         public decimal Price { get; set; }
         public decimal PriceIncrease { get; set; }
         public decimal ChildrenPrice { get; set; }
-        public MenuCalculateTypeEnum MenuCalculateType { get; set; }
 
         public RestaurantBillInfo BillInfo { get; set; }
 

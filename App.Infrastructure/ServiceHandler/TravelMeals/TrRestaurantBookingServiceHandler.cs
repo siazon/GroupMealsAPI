@@ -53,6 +53,7 @@ using Microsoft.AspNetCore.Http.Metadata;
 using Stripe.Terminal;
 using App.Domain.TravelMeals.VO;
 using Microsoft.CodeAnalysis;
+using static Pipelines.Sockets.Unofficial.SocketConnection;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -1332,6 +1333,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<bool> OrderCheck()
         {
+            asyncCities();
+            return true;
             autoPayment();
             var today = DateTime.UtcNow;
 
@@ -1506,5 +1509,162 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
 
         }
+
+        private void asyncCities()
+        {
+            string jsonStr = "{\\\"Countries\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"UK\\\",\\\"NameCN\\\":\\\"英国\\\",\\\"TimeZone\\\":\\\"Europe/London\\\",\\\"Currency\\\":\\\"UK\\\",\\\"ExchangeRate\\\":0.8542,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"£\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"London 伦敦\\\"},{\\\"SortOrder\\\":1,\\\"Name\\\":\\\"Cambridge 剑桥\\\"},{\\\"SortOrder\\\":2,\\\"Name\\\":\\\"Manchester 曼彻斯特\\\"},{\\\"SortOrder\\\":3,\\\"Name\\\":\\\"Birmingham 伯明翰\\\"},{\\\"SortOrder\\\":4,\\\"Name\\\":\\\"Oxford 牛津\\\"},{\\\"SortOrder\\\":5,\\\"Name\\\":\\\"Bicester 比斯特\\\"},{\\\"SortOrder\\\":6,\\\"Name\\\":\\\"Windermere 温德米尔湖区\\\"},{\\\"SortOrder\\\":7,\\\"Name\\\":\\\"Glawsgow 格拉斯哥\\\"},{\\\"SortOrder\\\":8,\\\"Name\\\":\\\"Edinburgh 爱丁堡\\\"},{\\\"SortOrder\\\":9,\\\"Name\\\":\\\"Liverpool 利物浦\\\"},{\\\"SortOrder\\\":10,\\\"Name\\\":\\\"利物浦彻斯特\\\"},{\\\"SortOrder\\\":11,\\\"Name\\\":\\\"普雷斯顿市\\\"},{\\\"SortOrder\\\":12,\\\"Name\\\":\\\"贝尔法斯特及北爱\\\"},{\\\"SortOrder\\\":13,\\\"Name\\\":\\\"York 约克\\\"},{\\\"SortOrder\\\":14,\\\"Name\\\":\\\"Stratford 莎士比亚\\\"},{\\\"SortOrder\\\":15,\\\"Name\\\":\\\"霍利希德\\\"},{\\\"SortOrder\\\":16,\\\"Name\\\":\\\"Bath 巴斯\\\"},{\\\"SortOrder\\\":17,\\\"Name\\\":\\\"Sheffield 谢菲尔德\\\"},{\\\"SortOrder\\\":18,\\\"Name\\\":\\\"Coventry 考文垂\\\"},{\\\"SortOrder\\\":19,\\\"Name\\\":\\\"Cardiff 卡迪夫\\\"},{\\\"SortOrder\\\":20,\\\"Name\\\":\\\"NTT 北安普顿\\\"},{\\\"SortOrder\\\":21,\\\"Name\\\":\\\"Bristol 布鲁斯托\\\"},{\\\"SortOrder\\\":22,\\\"Name\\\":\\\"Newcastle 纽卡斯尔\\\"},{\\\"SortOrder\\\":23,\\\"Name\\\":\\\"Brighton 布莱顿 \\\"},{\\\"SortOrder\\\":24,\\\"Name\\\":\\\"Aberdeen 阿伯丁\\\"},{\\\"SortOrder\\\":25,\\\"Name\\\":\\\"Swabsea 斯旺西\\\"},{\\\"SortOrder\\\":26,\\\"Name\\\":\\\"Leeds 利兹\\\"},{\\\"SortOrder\\\":27,\\\"Name\\\":\\\"多佛坎特伯雷\\\"},{\\\"SortOrder\\\":28,\\\"Name\\\":\\\"苏格兰高地\\\"},{\\\"SortOrder\\\":29,\\\"Name\\\":\\\"诺丁汉沿途\\\"}]},{\\\"SortOrder\\\":1,\\\"Name\\\":\\\"Ireland\\\",\\\"NameCN\\\":\\\"爱尔兰\\\",\\\"TimeZone\\\":\\\"Europe/Dublin\\\",\\\"Currency\\\":\\\"EU\\\",\\\"ExchangeRate\\\":1,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"€\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"Dublin 都柏林\\\"},{\\\"SortOrder\\\":1,\\\"Name\\\":\\\"Cork 科克\\\"},{\\\"SortOrder\\\":2,\\\"Name\\\":\\\"Galway 戈尔韦\\\"},{\\\"SortOrder\\\":3,\\\"Name\\\":\\\"Limerick 利莫瑞克\\\"},{\\\"SortOrder\\\":4,\\\"Name\\\":\\\"Killarney 基拉尼\\\"},{\\\"SortOrder\\\":5,\\\"Name\\\":\\\"莫赫悬崖及克莱尔郡\\\"},{\\\"SortOrder\\\":6,\\\"Name\\\":\\\"Athlone 阿斯隆周边\\\"}]},{\\\"SortOrder\\\":2,\\\"Name\\\":\\\"France\\\",\\\"NameCN\\\":\\\"法国\\\",\\\"TimeZone\\\":\\\"Europe/Paris\\\",\\\"Currency\\\":\\\"EU\\\",\\\"ExchangeRate\\\":1,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"€\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"Paris 巴黎\\\"},{\\\"SortOrder\\\":1,\\\"Name\\\":\\\"贝桑松\\\"},{\\\"SortOrder\\\":2,\\\"Name\\\":\\\"亚维农\\\"}]},{\\\"SortOrder\\\":3,\\\"Name\\\":\\\"Italy\\\",\\\"NameCN\\\":\\\"意大利\\\",\\\"TimeZone\\\":\\\"Europe/Rome\\\",\\\"Currency\\\":\\\"EU\\\",\\\"ExchangeRate\\\":1,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"€\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"罗马\\\"},{\\\"SortOrder\\\":1,\\\"Name\\\":\\\"米兰\\\"},{\\\"SortOrder\\\":2,\\\"Name\\\":\\\"佛罗伦萨\\\"},{\\\"SortOrder\\\":3,\\\"Name\\\":\\\"威尼斯\\\"},{\\\"SortOrder\\\":4,\\\"Name\\\":\\\"那不勒斯\\\"},{\\\"SortOrder\\\":5,\\\"Name\\\":\\\"拉斯佩齐亚\\\"}]},{\\\"SortOrder\\\":4,\\\"Name\\\":\\\"Switzerland\\\",\\\"NameCN\\\":\\\"瑞士\\\",\\\"TimeZone\\\":\\\"Europe/Zurich\\\",\\\"Currency\\\":\\\"CHF\\\",\\\"ExchangeRate\\\":1,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"CHF\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"苏黎世\\\"},{\\\"SortOrder\\\":1,\\\"Name\\\":\\\"卢塞恩\\\"},{\\\"SortOrder\\\":2,\\\"Name\\\":\\\"日内瓦\\\"}]},{\\\"SortOrder\\\":5,\\\"Name\\\":\\\"Spain\\\",\\\"NameCN\\\":\\\"西班牙\\\",\\\"TimeZone\\\":\\\"Europe/Madrid\\\",\\\"Currency\\\":\\\"EU\\\",\\\"ExchangeRate\\\":1,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"€\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"马德里\\\"},{\\\"SortOrder\\\":1,\\\"Name\\\":\\\"巴塞罗那\\\"},{\\\"SortOrder\\\":2,\\\"Name\\\":\\\"瓦伦西亚\\\"},{\\\"SortOrder\\\":3,\\\"Name\\\":\\\"科尔多瓦\\\"},{\\\"SortOrder\\\":4,\\\"Name\\\":\\\"塞维利亚\\\"},{\\\"SortOrder\\\":5,\\\"Name\\\":\\\"格拉纳达\\\"},{\\\"SortOrder\\\":6,\\\"Name\\\":\\\"托莱多\\\"}]},{\\\"SortOrder\\\":6,\\\"Name\\\":\\\"Portugal\\\",\\\"NameCN\\\":\\\"葡萄牙\\\",\\\"TimeZone\\\":\\\"Europe/Lisbon\\\",\\\"Currency\\\":\\\"EU\\\",\\\"ExchangeRate\\\":1,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"€\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"里斯本\\\"},{\\\"SortOrder\\\":1,\\\"Name\\\":\\\"辛特拉\\\"}]},{\\\"SortOrder\\\":7,\\\"Name\\\":\\\"Germany\\\",\\\"NameCN\\\":\\\"德国\\\",\\\"TimeZone\\\":\\\"Europe/Lisbon\\\",\\\"Currency\\\":\\\"EU\\\",\\\"ExchangeRate\\\":1,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"€\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"卡塞尔\\\"}]},{\\\"SortOrder\\\":8,\\\"Name\\\":\\\"Norway\\\",\\\"NameCN\\\":\\\"挪威\\\",\\\"TimeZone\\\":\\\"Europe/Lisbon\\\",\\\"Currency\\\":\\\"EU\\\",\\\"ExchangeRate\\\":1,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"€\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"卑尔根\\\"}]},{\\\"SortOrder\\\":9,\\\"Name\\\":\\\"Czech Republic\\\",\\\"NameCN\\\":\\\"捷克\\\",\\\"TimeZone\\\":\\\"Europe/Lisbon\\\",\\\"Currency\\\":\\\"EU\\\",\\\"ExchangeRate\\\":1,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"€\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"布拉格\\\"},{\\\"SortOrder\\\":1,\\\"Name\\\":\\\"克鲁姆洛夫及周边\\\"},{\\\"SortOrder\\\":2,\\\"Name\\\":\\\"qq\\\"}]}],\\\"RateUpdateTime\\\":\\\"0001-01-01T00:00:00\\\",\\\"id\\\":\\\"oldCities\\\",\\\"ShopId\\\":11,\\\"Created\\\":null,\\\"Updated\\\":null,\\\"Updater\\\":null,\\\"SortOrder\\\":null,\\\"IsActive\\\":true,\\\"IsDeleted\\\":false,\\\"_rid\\\":\\\"1ekeAMqZTaMLAAAAAAAAAA==\\\",\\\"_self\\\":\\\"dbs/1ekeAA==/colls/1ekeAMqZTaM=/docs/1ekeAMqZTaMLAAAAAAAAAA==/\\\",\\\"_etag\\\":\\\"\\\\\"8f00c2d4-0000-0c00-0000-66f73e2e0000\\\\\"\\\",\\\"_attachments\\\":\\\"attachments/\\\",\\\"_ts\\\":1727479342}";
+            citySource citySource = JsonConvert.DeserializeObject<citySource>(jsonStr);
+            foreach (var city in citySource.Countries)
+            {
+                DbCountry dbCountry = new DbCountry()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Name = city.NameCN,
+                    Code = city.Name,
+                    Currency = city.Currency,
+                    CurrencySymbol = city.CurrencySymbol,
+                    ExchangeRate = city.ExchangeRate,
+                    ExchangeRateExtra = city.ExchangeRateExtra,
+                    VAT = 1.25,
+                    IsActive = false,
+                    SortOrder = city.SortOrder,
+                    ShopId = 11,
+                };
+                foreach (var item in city.Cities)
+                {
+                    City _city = new City()
+                    {
+                        Name = item.Name,
+                        SortOrder = item.SortOrder,
+                        TimeZone = city.TimeZone
+                    };
+                    dbCountry.Cities.Add(_city);
+                }
+                _countryHandler.UpsertCountry(dbCountry);
+
+            }
+
+        }
     }
+
+
+    //如果好用，请收藏地址，帮忙分享。
+    public class CitiesItem
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        public int SortOrder { get; set; }
+        /// <summary>
+        /// London 伦敦
+        /// </summary>
+        public string Name { get; set; }
+    }
+
+    public class CountriesItem
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        public int SortOrder { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string Name { get; set; }
+        /// <summary>
+        /// 英国
+        /// </summary>
+        public string NameCN { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string TimeZone { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string Currency { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public double ExchangeRate { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public double ExchangeRateExtra { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string CurrencySymbol { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public List<CitiesItem> Cities { get; set; }
+    }
+
+    public class citySource
+    {
+        /// <summary>
+        /// 
+        /// </summary>
+        public List<CountriesItem> Countries { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string RateUpdateTime { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string id { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public int ShopId { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string Created { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string Updated { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string Updater { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string SortOrder { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string IsActive { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string IsDeleted { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string _rid { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string _self { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string _etag { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public string _attachments { get; set; }
+        /// <summary>
+        /// 
+        /// </summary>
+        public int _ts { get; set; }
+    }
+
+
+
 }
