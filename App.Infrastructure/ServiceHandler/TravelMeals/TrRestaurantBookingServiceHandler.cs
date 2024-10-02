@@ -49,6 +49,7 @@ using static FluentValidation.Validators.PredicateValidator;
 using App.Domain.Config;
 using QuestPDF.Fluent;
 using SixLabors.ImageSharp.Memory;
+using Microsoft.AspNetCore.Razor.Language.Extensions;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -718,6 +719,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //Thread.Sleep(5000);
             _logger.LogInfo("RequestBooking" + user.UserEmail);
             Guard.NotNull(booking);
+            booking.ShopId= shopId;
             Guard.AreEqual(booking.ShopId.Value, shopId);
             //foreach (var item in booking.Details)
             //{
@@ -753,12 +755,18 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     }
                 }
                 DateTime dateTime = item.SelectDateTime.Value;
-                DateTime.TryParse(item.MealTime,out dateTime);
+                if (!string.IsNullOrWhiteSpace(item.MealTime))
+                    DateTime.TryParse(item.MealTime,out dateTime);
                 item.SelectDateTime = dateTime.GetTimeZoneByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry));
+                string[] temp=item.MealTime.Split(' ');
+                string[] timetemp = temp[1].Split(':');
+                int hour = 11;
+                int.TryParse(timetemp[0],out hour);
+
                 if (item.SelectDateTime.Value.Year - DateTime.UtcNow.Year > 5)
                     return new ResponseModel { msg = "用餐时间不正确", code = 501, data = null };
 
-                if (item.SelectDateTime.Value.Hour < 11 || item.SelectDateTime.Value.Hour > 23)
+                if (hour < 11 || hour > 23)
                     return new ResponseModel { msg = "用餐时间不正确", code = 501, data = null };
             }
 

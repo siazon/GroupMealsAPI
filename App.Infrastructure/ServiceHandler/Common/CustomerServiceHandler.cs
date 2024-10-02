@@ -38,7 +38,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         Task<List<DbCustomer>> List(int shopId);
 
         Task<DbCustomer> LoginCustomer(string email, string password, int shopId);
-        Task<object> CloseAccount(string userId,string email,string pwd);
+        Task<object> CloseAccount(string userId, string email, string pwd);
 
         Task<object> SendForgetPasswordVerifyCode(string email, int shopId);
 
@@ -129,11 +129,12 @@ namespace App.Infrastructure.ServiceHandler.Common
 
             return customer;
         }
-        public async Task<object> CloseAccount(string userId,string email, string pwd)
+        public async Task<object> CloseAccount(string userId, string email, string pwd)
         {
             var customer = await _customerRepository.GetOneAsync(r => r.Id == userId);
             if (customer != null && customer.Password == pwd)
-            { await _customerRepository.DeleteAsync(customer);
+            {
+                await _customerRepository.DeleteAsync(customer);
                 return new { msg = "ok", };
             }
             return new { msg = "用户不存在或密码错误", };
@@ -324,7 +325,8 @@ namespace App.Infrastructure.ServiceHandler.Common
                 foreach (var item in cartInfos)
                 {
                     DateTime dateTime = item.SelectDateTime.Value;
-                    DateTime.TryParse(item.MealTime, out dateTime);
+                    if (!string.IsNullOrWhiteSpace(item.MealTime))
+                        DateTime.TryParse(item.MealTime, out dateTime);
                     item.SelectDateTime = dateTime.GetTimeZoneByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry));
 
                     if (string.IsNullOrWhiteSpace(item.Id))
