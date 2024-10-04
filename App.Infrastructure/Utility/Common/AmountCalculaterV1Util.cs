@@ -40,15 +40,24 @@ namespace App.Infrastructure.Utility.Common
             Dictionary<string, decimal> dicAmount = new Dictionary<string, decimal>();
             Dictionary<string, decimal> dicReward = new Dictionary<string, decimal>();
             Dictionary<string, decimal> dicUnPaidAmount = new Dictionary<string, decimal>();
-            Dictionary<string, DicModel> dicInfo=new Dictionary<string, DicModel>();
+            Dictionary<string, DicModel> dicInfo = new Dictionary<string, DicModel>();
+            bool hasFullpay = false;
             foreach (var item in details)
             {
                 var amount = getItemAmount(item);//总金额
                 var payAmount = getItemPayAmount(item);//线上支付金额
-                var reward = GetReward(amount, item.BillInfo.RewardType,item.BillInfo.Reward, customer);
+                var reward = GetReward(amount, item.BillInfo.RewardType, item.BillInfo.Reward, customer);
                 var payAmountWithReward = payAmount - reward;//减去返钱
 
                 paymentAmountInfo.TotalPayAmount += CalculatePayAmountByRate(payAmountWithReward, item.Currency, currency, shopId, countries);
+                if (paymentAmountInfo.TotalPayAmount > 0 && !item.BillInfo.IsOldCustomer)
+                {
+
+                    if (item.BillInfo.PaymentType == PaymentTypeEnum.Full)
+                    {
+                        hasFullpay = true;
+                    }
+                }
                 if (dicInfo.ContainsKey(item.Currency))
                 {
                     dicInfo[item.Currency].Amount += Math.Round(amount, 2);
@@ -58,8 +67,8 @@ namespace App.Infrastructure.Utility.Common
                 }
                 else
                 {
-                    dicInfo.Add(item.Currency,new DicModel());
-                    dicInfo[item.Currency].Amount = Math.Round(amount, 2); 
+                    dicInfo.Add(item.Currency, new DicModel());
+                    dicInfo[item.Currency].Amount = Math.Round(amount, 2);
                     dicInfo[item.Currency].UnPaidAmount = Math.Round(amount - payAmount, 2);
                     if (reward > 0)
                         dicInfo[item.Currency].Reward = Math.Round(reward, 2);
@@ -82,30 +91,35 @@ namespace App.Infrastructure.Utility.Common
                 //}
             }
 
+            if (hasFullpay)
+                paymentAmountInfo.PaymentMode = new List<int> { 2 };
+            else
+                paymentAmountInfo.PaymentMode = new List<int> { 1, 2 };
+
             paymentAmountInfo.AmountText = JionDictionary(dicInfo, countries, "amount");
-            paymentAmountInfo.UnPaidAmountText = JionDictionary(dicInfo, countries,"unpaid");
-            string rewardText = JionDictionary(dicInfo, countries,"reward");
-            paymentAmountInfo.RewardText =  rewardText;
+            paymentAmountInfo.UnPaidAmountText = JionDictionary(dicInfo, countries, "unpaid");
+            string rewardText = JionDictionary(dicInfo, countries, "reward");
+            paymentAmountInfo.RewardText = rewardText;
 
             return paymentAmountInfo;
 
         }
-        public  decimal CalculateOrderPaidAmount(List<DbBooking> details, string PayCurrency,  DbCustomer customer,List<DbCountry> countries)
+        public decimal CalculateOrderPaidAmount(List<DbBooking> details, string PayCurrency, DbCustomer customer, List<DbCountry> countries)
         {
             decimal amount = 0;
             foreach (DbBooking item in details)
             {
                 var payAmount = getItemPayAmount(item);//线上支付金额
                 var _amount = getItemAmount(item);//总金额
-                var reward = GetReward(_amount, item.BillInfo.RewardType,item.BillInfo.Reward, customer);
+                var reward = GetReward(_amount, item.BillInfo.RewardType, item.BillInfo.Reward, customer);
                 var payAmountWithReward = payAmount - reward;//减去返钱
-                var amountByRate= CalculatePayAmountByRate(payAmountWithReward, item.Currency, PayCurrency, customer.ShopId ?? 11, countries);
+                var amountByRate = CalculatePayAmountByRate(payAmountWithReward, item.Currency, PayCurrency, customer.ShopId ?? 11, countries);
                 amount += amountByRate;
             }
             return amount;
         }
 
-        private string JionDictionary(Dictionary<string, DicModel> dicAmount, List<DbCountry> dbCountry,string amountType)
+        private string JionDictionary(Dictionary<string, DicModel> dicAmount, List<DbCountry> dbCountry, string amountType)
         {
             List<string> temp = new List<string>();
             foreach (var item in dicAmount)
@@ -116,15 +130,15 @@ namespace App.Infrastructure.Utility.Common
                 {
                     symbol = country.CurrencySymbol;
                 }
-                var _amount ="";
-                if (amountType == "amount"  )
+                var _amount = "";
+                if (amountType == "amount")
                     _amount = item.Value.Amount.ToString("0.00");
-                if (amountType=="reward"&&item.Value.Reward>0)
+                if (amountType == "reward" && item.Value.Reward > 0)
                     _amount = item.Value.Reward.ToString("0.00");
                 if (amountType == "unpaid")
                     _amount = item.Value.UnPaidAmount.ToString("0.00");
-                if(!string.IsNullOrWhiteSpace(_amount))
-                temp.Add($"{symbol} {_amount}");
+                if (!string.IsNullOrWhiteSpace(_amount))
+                    temp.Add($"{symbol} {_amount}");
             }
             string amountText = string.Join(" + ", temp);
             return amountText;
@@ -136,8 +150,6 @@ namespace App.Infrastructure.Utility.Common
         public decimal CalculatePayAmountByRate(decimal oAmount, string currency, string payCurrency, int shopId, List<DbCountry> country)
         {
             decimal amount = 0;
-            var exRate = country.FirstOrDefault(a => a.Currency == currency)?.ExchangeRate ?? 1;
-            var UKRate = country.FirstOrDefault(a => a.Currency == "UK")?.ExchangeRate ?? 1;
             amount = CalculateByRate(oAmount, currency, payCurrency, country);
             return amount;
         }
@@ -146,7 +158,7 @@ namespace App.Infrastructure.Utility.Common
         {
             decimal amount = 0;
             var exRate = country.FirstOrDefault(a => a.Currency == Currency)?.ExchangeRate ?? 1;
-            var UKRate = country.FirstOrDefault(a => a.Currency == "UK")?.ExchangeRate ?? 1;
+            var UKRate = country.FirstOrDefault(a => a.Currency == "UK" || a.Currency == "GBP")?.ExchangeRate ?? 1;
             if (Currency == payCurrency)
             {
                 amount = oAmount;
@@ -162,10 +174,10 @@ namespace App.Infrastructure.Utility.Common
             }
             return amount;
         }
-        public decimal GetReward(decimal _amount, PaymentTypeEnum rewardType, double reward, DbCustomer user )
+        public decimal GetReward(decimal _amount, PaymentTypeEnum rewardType, double reward, DbCustomer user)
         {
             decimal amount = 0;
-            if(user.IsOldCustomer) return amount;
+            if (user.IsOldCustomer) return amount;
             var restaurantReward = FindValueByType(_amount, rewardType, reward);
             if (user.Reward == 0)
                 return restaurantReward;
@@ -178,7 +190,11 @@ namespace App.Infrastructure.Utility.Common
         private decimal FindValueByType(decimal amount, PaymentTypeEnum rewardType, double rate)
         {
             decimal reward = 0;
-            if (rewardType == PaymentTypeEnum.Percentage)
+            if (rewardType == PaymentTypeEnum.Full)
+            {
+                return 0;
+            }
+            else if (rewardType == PaymentTypeEnum.Percentage)
             {
                 reward = amount * (decimal)rate;
             }
@@ -203,17 +219,17 @@ namespace App.Infrastructure.Utility.Common
         {
             if (bookingDetail.BillInfo.IsOldCustomer)
                 return 0;
-                decimal amount = getItemAmount(bookingDetail);//付全额
+            decimal amount = getItemAmount(bookingDetail);//付全额
             switch (bookingDetail.BillInfo.PaymentType)
             {
                 case PaymentTypeEnum.Full:
                     return amount;
                     break;
                 case PaymentTypeEnum.Percentage:
-                        amount = amount * (decimal)bookingDetail.BillInfo.PayRate;
+                    amount = amount * (decimal)bookingDetail.BillInfo.PayRate;
                     break;
                 case PaymentTypeEnum.Fixed:
-                        amount = (decimal)bookingDetail.BillInfo.PayRate;
+                    amount = (decimal)bookingDetail.BillInfo.PayRate;
                     break;
                 default:
                     break;
@@ -281,7 +297,8 @@ namespace App.Infrastructure.Utility.Common
 
         #endregion
     }
-    public class DicModel {
+    public class DicModel
+    {
         public decimal Amount { get; set; }
         public decimal Reward { get; set; }
         public decimal UnPaidAmount { get; set; }

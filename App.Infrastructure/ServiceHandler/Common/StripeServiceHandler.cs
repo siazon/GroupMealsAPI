@@ -8,7 +8,9 @@ using App.Infrastructure.Repository;
 using App.Infrastructure.Utility.Common;
 using App.Infrastructure.Validation;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.Options;
 using Stripe;
+using Stripe.FinancialConnections;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,6 +23,7 @@ namespace App.Infrastructure.ServiceHandler.Common
     {
         Task<StripeBase> GetBooking(string id);
         SetupIntent CreateSetupPayIntent(PayIntentParam bill, string bookingIds, DbToken user);
+        PaymentIntent CreatePayIntent(DbPaymentInfo dbPaymentInfo, string bookingIds, DbToken user);
         void SetupPaymentAction(DbPaymentInfo paymentInfo, string userId);
     }
     public class StripeServiceHandler : IStripeServiceHandler
@@ -41,8 +44,60 @@ namespace App.Infrastructure.ServiceHandler.Common
             return Booking;
         }
 
+        public PaymentIntent CreatePayIntent(DbPaymentInfo dbPaymentInfo, string bookingIds, DbToken user)
+        {
+            Dictionary<string, string> meta = new Dictionary<string, string>
+                {
+                    { "billId", dbPaymentInfo.StripeChargeId}
+                };
+            var paymentIntentService = new PaymentIntentService();
+            PaymentIntent paymentIntent = null;
+            if (!string.IsNullOrWhiteSpace(dbPaymentInfo.StripeIntentId))
+            {
+                try
+                {
+                    paymentIntent = paymentIntentService.Get(dbPaymentInfo.StripeIntentId);
+                    PaymentIntentUpdateOptions options = new PaymentIntentUpdateOptions
+                    {
+                        Amount = Convert.ToInt64(dbPaymentInfo.Amount * 100),
+                        Currency = dbPaymentInfo.Currency,
+                        Metadata = meta
+                    };
+                    paymentIntent= paymentIntentService.Update(paymentIntent.Id, options);
 
-        public SetupIntent CreateSetupPayIntent(PayIntentParam bill,string bookingIds, DbToken user)
+                }
+                catch (Exception ex)
+                { }
+                return paymentIntent;
+            }
+            if (paymentIntent == null || paymentIntent.Status == "succeeded" || string.IsNullOrWhiteSpace(paymentIntent?.CustomerId))
+            {
+                try
+                {
+                    var options = new PaymentIntentCreateOptions
+                    {
+                        Amount = Convert.ToInt64(dbPaymentInfo.Amount * 100),
+                        Currency = dbPaymentInfo.Currency,
+                        //PaymentMethodTypes = new List<string> { "card", "alipay", "wechat_pay" },
+                        AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
+                        {
+                            Enabled = true,
+                        },
+                        Metadata = meta
+                    };
+
+                    paymentIntent = paymentIntentService.Create(options);
+                }
+                catch (Exception ex)
+                {
+                     
+                }
+              
+            }
+            return paymentIntent;
+        } 
+
+        public SetupIntent CreateSetupPayIntent(PayIntentParam bill, string bookingIds, DbToken user)
         {
 
             Dictionary<string, string> meta = new Dictionary<string, string>();
@@ -61,7 +116,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                 catch (Exception ex)
                 { }
             }
-            if (setupIntent == null||setupIntent.Status== "succeeded" || string.IsNullOrWhiteSpace(setupIntent?.CustomerId))
+            if (setupIntent == null || setupIntent.Status == "succeeded" || string.IsNullOrWhiteSpace(setupIntent?.CustomerId))
             {
                 string customerId = bill.CustomerId;
 
@@ -102,13 +157,14 @@ namespace App.Infrastructure.ServiceHandler.Common
                 {
                     Name = user.UserName,
                     Email = user.UserEmail,
-                     Description=user.UserId,
-                    Metadata= meta
+                    Description = user.UserId,
+                    Metadata = meta
                 });
             }
             return customer;
         }
-        public void SetupPaymentAction(DbPaymentInfo paymentInfo, string userId) {
+        public void SetupPaymentAction(DbPaymentInfo paymentInfo, string userId)
+        {
 
             try
             {
@@ -120,7 +176,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                 meta["userId"] = userId;
                 var options = new PaymentIntentCreateOptions
                 {
-                    Amount = Convert.ToInt64(paymentInfo.Amount*100),
+                    Amount = Convert.ToInt64(paymentInfo.Amount * 100),
                     Currency = paymentInfo.Currency,
                     AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
                     {

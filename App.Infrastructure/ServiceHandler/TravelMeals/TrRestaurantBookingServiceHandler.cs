@@ -702,16 +702,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     return new ResponseModel { msg = "ok", code = 200, data = null };
                 }
                 string bookingIds = string.Join(',', bookingIdList);
-                SetupIntent setupIntent = _stripeServiceHandler.CreateSetupPayIntent(new PayIntentParam()
-                {
-                    BillId = dbPaymentInfo.Id,
-                    PaymentIntentId = dbPaymentInfo.StripeIntentId,
-                    CustomerId = userInfo.StripeCustomerId
-                }, bookingIds, user);
-                dbPaymentInfo.StripeIntentId = setupIntent.Id;
-                userInfo.StripeCustomerId = dbPaymentInfo.StripeCustomerId = setupIntent.CustomerId;
-                dbPaymentInfo.StripeClientSecretKey = setupIntent.ClientSecret;
 
+                string clientSecret = "";
+                if (payCurrencyVO.PaymentMode == 1)
+                    clientSecret = CreateIntent(dbPaymentInfo, userInfo, user, bookingIds).ClientSecret;
+                else
+                    clientSecret = CreateSetupIntent(dbPaymentInfo, userInfo, user, bookingIds).ClientSecret;
                 foreach (var item in bookings)
                 {
                     item.PaymentId = dbPaymentInfo.Id;
@@ -723,9 +719,31 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     var temo = await _customerServiceHandler.UpdateCartInfo(bookings, userInfo);
                 }
-                return new ResponseModel { msg = "ok", code = 200, data = setupIntent.ClientSecret };
+                return new ResponseModel { msg = "ok", code = 200, data = clientSecret };
             }
-            return new ResponseModel { msg = "ok", code = 200, data = null };
+        }
+        private SetupIntent CreateSetupIntent(DbPaymentInfo dbPaymentInfo, DbCustomer userInfo, DbToken user, string bookingIds)
+        {
+            SetupIntent setupIntent = _stripeServiceHandler.CreateSetupPayIntent(new PayIntentParam()
+            {
+                BillId = dbPaymentInfo.Id,
+                PaymentIntentId = dbPaymentInfo.StripeIntentId,
+                CustomerId = userInfo.StripeCustomerId
+            }, bookingIds, user);
+            dbPaymentInfo.StripeIntentId = setupIntent.Id;
+            dbPaymentInfo.SetupPay = true;
+            userInfo.StripeCustomerId = dbPaymentInfo.StripeCustomerId = setupIntent.CustomerId;
+            dbPaymentInfo.StripeClientSecretKey = setupIntent.ClientSecret;
+            return setupIntent;
+        }
+        private PaymentIntent CreateIntent(DbPaymentInfo dbPaymentInfo, DbCustomer userInfo, DbToken user, string bookingIds)
+        {
+            PaymentIntent paymentIntent = _stripeServiceHandler.CreatePayIntent(dbPaymentInfo, bookingIds, user);
+            dbPaymentInfo.StripeIntentId = paymentIntent.Id;
+            dbPaymentInfo.SetupPay = false;
+            userInfo.StripeCustomerId = dbPaymentInfo.StripeCustomerId = paymentIntent.CustomerId;
+            dbPaymentInfo.StripeClientSecretKey = paymentIntent.ClientSecret;
+            return paymentIntent;
         }
         public async Task<List<DbBooking>> PlaceBooking(List<DbBooking> cartInfos, int shopId, DbCustomer user)
         {

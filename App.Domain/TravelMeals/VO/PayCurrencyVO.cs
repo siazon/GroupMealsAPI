@@ -9,6 +9,7 @@ namespace App.Domain.TravelMeals.VO
     public class PayCurrencyVO
     {
         public string PayCurrency { get; set; }
+        public int PaymentMode { get; set; }
         public List<string> BookingIds { get; set; }
     }
 }

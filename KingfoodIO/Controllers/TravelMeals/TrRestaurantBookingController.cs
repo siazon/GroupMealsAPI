@@ -359,7 +359,7 @@ namespace KingfoodIO.Controllers.TravelMeals
 
 
         /// <summary>
-        /// 
+        /// paymentMode: 1: paymentIntent,2: setupIntent
         /// </summary>
         /// <param name="cartInfoIds"></param>
         /// <param name="shopId"></param>
