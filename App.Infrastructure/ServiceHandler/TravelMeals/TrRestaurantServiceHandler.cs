@@ -445,6 +445,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             restaurant.Created = DateTime.UtcNow;
             restaurant.Updated = DateTime.UtcNow;
             restaurant.IsActive = true;
+            foreach (var r in restaurant.Categories)
+            {
+                foreach (var item in r.MenuItems)
+                {
+                    if (string.IsNullOrWhiteSpace(item.Id))
+                        item.Id = Guid.NewGuid().ToString();
+                }
+            }
 
             var savedRestaurant = await _restaurantRepository.UpsertAsync(restaurant);
 

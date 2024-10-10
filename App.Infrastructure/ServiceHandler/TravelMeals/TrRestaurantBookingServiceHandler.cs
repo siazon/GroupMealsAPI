@@ -756,9 +756,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
                 DateTime dateTime = item.SelectDateTime.Value;
                 if (!string.IsNullOrWhiteSpace(item.MealTime))
-                    DateTime.TryParse(item.MealTime,out dateTime);
-                item.SelectDateTime = dateTime.GetTimeZoneByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry));
-                string[] temp=item.MealTime.Split(' ');
+                {
+                    DateTime.TryParse(item.MealTime, out dateTime);
+                    item.SelectDateTime = dateTime.GetTimeZoneByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry));
+                }
+                    string[] temp=item.MealTime.Split(' ');
                 string[] timetemp = temp[1].Split(':');
                 int hour = 11;
                 int.TryParse(timetemp[0],out hour);

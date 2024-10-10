@@ -326,9 +326,10 @@ namespace App.Infrastructure.ServiceHandler.Common
                 {
                     DateTime dateTime = item.SelectDateTime.Value;
                     if (!string.IsNullOrWhiteSpace(item.MealTime))
+                    {
                         DateTime.TryParse(item.MealTime, out dateTime);
-                    item.SelectDateTime = dateTime.GetTimeZoneByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry));
-
+                        item.SelectDateTime = dateTime.GetTimeZoneByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry));
+                    }
                     if (string.IsNullOrWhiteSpace(item.Id))
                         item.Id = Guid.NewGuid().ToString();
                     if (item.AmountInfos == null)
