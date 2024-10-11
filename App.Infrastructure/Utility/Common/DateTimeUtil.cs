@@ -32,6 +32,10 @@ namespace App.Infrastructure.Utility.Common
             _DicTimeZone["Switzerland"] = "Europe/Zurich";
             _DicTimeZone["Spain"] = "Europe/Madrid";
             _DicTimeZone["Portugal"] = "Europe/Lisbon";
+            _DicTimeZone["Germany"] = "Europe/Berlin";
+            _DicTimeZone["Norway"] = "Europe/Oslo";
+            _DicTimeZone["Czech Republic"] = "Europe/Prague";
+            _DicTimeZone["Serbia"] = "Europe/Belgrade";
         }
 
         public DateTime GetCurrentTime()
@@ -103,9 +107,6 @@ namespace App.Infrastructure.Utility.Common
 
         public static DateTime GetLocaTimeByIANACode(this DateTime dateTime, string IANACode)
         {
-         
-
-          
             var time = DateTime.UtcNow;
             try
             {
@@ -120,6 +121,20 @@ namespace App.Infrastructure.Utility.Common
             }
             return time;
         }
+        public static DateTime GetTimeZoneByIANACode(this DateTime dateTime, string IANACode)
+        {
+            var time = DateTime.UtcNow;
+            try
+            {
 
+                time = TimeZoneInfo.ConvertTimeToUtc(dateTime, TZConvert.GetTimeZoneInfo(IANACode));
+            }
+            catch (Exception ex)
+            {
+
+                throw;
+            }
+            return time;
+        }
     }
 }

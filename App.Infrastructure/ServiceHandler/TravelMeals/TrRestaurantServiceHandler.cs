@@ -130,8 +130,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             try
             {
                 bool IsAdmin = userInfo.RoleLevel.AuthVerify(8);
-                bool isAllCountry = country.Trim() == "All" || country.Trim() == "È«²¿";
-                bool isAllCity = city.Trim() == "All" || city.Trim() == "È«²¿";
+                bool isAllCountry = country.Trim() == "All" || country.Trim() == "È«ï¿½ï¿½";
+                bool isAllCity = city.Trim() == "All" || city.Trim() == "È«ï¿½ï¿½";
                 bool isContentEmpty = string.IsNullOrWhiteSpace(content);
                 KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage;
 
@@ -171,8 +171,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             try
             {
                 bool IsAdmin = userInfo.RoleLevel.AuthVerify(8);
-                bool isAllCountry = country.Trim() == "All" || country.Trim() == "È«²¿";
-                bool isAllCity = city.Trim() == "All" || city.Trim() == "È«²¿";
+                bool isAllCountry = country.Trim() == "All" || country.Trim() == "È«ï¿½ï¿½";
+                bool isAllCity = city.Trim() == "All" || city.Trim() == "È«ï¿½ï¿½";
                 bool isContentEmpty = string.IsNullOrWhiteSpace(content);
                 KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage;
                 if (isAllCountry && isAllCity && isContentEmpty)
@@ -230,8 +230,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
 
                 bool IsAdmin = userInfo.RoleLevel.AuthVerify(7);
-                bool isAllCountry = country.Trim() == "All" || country.Trim() == "È«²¿";
-                bool isAllCity = city.Trim() == "All" || city.Trim() == "È«²¿";
+                bool isAllCountry = country.Trim() == "All" || country.Trim() == "È«ï¿½ï¿½";
+                bool isAllCity = city.Trim() == "All" || city.Trim() == "È«ï¿½ï¿½";
                 bool isContentEmpty = string.IsNullOrWhiteSpace(content);
                 Expression expr = null;
                 ParameterExpression parameterExp = Expression.Parameter(typeof(TrDbRestaurant));
@@ -359,9 +359,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var cacheKeycitys = string.Format("motionmedia-{1}-{0}", shopId, "citys");
             _memoryCache.Set<DbCountry>(cacheKey, null);
             _memoryCache.Set<Dictionary<string, List<string>>>(cacheKeycitys, null);
-            //var cities = await _countryRepository.GetOneAsync(a => a.Id == countries.Id);
-            countries.Updated = DateTime.UtcNow;
-            _countryRepository.UpsertCountry(countries);
+             _countryRepository.UpsertCountry(countries);
 
             _memoryCache.Set<DbCountry>(cacheKey, null);
             _memoryCache.Set<Dictionary<string, List<string>>>(cacheKeycitys, null);
@@ -387,7 +385,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 List<string> temo = new List<string>();
                 var temp = existingRestaurants.Where(a => a.Country.Trim() == country.Key);
                 var citys = temp.GroupBy(a => a.City.Trim());
-                temo.Add("È«²¿");
+                temo.Add("È«ï¿½ï¿½");
                 foreach (var city in citys)
                 {
                     temo.Add(city.Key);
@@ -441,6 +439,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             restaurant.Created = DateTime.UtcNow;
             restaurant.Updated = DateTime.UtcNow;
             restaurant.IsActive = true;
+            foreach (var r in restaurant.Categories)
+            {
+                foreach (var item in r.MenuItems)
+                {
+                    if (string.IsNullOrWhiteSpace(item.Id))
+                        item.Id = Guid.NewGuid().ToString();
+                }
+            }
 
             var savedRestaurant = await _restaurantRepository.UpsertAsync(restaurant);
 
@@ -500,12 +506,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 && r.ShopId == shopId);
             if (customer.Password != passwordEncode)
             {
-                return new ResponseModel { msg = "ÃÜÂë´íÎó", code = 200 };
+                return new ResponseModel { msg = "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½", code = 200 };
             }
 
             var existingItem = await _restaurantRepository.GetOneAsync(r => r.Id == id && r.ShopId == shopId);
             if (existingItem == null)
-                return new ResponseModel { msg = "²ÍÌü²»´æÔÚ", code = 200 };
+                return new ResponseModel { msg = "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½", code = 200 };
 
             var item = await _restaurantRepository.DeleteAsync(existingItem);
             _memoryCache.Set(cacheKey, cityRes);

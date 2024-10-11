@@ -140,11 +140,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         public async Task<object> CloseAccount(string userId, string email, string pwd)
         {
             var customer = await _customerRepository.GetOneAsync(r => r.Id == userId);
-            if (customer != null && customer.Password == pwd)
-            {
-                return new { msg = "用户不存在", };
-            }
-            if (customer != null && customer.Password == pwd)
+            if (customer != null && customer.Password != pwd)
             {
                 return new { msg = "密码错误", };
             }
@@ -341,20 +337,19 @@ namespace App.Infrastructure.ServiceHandler.Common
             {
                 foreach (var item in cartInfos)
                 {
-                    var info = existingCustomer.CartInfos.FirstOrDefault(a => a.Id == item.Id);
-                    if (info != null && string.IsNullOrWhiteSpace(item.PaymentId))
+                    DateTime dateTime = item.SelectDateTime.Value;
+                    if (!string.IsNullOrWhiteSpace(item.MealTime))
                     {
-                        item.PaymentId = info.PaymentId;
-                    }
-                    var cart = existingCustomer.CartInfos.FirstOrDefault(a => !string.IsNullOrWhiteSpace(a.PaymentId));
-                    if (cart != null && string.IsNullOrWhiteSpace(item.PaymentId))
-                    {
-                        item.PaymentId = cart.PaymentId;
+                        DateTime.TryParse(item.MealTime, out dateTime);
+                        item.SelectDateTime = dateTime.GetTimeZoneByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry));
                     }
                     if (string.IsNullOrWhiteSpace(item.Id))
                         item.Id = Guid.NewGuid().ToString();
                     if (item.AmountInfos == null)
                         item.AmountInfos = new List<AmountInfo>();
+                    item.AmountInfos?.Clear();
+                    AmountInfo amountInfo = new AmountInfo() { Amount = _amountCalculaterV1.getItemAmount(item), PaidAmount = _amountCalculaterV1.getItemPayAmount(item) };
+                    item.AmountInfos.Add(amountInfo);
                 }
             }
 

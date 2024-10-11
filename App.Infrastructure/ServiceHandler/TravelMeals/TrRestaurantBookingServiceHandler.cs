@@ -48,12 +48,8 @@ using Twilio.Base;
 using static FluentValidation.Validators.PredicateValidator;
 using App.Domain.Config;
 using QuestPDF.Fluent;
-using Twilio.TwiML.Voice;
-using Microsoft.AspNetCore.Http.Metadata;
-using Stripe.Terminal;
-using App.Domain.TravelMeals.VO;
-using Microsoft.CodeAnalysis;
-using static Pipelines.Sockets.Unofficial.SocketConnection;
+using SixLabors.ImageSharp.Memory;
+using Microsoft.AspNetCore.Razor.Language.Extensions;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {

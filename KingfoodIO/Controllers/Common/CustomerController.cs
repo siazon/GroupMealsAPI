@@ -10,6 +10,7 @@ using App.Domain.TravelMeals;
 using App.Infrastructure.ServiceHandler.Common;
 using App.Infrastructure.Utility.Common;
 using KingfoodIO.Application.Filter;
+using KingfoodIO.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Documents;
 using Microsoft.Extensions.Caching.Memory;
@@ -26,7 +27,7 @@ namespace KingfoodIO.Controllers.Common
     {
         private readonly ICustomerServiceHandler _customerServiceHandler;
         AppSettingConfig _appsettingConfig;
-        ILogManager logger;
+        ILogManager _logger;
         IMemoryCache _memoryCache;
         IEncryptionHelper _encryptionHelper;
         /// <summary>
@@ -42,7 +43,7 @@ namespace KingfoodIO.Controllers.Common
             IMemoryCache memoryCache, IRedisCache redisCache, IEncryptionHelper encryptionHelper,
         ICustomerServiceHandler customerServiceHandler, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
         {
-            this.logger = logger;
+            this._logger = logger;
             _memoryCache = memoryCache;
             _customerServiceHandler = customerServiceHandler;
             _appsettingConfig = appsettingConfig.Value;
@@ -122,7 +123,7 @@ namespace KingfoodIO.Controllers.Common
             catch (Exception ex)
             {
                 Console.WriteLine(ex.Message);
-                logger.LogError(ex.Message);
+                _logger.LogError(ex.Message);
                 return new { msg = "User name or Password is incorrect!(用户名密码错误)", data = customer, token };
 
             }
@@ -308,6 +309,8 @@ namespace KingfoodIO.Controllers.Common
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> UpdateCartInfos([FromBody] List<DbBooking> cartInfos, int shopId)
         {
+            string rawRequestBody = await Request.GetRawBodyAsync();
+            _logger.LogDebug("UpdateCartInfos: " + rawRequestBody);
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, false,
