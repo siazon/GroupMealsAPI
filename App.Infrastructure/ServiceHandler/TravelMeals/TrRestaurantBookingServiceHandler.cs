@@ -759,19 +759,19 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     DateTime.TryParse(item.MealTime, out dateTime);
                     item.SelectDateTime = dateTime.GetTimeZoneByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry));
+
+                    string[] temp = item.MealTime.Split(' ');
+                    string[] timetemp = temp[1].Split(':');
+                    int hour = 11;
+                    int.TryParse(timetemp[0], out hour);
+
+                    if (item.SelectDateTime.Value.Year - DateTime.UtcNow.Year > 5)
+                        return new ResponseModel { msg = "用餐时间不正确", code = 501, data = null };
+
+                    if (hour < 11 || hour > 23)
+                        return new ResponseModel { msg = "用餐时间不正确", code = 501, data = null };
                 }
-                    string[] temp=item.MealTime.Split(' ');
-                string[] timetemp = temp[1].Split(':');
-                int hour = 11;
-                int.TryParse(timetemp[0],out hour);
-
-                if (item.SelectDateTime.Value.Year - DateTime.UtcNow.Year > 5)
-                    return new ResponseModel { msg = "用餐时间不正确", code = 501, data = null };
-
-                if (hour < 11 || hour > 23)
-                    return new ResponseModel { msg = "用餐时间不正确", code = 501, data = null };
             }
-
 
             bool noPay = await InitBooking(booking, user.UserId);
 
@@ -1372,6 +1372,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             List<PDFModel> pdfData = new List<PDFModel>();
             var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted &&
         a.Details.Any(d => !d.IsDeleted && d.Status != OrderStatusEnum.Canceled && d.Status != OrderStatusEnum.Settled) && a.CustomerEmail == userId.UserEmail));
+
             foreach (var Booking in Bookings)
             {
                 foreach (var detail in Booking.Details)

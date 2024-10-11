@@ -125,9 +125,9 @@ namespace App.Domain.Common
 
                 //column.Item().BorderBottom(1).PaddingBottom(5).Text(Title).SemiBold();
 
-                column.Item().Text(text => { text.Span("订单号：").Bold(); });
-                column.Item().Text(_model.BookingRef);
                 column.Item().Text(text => { text.Span("时间：").Bold(); text.Span(_model.BookingTime).Bold(); });
+                //column.Item().Text(text => { text.Span("").Bold(); });
+                column.Item().Text(_model.BookingRef);
                 column.Item().Text(text => { text.Span("餐厅名称：").Bold(); text.Span(_model.RestuarantName); });
                 column.Item().Text(text => { text.Span("地址：").Bold(); text.Span(_model.Address); });
 
