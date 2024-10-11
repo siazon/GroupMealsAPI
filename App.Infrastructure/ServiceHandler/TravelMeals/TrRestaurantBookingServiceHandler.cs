@@ -650,6 +650,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             Guard.NotNull(payCurrencyVO.BookingIds);
             _logger.LogInfo("RequestBooking" + user.UserEmail);
             var userInfo = await _customerRepository.GetOneAsync(r => r.Id == user.UserId && r.CartInfos.Count() > 0);
+
             if (userInfo == null)
             {
                 return new ResponseModel { msg = "购物车为空", code = 500, };
@@ -680,11 +681,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     bookings.Add(item);
                     bookingIdList.Add(item.Id);
                     paymentId = item.PaymentId;
+
+                 
+
+
                 }
                 DbPaymentInfo dbPaymentInfo = null;
                 if (!string.IsNullOrWhiteSpace(paymentId))
                     dbPaymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == paymentId);
-                if (dbPaymentInfo == null)
+                if (dbPaymentInfo == null||(dbPaymentInfo.SetupPay&& payCurrencyVO.IntentType==1)||(!dbPaymentInfo.SetupPay&& payCurrencyVO.IntentType==2))
                 {
                     dbPaymentInfo = new DbPaymentInfo();
                     dbPaymentInfo.Id = Guid.NewGuid().ToString();
@@ -694,6 +699,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 var countries = await _countryHandler.GetCountry(userInfo.ShopId ?? 11);
                 dbPaymentInfo.Amount = _amountCalculaterV1.CalculateOrderPaidAmount(bookings, payCurrencyVO.PayCurrency, userInfo, countries);
                 dbPaymentInfo.Currency = currency;
+             
 
                 if (dbPaymentInfo.Amount == 0)
                 {
@@ -703,8 +709,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
                 string bookingIds = string.Join(',', bookingIdList);
 
+              
                 string clientSecret = "";
-                if (payCurrencyVO.PaymentMode == 1)
+                if (payCurrencyVO.IntentType == 1)
                     clientSecret = CreateIntent(dbPaymentInfo, userInfo, user, bookingIds).ClientSecret;
                 else
                     clientSecret = CreateSetupIntent(dbPaymentInfo, userInfo, user, bookingIds).ClientSecret;
@@ -719,7 +726,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     var temo = await _customerServiceHandler.UpdateCartInfo(bookings, userInfo);
                 }
-                return new ResponseModel { msg = "ok", code = 200, data = clientSecret };
+                return new ResponseModel { msg = "ok", code = 200, data =new { IntentType= payCurrencyVO.IntentType, clientSecret } };
             }
         }
         private SetupIntent CreateSetupIntent(DbPaymentInfo dbPaymentInfo, DbCustomer userInfo, DbToken user, string bookingIds)

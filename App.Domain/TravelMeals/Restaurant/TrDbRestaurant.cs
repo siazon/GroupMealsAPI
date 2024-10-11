@@ -128,7 +128,7 @@ namespace App.Domain.TravelMeals.Restaurant
         public string AmountText { get; set; }
         public string RewardText {  get; set; }
         public string UnPaidAmountText { get; set; }
-        public List<int> PaymentMode { get; set; } = new List<int>();
+        public List<int> IntentType { get; set; } = new List<int>();
 
     }
     public class MapPosition

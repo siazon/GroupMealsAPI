@@ -92,9 +92,9 @@ namespace App.Infrastructure.Utility.Common
             }
 
             if (hasFullpay)
-                paymentAmountInfo.PaymentMode = new List<int> { 2 };
+                paymentAmountInfo.IntentType = new List<int> { 2 };
             else
-                paymentAmountInfo.PaymentMode = new List<int> { 1, 2 };
+                paymentAmountInfo.IntentType = new List<int> { 1 };
 
             paymentAmountInfo.AmountText = JionDictionary(dicInfo, countries, "amount");
             paymentAmountInfo.UnPaidAmountText = JionDictionary(dicInfo, countries, "unpaid");
