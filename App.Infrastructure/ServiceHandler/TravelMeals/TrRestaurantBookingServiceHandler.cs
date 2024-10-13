@@ -50,6 +50,7 @@ using App.Domain.Config;
 using QuestPDF.Fluent;
 using SixLabors.ImageSharp.Memory;
 using Microsoft.AspNetCore.Razor.Language.Extensions;
+using App.Domain.TravelMeals.VO;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -80,7 +81,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, int filterTime, DateTime stime, DateTime etime, int status, int pageSize = -1, string continuationToke = null);
         Task<List<DbBooking>> PlaceBooking(List<DbBooking> cartInfos, int shopId, DbCustomer user);
 
-        ResponseModel GetBookingItemAmount(List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate, bool isOldCustomer);
+        ResponseModel GetBookingItemAmount(List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate, PaymentTypeEnum rewardType, double reward, bool isOldCustomer);
         Task<ResponseModel> GetBookingAmount(bool isBookingModify, string currency, string userId, List<string> Ids);
         void SetupPaymentAction(string billId, string userId);
         void BookingCharged(string billId, string ChargeId, string ReceiptUrl);
@@ -543,8 +544,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
                 var Oldamount = _amountCalculaterV1.getItemAmount(dbBooking);
                 var amount = _amountCalculaterV1.getItemAmount(newBooking);
-                var oldPayAmount = _amountCalculaterV1.getItemPayAmount(dbBooking);
-                var payAmount = _amountCalculaterV1.getItemPayAmount(newBooking);
+                var user = await _customerServiceHandler.GetCustomer(dbBooking.Creater, dbBooking.ShopId??11);
+                var oldPayAmount = _amountCalculaterV1.getItemPayAmount(dbBooking, user);
+                var payAmount = _amountCalculaterV1.getItemPayAmount(newBooking, user);
                 if (amount != Oldamount)
                 {
                     isChange++;
@@ -556,7 +558,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     if (!dbBooking.BillInfo.IsOldCustomer)
                     {
                         amountInfo.PaidAmount = payAmount - oldPayAmount;
-                        var user = await _customerServiceHandler.GetCustomer(dbBooking.Creater, 11);
                         amountInfo.Reward = _amountCalculaterV1.GetReward(amountInfo.Amount, dbBooking.BillInfo.RewardType, dbBooking.BillInfo.Reward, user);
                     }
                     dbBooking.AmountInfos.Add(amountInfo);
@@ -678,14 +679,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     bookingIdList.Add(item.Id);
                     paymentId = item.PaymentId;
 
-                 
+
 
 
                 }
                 DbPaymentInfo dbPaymentInfo = null;
                 if (!string.IsNullOrWhiteSpace(paymentId))
                     dbPaymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == paymentId);
-                if (dbPaymentInfo == null||(dbPaymentInfo.SetupPay&& payCurrencyVO.IntentType==1)||(!dbPaymentInfo.SetupPay&& payCurrencyVO.IntentType==2))
+                if (dbPaymentInfo == null || (dbPaymentInfo.SetupPay && payCurrencyVO.IntentType == 1) || (!dbPaymentInfo.SetupPay && payCurrencyVO.IntentType == 2))
                 {
                     dbPaymentInfo = new DbPaymentInfo();
                     dbPaymentInfo.Id = Guid.NewGuid().ToString();
@@ -695,7 +696,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 var countries = await _countryHandler.GetCountry(userInfo.ShopId ?? 11);
                 dbPaymentInfo.Amount = _amountCalculaterV1.CalculateOrderPaidAmount(bookings, payCurrencyVO.PayCurrency, userInfo, countries);
                 dbPaymentInfo.Currency = currency;
-             
+
 
                 if (dbPaymentInfo.Amount == 0)
                 {
@@ -705,7 +706,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
                 string bookingIds = string.Join(',', bookingIdList);
 
-              
+
                 string clientSecret = "";
                 if (payCurrencyVO.IntentType == 1)
                     clientSecret = CreateIntent(dbPaymentInfo, userInfo, user, bookingIds).ClientSecret;
@@ -722,7 +723,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     var temo = await _customerServiceHandler.UpdateCartInfo(bookings, userInfo);
                 }
-                return new ResponseModel { msg = "ok", code = 200, data =new { IntentType= payCurrencyVO.IntentType, clientSecret } };
+                return new ResponseModel { msg = "ok", code = 200, data = new { IntentType = payCurrencyVO.IntentType, clientSecret } };
             }
         }
         private SetupIntent CreateSetupIntent(DbPaymentInfo dbPaymentInfo, DbCustomer userInfo, DbToken user, string bookingIds)
@@ -790,10 +791,29 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var payment = await _paymentRepository.UpsertAsync(paymentInfos);
             if (payment != null)
             {
-                var bookings = await _bookingRepository.GetManyAsync(a => a.PaymentId == billId);
+                DateTime now = DateTime.Now;
+                List<DbBooking> bookings = new List<DbBooking>();
+               
+               
+                while (bookings.Count==0)
+                {
+                    var books = await _bookingRepository.GetManyAsync(a => a.PaymentId == billId);
+                    bookings = books.ToList(); 
+                    Thread.Sleep(500);
+                    if ((DateTime.Now - now).TotalSeconds > 2)
+                        break;
+                }
                 foreach (var booking in bookings)
                 {
                     booking.Charged = true;
+
+                    if (!payment.SetupPay)
+                    {
+                        booking.AllowCancel = false;
+                        booking.AllowEdit = false;
+                        booking.IntentType = payment.SetupPay ? 1 : 2;
+                    }
+
                     await _bookingRepository.UpsertAsync(booking);
                 }
             }
@@ -874,7 +894,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     Id = Guid.NewGuid().ToString(),
                     Amount = amount,
-                    PaidAmount = _amountCalculaterV1.getItemPayAmount(item),
+                    PaidAmount = _amountCalculaterV1.getItemPayAmount(item, user),
                     Reward = _amountCalculaterV1.GetReward(amount, item.BillInfo.RewardType, item.BillInfo.Reward, user)
                 };
                 item.AmountInfos.Add(amountInfo);
@@ -1055,9 +1075,30 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             }
             res.OrderByDescending(d => d.SelectDateTime);
-
+            foreach (var booking in res)
+            {
+                await UpdateForOutput(booking);
+            }
             return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = res };
 
+        }
+
+        private async Task<DbBooking> UpdateForOutput(DbBooking dbBooking)
+        {
+            List<OrderStatusEnum> allowEditStatus = new List<OrderStatusEnum>() { OrderStatusEnum.UnAccepted, OrderStatusEnum.Accepted };
+            if (allowEditStatus.IndexOf(dbBooking.Status) >= 0 && !dbBooking.Charged)
+            {
+                dbBooking.AllowCancel = true;
+                dbBooking.AllowEdit = true;
+            }
+            var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == dbBooking.PaymentId);
+            if (paymentInfo != null && !paymentInfo.SetupPay)
+            {
+                dbBooking.AllowCancel = false;
+                dbBooking.AllowEdit = false;
+                dbBooking.IntentType = paymentInfo.SetupPay ? 1 : 2;
+            }
+            return dbBooking;
         }
         public async void SettleOrder()
         {
@@ -1232,11 +1273,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = res };
         }
 
-        public ResponseModel GetBookingItemAmount(List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate, bool isOldCustomer)
+        public ResponseModel GetBookingItemAmount(List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate, PaymentTypeEnum rewardType, double reward, bool isOldCustomer)
         {
             decimal amount = 0, paidAmount = 0;
             DbBooking detail = new DbBooking() { Courses = menuItems, BillInfo = new RestaurantBillInfo() { IsOldCustomer = isOldCustomer, PaymentType = paymentType, PayRate = payRate } };
-            paidAmount = _amountCalculaterV1.getItemPayAmount(detail);
+
+            paidAmount = _amountCalculaterV1.getItemPayAmount(detail,new DbCustomer() {IsOldCustomer=isOldCustomer,RewardType=rewardType,Reward=reward });
             amount = _amountCalculaterV1.getItemAmount(detail);
             return new ResponseModel { msg = "ok", code = 200, data = new { amount, paidAmount } };
         }
@@ -1246,6 +1288,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             DateTime stime = DateTime.UtcNow;
             var user = await _customerRepository.GetOneAsync(a => a.Id == userId);
+            user=await _customerServiceHandler.RefreshCartInfo(user);
             Console.WriteLine("cart:" + (DateTime.UtcNow - stime).TotalMilliseconds);
             var details = user.CartInfos.FindAll(c => Ids.Contains(c.Id));
             if (details == null || details.Count() == 0)

@@ -48,8 +48,11 @@ namespace App.Infrastructure.ServiceHandler.Common
         {
             Dictionary<string, string> meta = new Dictionary<string, string>
                 {
-                    { "billId", dbPaymentInfo.StripeChargeId}
+                    { "billId", dbPaymentInfo.Id}
                 };
+            meta["bookingIds"] = bookingIds;
+            meta["userId"] = user.UserId;
+            meta["intent_type"] = "2";
             var paymentIntentService = new PaymentIntentService();
             PaymentIntent paymentIntent = null;
             if (!string.IsNullOrWhiteSpace(dbPaymentInfo.StripeIntentId))
@@ -105,6 +108,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             meta["bookingIds"] = bookingIds;
             meta["customerId"] = bill.CustomerId;
             meta["userId"] = user.UserId;
+            meta["intent_type"] = "1";
             var setupIntentService = new SetupIntentService();
             SetupIntent setupIntent = null;
             if (!string.IsNullOrWhiteSpace(bill.PaymentIntentId))

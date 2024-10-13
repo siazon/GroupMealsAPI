@@ -44,6 +44,8 @@ namespace KingfoodIO.Controllers.TravelMeals
         ILogManager _logger;
         IAmountCalculaterUtil _calculaterUtil;
         private readonly IShopServiceHandler _shopServiceHandler;
+        private readonly ICustomerServiceHandler _customerServiceHandler;
+
         /// <summary>
         /// 
         /// </summary>
@@ -55,7 +57,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         /// <param name="logger"></param>
         public TrRestaurantBookingController(
             IOptions<CacheSettingConfig> cachesettingConfig, IMemoryCache memoryCache, IRedisCache redisCache, ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler,
-            ITrRestaurantServiceHandler restaurantServiceHandler, IAmountCalculaterUtil calculaterUtil, IShopServiceHandler shopServiceHandler, ILogManager logger) :
+           ICustomerServiceHandler customerServiceHandler, ITrRestaurantServiceHandler restaurantServiceHandler, IAmountCalculaterUtil calculaterUtil, IShopServiceHandler shopServiceHandler, ILogManager logger) :
             base(cachesettingConfig, memoryCache, redisCache, logger)
         {
             _logger = logger;
@@ -63,9 +65,10 @@ namespace KingfoodIO.Controllers.TravelMeals
             _restaurantBookingServiceHandler = restaurantBookingServiceHandler;
             _calculaterUtil = calculaterUtil;
             _shopServiceHandler = shopServiceHandler;
+            _customerServiceHandler= customerServiceHandler;
         }
 
-      
+
 
         [Idempotent]
         [HttpPost]
@@ -90,7 +93,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         }
         [HttpGet]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> OrderCheck( bool cache = false)
+        public async Task<IActionResult> OrderCheck(bool cache = false)
         {
             return await ExecuteAsync(11, cache, async () => await _restaurantBookingServiceHandler.OrderCheck());
         }
@@ -98,11 +101,11 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpGet]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> UpdateStatusByAdmin(string Id,   int status, int shopId, bool cache = false)
+        public async Task<IActionResult> UpdateStatusByAdmin(string Id, int status, int shopId, bool cache = false)
         {
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
-            return await ExecuteAsync(shopId, cache, async () => await _restaurantBookingServiceHandler.UpdateStatusByAdmin(Id,  status, user));
+            return await ExecuteAsync(shopId, cache, async () => await _restaurantBookingServiceHandler.UpdateStatusByAdmin(Id, status, user));
         }
 
         /// <summary>
@@ -115,7 +118,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpPost]
         [ProducesResponseType(typeof(DbBooking), (int)HttpStatusCode.OK)]
         [ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> ModifyBooking([FromBody] DbBooking booking, int shopId,bool isNotify=true)
+        public async Task<IActionResult> ModifyBooking([FromBody] DbBooking booking, int shopId, bool isNotify = true)
         {
             string rawRequestBody = await Request.GetRawBodyAsync();
             _logger.LogDebug("ModifyBooking: " + rawRequestBody);
@@ -233,11 +236,11 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpPost]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<DbBooking>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> SearchBookings([FromBody] string pageToken, int shopId,  string content, int pageSize = -1, bool cache = true)
+        public async Task<IActionResult> SearchBookings([FromBody] string pageToken, int shopId, string content, int pageSize = -1, bool cache = true)
         {
             var authHeader = Request.Headers["Wauthtoken"];
             var userInfo = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
-          
+
             return await ExecuteAsync(shopId, cache,
                 async () => await _restaurantBookingServiceHandler.SearchBookings(shopId, userInfo.UserId, content, pageSize, pageToken));
         }
@@ -342,20 +345,22 @@ namespace KingfoodIO.Controllers.TravelMeals
         /// <param name="menuItems"></param>
         /// <param name="paymentType">来自Restaurant.billInfo 支付方式 0:全额,1:按比例,2:按固定值</param>
         /// <param name="payRate">来自Restaurant.billInfo 支付方式为1时必填，示例：15%押金传0.15</param>
+        /// <param name="rewardType">来自用户信息</param>
+        /// <param name="reward">来自用户信息</param>
         /// <param name="isOldCustomer">来自login中userInfo.isOldCustomer</param>
         /// <returns>paidAmount返回为0时，支付方式不显示</returns>
         [HttpPost]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(ResponseModel), (int)HttpStatusCode.OK)]
-        public  IActionResult CalculateBookingItemAmount([FromBody] List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate,bool isOldCustomer)
+        public  async Task<IActionResult> CalculateBookingItemAmount([FromBody] List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate, PaymentTypeEnum rewardType, double reward, bool isOldCustomer)
         {
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
-            
-            return Ok( _restaurantBookingServiceHandler.GetBookingItemAmount(menuItems, paymentType, payRate, isOldCustomer));
+            var customer = await _customerServiceHandler.GetCustomer(user.UserId, 11);
+            return Ok(_restaurantBookingServiceHandler.GetBookingItemAmount(menuItems, paymentType, payRate, customer.RewardType, customer.Reward, isOldCustomer));
         }
 
-        
+
 
 
         /// <summary>
@@ -375,10 +380,10 @@ namespace KingfoodIO.Controllers.TravelMeals
             DateTime sdate = DateTime.UtcNow;
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
-           
+
             Console.WriteLine("controller: " + (DateTime.UtcNow - sdate).TotalMilliseconds);
             return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantBookingServiceHandler.GetBookingAmount(isModify, currency, user.UserId,  cartInfoIds));
+                async () => await _restaurantBookingServiceHandler.GetBookingAmount(isModify, currency, user.UserId, cartInfoIds));
         }
 
 

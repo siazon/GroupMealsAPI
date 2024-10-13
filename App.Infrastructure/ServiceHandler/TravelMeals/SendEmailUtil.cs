@@ -113,7 +113,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 foreach (var course in item.Courses)
                 {
                     int qty = course.Qty + course.ChildrenQty;
-                    Detail += $"{course.MenuItemName} * {qty} 人 ";
+                    Detail += $"{course.MenuItemName}({course.Price}) * {qty} 人 ";
                 }
                 string itemCurrencyStr = country.FirstOrDefault(a => a.Currency == item.Currency).CurrencySymbol;
                 //_twilioUtil.sendSMS(item.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
@@ -219,7 +219,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 foreach (var course in item.Courses)
                 {
                     int qty = course.Qty + course.ChildrenQty;
-                    Detail += $"{course.MenuItemName} * {qty} 人 ";
+                    Detail += $"{course.MenuItemName}({course.Price}) * {qty} 人 ";
                 }
                 Detail += $"<br> Amount(金额)：{itemCurrencyStr}{Math.Round(amount, 2)}，    Paid(已付){itemCurrencyStr}" +
                     $"{Math.Round(paidAmount, 2)}（立减{itemCurrencyStr}{Math.Round(reward, 2)}）, <br>";
@@ -282,7 +282,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(item.RestaurantTimeZone).ToString("yyyy-MM-dd HH:mm:ss");
             foreach (var course in item?.Courses)
             {
-                Detail += $"{course.MenuItemName} * {course.Qty}  人  {currencyStr}{paidAmount}/{amount}<br>";
+                Detail += $"{course.MenuItemName}({course.Price}) * {course.Qty}  人  {currencyStr}{paidAmount}/{amount}<br>";
             }
 
             Detail += $"Amount(金额)：<b>{currencyStr}{totalAmount}</b> Paid(已付)：<b>{currencyStr}{totalPaidAmount}</b> UnPaid(待支付)：<b style=\"color: red;\">{currencyStr}{totalAmount - totalPaidAmount}</b>";
@@ -375,7 +375,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             foreach (var course in booking.Courses)
             {
                 int qty = course.Qty + course.ChildrenQty;
-                Detail += $"{course.MenuItemName} * {qty} 人 ";
+                Detail += $"{course.MenuItemName}({course.Price}) * {qty} 人 ";
             }
             string itemCurrencyStr = booking.Currency == "UK" ? "£" : "€";
             //_twilioUtil.sendSMS(booking.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
@@ -431,7 +431,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string Detail = "";
             foreach (var course in booking.Courses)
             {
-                Detail += $"{course.MenuItemName} * {course.Qty} 人 {currencyStr}{paidAmount}/{amount}<br>";
+                Detail += $"{course.MenuItemName}({course.Price}) * {course.Qty} 人 {currencyStr}{paidAmount}/{amount}<br>";
             }
             //_twilioUtil.sendSMS(detail.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
             Detail += $"Amount(金额)：<b>{currencyStr}{amount}</b>, Paid(已付)：<b>{currencyStr}{paidAmount}</b>, UnPaid(待支付)：<b style=\"color: red;\">{currencyStr}{amount - paidAmount}</b>";

@@ -50,6 +50,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         Task<object> UpdatePassword(string email, string oldPassword, string password, int shopId);
 
         Task<DbCustomer> UpdateAccount(DbCustomer customer, int shopId);
+        Task<DbCustomer> RefreshCartInfo(DbCustomer customer);
 
         Task<DbCustomer> UpdatePassword(DbCustomer customer, int shopId);
         Task<DbCustomer> UpdateFavorite(DbCustomer customer, int shopId);
@@ -337,18 +338,13 @@ namespace App.Infrastructure.ServiceHandler.Common
             {
                 foreach (var item in cartInfos)
                 {
-                    DateTime dateTime = item.SelectDateTime.Value;
-                    if (!string.IsNullOrWhiteSpace(item.MealTime))
-                    {
-                        DateTime.TryParse(item.MealTime, out dateTime);
-                        item.SelectDateTime = dateTime.GetTimeZoneByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry));
-                    }
+                  
                     if (string.IsNullOrWhiteSpace(item.Id))
                         item.Id = Guid.NewGuid().ToString();
                     if (item.AmountInfos == null)
                         item.AmountInfos = new List<AmountInfo>();
                     item.AmountInfos?.Clear();
-                    AmountInfo amountInfo = new AmountInfo() { Amount = _amountCalculaterV1.getItemAmount(item), PaidAmount = _amountCalculaterV1.getItemPayAmount(item) };
+                    AmountInfo amountInfo = new AmountInfo() { Amount = _amountCalculaterV1.getItemAmount(item), PaidAmount = _amountCalculaterV1.getItemPayAmount(item, existingCustomer) };
                     item.AmountInfos.Add(amountInfo);
                 }
             }
@@ -371,7 +367,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             var savedCustomer = await _customerRepository.UpsertAsync(existingCustomer);
             return new { msg = "ok", data = savedCustomer.ClearForOutPut() };
         }
-        private async Task<DbCustomer> RefreshCartInfo(DbCustomer customer)
+        public async Task<DbCustomer> RefreshCartInfo(DbCustomer customer)
         {
             foreach (var item in customer?.CartInfos)
             {
@@ -389,6 +385,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                     item.RestaurantTimeZone = rest.TimeZone;
                     item.BillInfo = rest.BillInfo;//更新最新的付款信息
                     item.BillInfo.IsOldCustomer = customer.IsOldCustomer;
+                    item.RestaurantIncluedVAT = rest.IncluedVAT;
                     List<TrDbRestaurantMenuItem> courses = new List<TrDbRestaurantMenuItem>();
                     foreach (var cate in rest.Categories)
                     {
@@ -408,8 +405,14 @@ namespace App.Infrastructure.ServiceHandler.Common
                 foreach (var info in item.AmountInfos)
                 {
                     info.Amount = _amountCalculaterV1.getItemAmount(item);
-                    info.PaidAmount = _amountCalculaterV1.getItemPayAmount(item);
+                    info.PaidAmount = _amountCalculaterV1.getItemPayAmount(item, customer);
                     info.Reward = _amountCalculaterV1.GetReward(info.Amount, item.BillInfo.RewardType, item.BillInfo.Reward, customer);
+                }
+                DateTime dateTime = item.SelectDateTime.Value;
+                if (!string.IsNullOrWhiteSpace(item.MealTime))
+                {
+                    DateTime.TryParse(item.MealTime, out dateTime);
+                    item.SelectDateTime = dateTime.GetTimeZoneByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry));
                 }
             }
             return customer;

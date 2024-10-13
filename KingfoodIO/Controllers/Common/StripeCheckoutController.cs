@@ -153,6 +153,7 @@ namespace KingfoodIO.Controllers.Common
             Console.WriteLine("CXS WebHook:" + json);
             string billId = "";
             string userId = "";
+            string bookingIds = "";
             try
             {
                 var stripeEvent = EventUtility.ConstructEvent(json, Request.Headers["Stripe-Signature"], secret);
@@ -167,7 +168,7 @@ namespace KingfoodIO.Controllers.Common
                         {
                             _logger.LogInfo("ChargeSucceeded:" + stripeEvent.Type);
                             var paymentIntent = stripeEvent.Data.Object as Charge;
-                            billId = paymentIntent.Metadata["billId"];
+                            billId = "";
 
                             paymentIntent.Metadata.TryGetValue("billId", out billId);
                             paymentIntent.Metadata.TryGetValue("userId", out userId);
@@ -186,9 +187,20 @@ namespace KingfoodIO.Controllers.Common
                         {
                             _logger.LogInfo("ChargeSucceeded:" + stripeEvent.Type);
                             var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
-                            billId = paymentIntent.Metadata["billId"];
+                            paymentIntent.Metadata.TryGetValue("billId", out billId);
+                            paymentIntent.Metadata.TryGetValue("userId", out userId);
+                            bookingIds = paymentIntent.Metadata["bookingIds"];
 
-                            _trRestaurantBookingServiceHandler.BookingPaid(billId, paymentIntent.CustomerId, paymentIntent.Id, paymentIntent.PaymentMethodId);
+                           var _dbpayment = await _paymentRepository.GetOneAsync(a => a.Id == billId);
+                            if (_dbpayment != null)
+                            {
+                               var _dbUser = await _customerServiceHandler.GetCustomer(userId, _dbpayment.ShopId ?? 11);
+                                List<DbBooking> bookings = _dbUser.CartInfos.FindAll(a => a.PaymentId == _dbpayment.Id && bookingIds.Contains(a.Id));
+                                _dbUser.StripeCustomerId = paymentIntent.CustomerId;
+                                await _customerServiceHandler.UpdateAccount(_dbUser, _dbpayment.ShopId ?? 11);
+                                await _trRestaurantBookingServiceHandler.PlaceBooking(bookings, _dbpayment.ShopId ?? 11, _dbUser);
+
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -229,7 +241,7 @@ namespace KingfoodIO.Controllers.Common
                         var setupIntent = stripeEvent.Data.Object as SetupIntent;
                         billId = setupIntent.Metadata["billId"];
                         userId = setupIntent.Metadata["userId"];
-                        string bookingIds = setupIntent.Metadata["bookingIds"];
+                        bookingIds = setupIntent.Metadata["bookingIds"];
 
                         paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == billId);
                         if (paymentInfo != null)
@@ -237,7 +249,7 @@ namespace KingfoodIO.Controllers.Common
                             paymentInfo.StripePaymentMethodId = setupIntent.PaymentMethodId;
                             paymentInfo.CheckoutTime = DateTime.UtcNow;
                         }
-                        var dbpayment = await _paymentRepository.UpsertAsync(paymentInfo);
+                        var  dbpayment = await _paymentRepository.UpsertAsync(paymentInfo);
                         if (dbpayment != null)
                         {
                             dbUser = await _customerServiceHandler.GetCustomer(userId, paymentInfo.ShopId ?? 11);

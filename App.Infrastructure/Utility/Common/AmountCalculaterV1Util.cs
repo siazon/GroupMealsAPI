@@ -21,7 +21,7 @@ namespace App.Infrastructure.Utility.Common
         PaymentAmountInfo GetOrderPaidInfo(List<DbBooking> details, string payCurrency, int shopId, DbCustomer customer, List<DbCountry> country);
         decimal CalculateOrderPaidAmount(List<DbBooking> details, string PayCurrency, DbCustomer customer, List<DbCountry> countries);
         decimal getItemAmount(DbBooking bookingDetail);
-        decimal getItemPayAmount(DbBooking bookingDetail, double VAT = 0.125);
+        decimal getItemPayAmount(DbBooking bookingDetail, DbCustomer customer, double VAT = 0.125);
         decimal GetReward(decimal _amount, PaymentTypeEnum rewardType, double reward, DbCustomer user);
         decimal CalculatePayAmountByRate(decimal amount, string currency, string payCurrency, int shopId, List<DbCountry> country);
     }
@@ -45,11 +45,9 @@ namespace App.Infrastructure.Utility.Common
             foreach (var item in details)
             {
                 var amount = getItemAmount(item);//总金额
-                var payAmount = getItemPayAmount(item);//线上支付金额
+                var payAmount = getItemPayAmount(item, customer);//线上支付金额
                 var reward = GetReward(amount, item.BillInfo.RewardType, item.BillInfo.Reward, customer);
-                var payAmountWithReward = payAmount - reward;//减去返钱
-
-                paymentAmountInfo.TotalPayAmount += CalculatePayAmountByRate(payAmountWithReward, item.Currency, currency, shopId, countries);
+                paymentAmountInfo.TotalPayAmount += CalculatePayAmountByRate(payAmount, item.Currency, currency, shopId, countries);
                 if (paymentAmountInfo.TotalPayAmount > 0 && !item.BillInfo.IsOldCustomer)
                 {
 
@@ -61,7 +59,7 @@ namespace App.Infrastructure.Utility.Common
                 if (dicInfo.ContainsKey(item.Currency))
                 {
                     dicInfo[item.Currency].Amount += Math.Round(amount, 2);
-                    dicInfo[item.Currency].UnPaidAmount += Math.Round(amount - payAmount, 2);
+                    dicInfo[item.Currency].UnPaidAmount += Math.Round(amount - payAmount-reward, 2);
                     if (reward > 0)
                         dicInfo[item.Currency].Reward += Math.Round(reward, 2);
                 }
@@ -69,7 +67,7 @@ namespace App.Infrastructure.Utility.Common
                 {
                     dicInfo.Add(item.Currency, new DicModel());
                     dicInfo[item.Currency].Amount = Math.Round(amount, 2);
-                    dicInfo[item.Currency].UnPaidAmount = Math.Round(amount - payAmount, 2);
+                    dicInfo[item.Currency].UnPaidAmount = Math.Round(amount - payAmount - reward, 2);
                     if (reward > 0)
                         dicInfo[item.Currency].Reward = Math.Round(reward, 2);
                 }
@@ -92,9 +90,9 @@ namespace App.Infrastructure.Utility.Common
             }
 
             if (hasFullpay)
-                paymentAmountInfo.IntentType = new List<int> { 2 };
-            else
                 paymentAmountInfo.IntentType = new List<int> { 1 };
+            else
+                paymentAmountInfo.IntentType = new List<int> { 2 };
 
             paymentAmountInfo.AmountText = JionDictionary(dicInfo, countries, "amount");
             paymentAmountInfo.UnPaidAmountText = JionDictionary(dicInfo, countries, "unpaid");
@@ -109,11 +107,10 @@ namespace App.Infrastructure.Utility.Common
             decimal amount = 0;
             foreach (DbBooking item in details)
             {
-                var payAmount = getItemPayAmount(item);//线上支付金额
+                var payAmount = getItemPayAmount(item, customer);//线上支付金额
                 var _amount = getItemAmount(item);//总金额
                 var reward = GetReward(_amount, item.BillInfo.RewardType, item.BillInfo.Reward, customer);
-                var payAmountWithReward = payAmount - reward;//减去返钱
-                var amountByRate = CalculatePayAmountByRate(payAmountWithReward, item.Currency, PayCurrency, customer.ShopId ?? 11, countries);
+                var amountByRate = CalculatePayAmountByRate(payAmount, item.Currency, PayCurrency, customer.ShopId ?? 11, countries);
                 amount += amountByRate;
             }
             return amount;
@@ -211,15 +208,44 @@ namespace App.Infrastructure.Utility.Common
 
 
         /// <summary>
-        /// 计算支付金额
+        /// 计算应付金额
         /// </summary>
         /// <param name="bookingDetail"></param>
         /// <returns></returns>
-        public decimal getItemPayAmount(DbBooking bookingDetail, double VAT = 0.125)
+        public decimal getItemPayAmount(DbBooking bookingDetail, DbCustomer customer, double VAT = 0.125)
         {
             if (bookingDetail.BillInfo.IsOldCustomer)
                 return 0;
-            decimal amount = getItemAmount(bookingDetail);//付全额
+            decimal _amount = 0;
+            decimal amount = getItemAmount(bookingDetail);//总金额额
+            decimal dueAmout = GetDue(bookingDetail, amount);//应付
+            var reward = GetReward(amount, bookingDetail.BillInfo.RewardType, bookingDetail.BillInfo.Reward, customer);//
+            var vat=GetVATAmount(dueAmout-reward, VAT);
+            if (bookingDetail.RestaurantIncluedVAT)
+            {
+                _amount=dueAmout+vat-reward-vat;
+            }
+            else
+            {
+                _amount = dueAmout - reward + vat;
+            }
+            return _amount;
+        }
+        /// <summary>
+        /// 计算VAT
+        /// </summary>
+        /// <param name="payAmount"></param>
+        /// <param name="VAT"></param>
+        /// <returns></returns>
+        private decimal GetVATAmount(decimal payAmount, double VAT)
+        {
+            return payAmount * (decimal)VAT;
+        }
+        private decimal GetDue(DbBooking bookingDetail,decimal amount)
+        {
+            if (bookingDetail.BillInfo.IsOldCustomer)
+                return 0;
+            
             switch (bookingDetail.BillInfo.PaymentType)
             {
                 case PaymentTypeEnum.Full:
@@ -234,10 +260,13 @@ namespace App.Infrastructure.Utility.Common
                 default:
                     break;
             }
-            amount *= (decimal)(1 + VAT);
             return amount;
         }
-
+        /// <summary>
+        /// 计算总金额
+        /// </summary>
+        /// <param name="bookingDetail"></param>
+        /// <returns></returns>
         public decimal getItemAmount(DbBooking bookingDetail)
         {
             decimal amount = 0;
@@ -297,6 +326,16 @@ namespace App.Infrastructure.Utility.Common
 
         #endregion
     }
+    public class AmountModel {
+        public List<MenuInfo> Menus { get; set; }
+        public RestaurantBillInfo billInfo { get; set; }
+
+    }
+    public class MenuInfo {
+        public int Qty { get; set; }
+        public double Price { get; set; }
+    }
+
     public class DicModel
     {
         public decimal Amount { get; set; }

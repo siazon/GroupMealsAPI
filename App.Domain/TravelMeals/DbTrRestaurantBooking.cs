@@ -78,10 +78,14 @@ namespace App.Domain.TravelMeals
         public string RestaurantEmail { get; set; }
         public string RestaurantCountry { get; set; }
         public string RestaurantTimeZone { get; set; }
+        public bool RestaurantIncluedVAT { get; set; }
         public string Currency { get; set; }
         public string Remark { get; set; }
         public string SupporterEmail { get; set; }
         public string PayCurrency { get; set; }
+        public bool AllowEdit { get; set; }
+        public bool AllowCancel { get; set; }
+        public int IntentType { get; set; }
         public OrderStatusEnum Status { get; set; }//0:defult,1:canceled
         public AcceptStatusEnum AcceptStatus { get; set; }//0:Defult, 1:Accepted, 2:Declined
         public bool Modified { get; set; }
