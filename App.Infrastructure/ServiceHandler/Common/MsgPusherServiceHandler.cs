@@ -49,9 +49,9 @@ namespace App.Infrastructure.ServiceHandler.Common
         public async Task<List<PushMsgModel>> ListMsgs(int shopId, DbToken user)
         {
             Guard.GreaterThanZero(shopId);
-            var customers = await _msgRepository.GetManyAsync(r => r.ShopId == shopId&&(r.Receiver==""||r.Receiver==user.UserEmail));
+            var customers = await _msgRepository.GetManyAsync(r => r.ShopId == shopId&&(r.Receiver==""||r.Receiver==user.UserId));
 
-            var returnCustomers = customers.OrderByDescending(r => r.Updated).Take(200);
+            var returnCustomers = customers.OrderByDescending(r => r.SendTime).Take(200);
 
             return returnCustomers.ToList();
         }

@@ -1,7 +1,9 @@
 using App.Domain.Enum;
 using App.Domain.TravelMeals.Restaurant;
+using App.Domain.TravelMeals.VO;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Cache;
 using System.Text.Json.Serialization;
 
@@ -60,7 +62,7 @@ namespace App.Domain.TravelMeals
     }
     public class PaymentInfo : StripeBase
     {
-        public int PaymentType { get; set; }//0：订单结束扣款，1：24小时捐款
+        public int? PaymentType { get; set; }//0：订单结束扣款，1：24小时扣款
         public decimal Amount { get; set; }
         public decimal RefundAmount { get; set; }
         public string Currency { get; set; }
@@ -85,7 +87,7 @@ namespace App.Domain.TravelMeals
         public string PayCurrency { get; set; }
         public bool AllowEdit { get; set; }
         public bool AllowCancel { get; set; }
-        public int IntentType { get; set; }
+        public IntentTypeEnum IntentType { get; set; }
         public OrderStatusEnum Status { get; set; }//0:defult,1:canceled
         public AcceptStatusEnum AcceptStatus { get; set; }//0:Defult, 1:Accepted, 2:Declined
         public bool Modified { get; set; }
@@ -150,5 +152,45 @@ namespace App.Domain.TravelMeals
         {
             return $"id:{Id},name:{MenuItemName},qty:{Qty},childrenQty:{ChildrenQty},price:{Price},childrenPrice{ChildrenPrice},MenuCalculateType:{MenuCalculateType},Category:{Category}";
         }
+    }
+    public class BookingCalculateVO
+    {
+        public List<MenuInfo> Courses { get; set; }
+        public RestaurantBillInfo BillInfo { get; set; }
+        public string Currency { get; set; }
+        public bool RestaurantIncluedVAT { get; set; }
+
+    }
+    public class MenuInfo
+    {
+        public int Qty { get; set; }
+        public int ChildrenQty { get; set; }
+        public decimal Price { get; set; }
+        public decimal ChildrenPrice { get; set; }
+        public MenuCalculateTypeEnum MenuCalculateType { get; set; }
+    }
+
+    public static class TrDbRestaurantBookingExt
+    {
+        public static BookingCalculateVO ConvertToAmount(this DbBooking booking)
+        {
+            var amountInfo = new BookingCalculateVO()
+            {
+                BillInfo = booking.BillInfo,
+                Courses = new List<MenuInfo>(),
+                Currency = booking.Currency,
+                RestaurantIncluedVAT = booking.RestaurantIncluedVAT
+            };
+            foreach (var item in booking.Courses)
+            {
+                var menu = new MenuInfo() { ChildrenPrice = item.ChildrenPrice, ChildrenQty = item.ChildrenQty, MenuCalculateType = item.MenuCalculateType, Price = item.Price, Qty = item.Qty };
+                amountInfo.Courses.Add(menu);
+            }
+
+            return amountInfo;
+
+        }
+
+
     }
 }

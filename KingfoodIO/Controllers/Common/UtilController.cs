@@ -21,6 +21,7 @@ using Stream = System.IO.Stream;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Webp;
 using SixLabors.ImageSharp.Processing;
+using App.Infrastructure.ServiceHandler.TravelMeals;
 
 namespace KingfoodIO.Controllers.Common
 {
@@ -32,13 +33,15 @@ namespace KingfoodIO.Controllers.Common
 
         IMemoryCache _memoryCache;
         private readonly AzureStorageConfig storageConfig;
+        IUtilServiceHandler _utilServiceHandler;
         ILogManager logger;
         public UtilController(IOptions<CacheSettingConfig> cachesettingConfig, IMemoryCache memoryCache, IRedisCache redisCache,
-            IOptions<AzureStorageConfig> _storageConfig, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
+           IUtilServiceHandler utilServiceHandler, IOptions<AzureStorageConfig> _storageConfig, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
         {
             this.logger = logger;
             _memoryCache = memoryCache;
             storageConfig = _storageConfig.Value;
+            _utilServiceHandler = utilServiceHandler;
         }
 
         /// <summary>
@@ -167,6 +170,17 @@ namespace KingfoodIO.Controllers.Common
             {
                 return BadRequest(ex.Message);
             }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        [HttpGet]
+        [ProducesResponseType(typeof(string), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> CheckAppVersion(int shopId )
+        {
+            return await ExecuteAsync(shopId, false, async () => await _utilServiceHandler.CheckAppVersion(shopId));
         }
     }
 }

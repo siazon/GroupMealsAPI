@@ -66,6 +66,9 @@ namespace App.Domain.Common.Customer
                  IsVerity = source.IsVerity,
                   AuthValue = source.AuthValue,
                    IsBoss = source.IsBoss,
+                   IsOldCustomer=source.IsOldCustomer,
+                   StripeCustomerId=source.StripeCustomerId,
+                  
                     
             };
             return customer;

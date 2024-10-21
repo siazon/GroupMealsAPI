@@ -10,6 +10,7 @@ using App.Domain.Config;
 using App.Domain.TravelMeals;
 using App.Domain.TravelMeals.Restaurant;
 using App.Domain.TravelMeals.VO;
+using App.Infrastructure.Exceptions;
 using App.Infrastructure.ServiceHandler.Common;
 using App.Infrastructure.ServiceHandler.TravelMeals;
 using App.Infrastructure.Utility.Common;
@@ -352,16 +353,13 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpPost]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(ResponseModel), (int)HttpStatusCode.OK)]
-        public  async Task<IActionResult> CalculateBookingItemAmount([FromBody] List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate, PaymentTypeEnum rewardType, double reward, bool isOldCustomer)
+        public  async Task<IActionResult> CalculateBookingItemAmount([FromBody] BookingCalculateVO bookingCalculateVO, PaymentTypeEnum rewardType, double reward, bool isOldCustomer)
         {
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             var customer = await _customerServiceHandler.GetCustomer(user.UserId, 11);
-            return Ok(_restaurantBookingServiceHandler.GetBookingItemAmount(menuItems, paymentType, payRate, customer.RewardType, customer.Reward, isOldCustomer));
+            return Ok(_restaurantBookingServiceHandler.GetBookingItemAmount(bookingCalculateVO, customer.RewardType, customer.Reward, isOldCustomer));
         }
-
-
-
 
         /// <summary>
         /// paymentMode: 1: paymentIntent,2: setupIntent
@@ -377,6 +375,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         [ProducesResponseType(typeof(ResponseModel), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> CalculateBookingAmount([FromBody] List<string> cartInfoIds, int shopId, bool isModify, string currency, bool cache = false)
         {
+       
             DateTime sdate = DateTime.UtcNow;
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);

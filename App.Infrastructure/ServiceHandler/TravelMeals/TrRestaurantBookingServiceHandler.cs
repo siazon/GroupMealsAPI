@@ -65,13 +65,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<bool> DoRebate(string bookingId, double rebate);
         Task<ResponseModel> GetDashboardData();
         Task<ResponseModel> GetSchedulePdf(DbToken userId);
-        Task<object> UpdateAccepted(string bookingId, string subBillId, int acceptType, string operater);
+        Task<ResponseModel> UpdateAccepted(string bookingId, string subBillId, int acceptType, string operater);
         Task<bool> UpdateAcceptedReason(string bookingId, string subBillId, string reason, string operater);
-        Task<object> CancelBooking(string bookingId, string detailId, string userEmail, bool isAdmin);
-        Task<object> SettleBooking(string bookingId, string detailId, string userEmail);
-        Task<object> UpdateStatusByAdmin(string id, int status, DbToken user);
+        Task<ResponseModel> CancelBooking(string bookingId, string detailId, string userEmail, bool isAdmin);
+        Task<ResponseModel> SettleBooking(string bookingId, string detailId, string userEmail);
+        Task<ResponseModel> UpdateStatusByAdmin(string id, int status, DbToken user);
 
-        Task<object> UpsetBookingRemark(string bookingId, string detailId, string remark, string userEmail);
+        Task<ResponseModel> UpsetBookingRemark(string bookingId, string detailId, string remark, string userEmail);
         Task<ResponseModel> MakeABooking(PayCurrencyVO booking, int shopId, DbToken user);
         Task<ResponseModel> ModifyBooking(DbBooking booking, int shopId, string email, bool isNotify = true);
         Task<bool> DeleteBooking(string bookingId, int shopId);
@@ -79,9 +79,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<ResponseModel> SearchBookings(int shopId, string userId, string content, int pageSize = -1, string continuationToke = null);
         Task<ResponseModel> SearchBookingsByRestaurant(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
         Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, int filterTime, DateTime stime, DateTime etime, int status, int pageSize = -1, string continuationToke = null);
-        Task<List<DbBooking>> PlaceBooking(List<DbBooking> cartInfos, int shopId, DbCustomer user);
+        Task<List<DbBooking>> PlaceBooking(List<DbBooking> cartInfos, int shopId, DbCustomer user,IntentTypeEnum intentType);
 
-        ResponseModel GetBookingItemAmount(List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate, PaymentTypeEnum rewardType, double reward, bool isOldCustomer);
+        ResponseModel GetBookingItemAmount(BookingCalculateVO bookingCalculateVO, PaymentTypeEnum rewardType, double reward, bool isOldCustomer);
         Task<ResponseModel> GetBookingAmount(bool isBookingModify, string currency, string userId, List<string> Ids);
         void SetupPaymentAction(string billId, string userId);
         void BookingCharged(string billId, string ChargeId, string ReceiptUrl);
@@ -157,37 +157,37 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return Booking;
         }
 
-        public async Task<object> SettleBooking(string bookingId, string detailId, string userEmail)
+        public async Task<ResponseModel> SettleBooking(string bookingId, string detailId, string userEmail)
         {
             var booking = await _bookingRepository.GetOneAsync(a => a.Id == bookingId);
             if (booking == null || booking.AcceptStatus == AcceptStatusEnum.Declined || booking.AcceptStatus == AcceptStatusEnum.CanceledBeforeAccepted ||
                 booking.AcceptStatus == AcceptStatusEnum.CanceledAfterAccepted || booking.Status == OrderStatusEnum.Canceled || booking.Status == OrderStatusEnum.None)
             {
-                return new { code = 501, msg = "订单状态不对，无法结单", };
+                return new ResponseModel() { code = 501, msg = "订单状态不对，无法结单" };
             }
             booking.AcceptStatus = AcceptStatusEnum.SettledByAdmin;
             booking.Status = OrderStatusEnum.Settled;
             await _bookingRepository.UpsertAsync(booking);
             var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == booking.PaymentId);
             PayAction(paymentInfo, true);
-            return new { code = 0, msg = "ok", };
+            return new ResponseModel() { code = 0, msg = "ok" };
         }
-        public async Task<object> UpsetBookingRemark(string bookingId, string detailId, string remark, string userEmail)
+        public async Task<ResponseModel> UpsetBookingRemark(string bookingId, string detailId, string remark, string userEmail)
         {
             var booking = await _bookingRepository.GetOneAsync(a => a.Id == bookingId);
             booking.Remark = remark;
             booking.Updater = userEmail;
             booking.Updated = DateTime.UtcNow;
             await _bookingRepository.UpsertAsync(booking);
-            return new { code = 0, msg = "ok", };
+            return new ResponseModel() { code = 0, msg = "ok" };
         }
-        public async Task<object> CancelBooking(string bookingId, string detailId, string userEmail, bool isAdmin)
+        public async Task<ResponseModel> CancelBooking(string bookingId, string detailId, string userEmail, bool isAdmin)
         {//Europe/Dublin Europe/London Europe/Paris
 
 
             var booking = await _bookingRepository.GetOneAsync(a => a.Id == bookingId);
             if (booking == null || booking.Status == OrderStatusEnum.Canceled)
-                return new { code = 0, msg = "订单已取消", };
+                return new ResponseModel() { code = 0, msg = "订单已取消" };
             else
             {
 
@@ -221,7 +221,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             var savedRestaurant = await _bookingRepository.UpsertAsync(booking);
 
-            return new { code = 0, msg = "ok", };
+            return new ResponseModel() { code = 0, msg = "ok" };
 
         }
         public async Task<bool> UpdateBooking(string billId, string productId, string priceId)
@@ -262,7 +262,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     break;
             }
         }
-        public async Task<object> UpdateStatusByAdmin(string id, int status, DbToken user)
+        public async Task<ResponseModel> UpdateStatusByAdmin(string id, int status, DbToken user)
         {
             DbBooking booking = await GetBooking(id);
             AcceptStatusEnum statusEnum = (AcceptStatusEnum)status;
@@ -277,12 +277,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             return new ResponseModel { msg = "ok", code = 200, data = new { } };
         }
-        public async Task<object> UpdateAccepted(string billId, string subBillId, int acceptType, string operater)
+        public async Task<ResponseModel> UpdateAccepted(string billId, string subBillId, int acceptType, string operater)
         {
             DbBooking booking = await _bookingRepository.GetOneAsync(a => a.Id == subBillId);
 
             if (booking == null || booking.IsDeleted)
-                return new { code = 1, msg = "Order Deleted(无效操作，订单已删除)", };
+                return new ResponseModel() { code = 1, msg = "Order Deleted(无效操作，订单已删除)", };
             switch (booking.AcceptStatus)
             {
                 case AcceptStatusEnum.UnAccepted:
@@ -299,7 +299,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         }
                         else
                         {
-                            return new { code = 1, msg = "Order Accepted(订单已接受，如需修改请联系客服)", };
+                            return new ResponseModel() { code = 1, msg = "Order Accepted(订单已接受，如需修改请联系客服)" };
                         }
                     }
 
@@ -315,7 +315,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         }
                         else
                         {
-                            return new { code = 2, msg = "Order Declined(订单已被拒绝，如需修改请联系客服)", };
+                            return new ResponseModel() { code = 2, msg = "Order Declined(订单已被拒绝，如需修改请联系客服)" };
                         }
                     }
 
@@ -332,18 +332,17 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         }
                         else
                         {
-                            return new { code = 2, msg = "Order Declined(订单已取消，如需修改请联系客服)", };
+                            return new ResponseModel() { code = 2, msg = "Order Declined(订单已取消，如需修改请联系客服)" };
                         }
                     }
                     break;
                 case AcceptStatusEnum.Settled:
                 case AcceptStatusEnum.SettledByAdmin:
-                    return new { code = 2, msg = "Order Settled(已结单，如需修改请联系客服)", };
+                    return new ResponseModel() { code = 2, msg = "Order Settled(已结单，如需修改请联系客服)" };
                 default:
                     break;
             }
-
-            if (booking == null) return false;
+             
             //if (acceptType == 2)
             //{
             //    _stripeUtil.RefundGroupMeals(booking);
@@ -363,11 +362,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (shopInfo == null)
             {
                 _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
-                return new { code = 500, msg = "Cannot find shop info", };
+                return new ResponseModel() { code = 500, msg = "Cannot find shop info" };
             }
 
             SendEamilByUpdateAccept(acceptType, booking, shopInfo);
-            return new { code = 0, msg = "ok", data = booking };
+            return new ResponseModel() { code = 0, msg = "ok", data = booking };
         }
         private void SendEamilByUpdateAccept(int acceptType, DbBooking booking, DbShop shopInfo)
         {
@@ -488,7 +487,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             Guard.NotNull(newBooking);
             Guard.AreEqual(newBooking.ShopId.Value, shopId);
             if (newBooking.Charged)
-                return new ResponseModel { msg = "订单已捐款，不可再修改", code = 500, data = null };
+                return new ResponseModel { msg = "订单已扣款，不可再修改", code = 500, data = null };
             var dbBooking = await _bookingRepository.GetOneAsync(r => !r.IsDeleted && r.Id == newBooking.Id);
             if (dbBooking == null) return new ResponseModel { msg = "booking not found", code = 200, data = null };
             newBooking.BillInfo = dbBooking.BillInfo;
@@ -511,7 +510,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 //}
 
                 var res = UpdateField(operationInfo, dbBooking, newBooking, "SelectDateTime");
-                if (res) isChange++;
+                if (res) {
+                    if (dbBooking.IntentType == IntentTypeEnum.PaymentIntent)
+                    {
+                        return new ResponseModel { msg = "订单已支付，如需修改请联系客服人员", code = 501, data = null };
+                    }
+                    isChange++; }
                 res = UpdateField(operationInfo, dbBooking, newBooking, "Memo");
                 if (res) isChange++;
                 res = UpdateField(operationInfo, dbBooking, newBooking, "GroupRef");
@@ -542,13 +546,16 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     dbBooking.RestaurantTimeZone = rest.TimeZone;
                     isChange++;
                 }
-                var Oldamount = _amountCalculaterV1.getItemAmount(dbBooking);
-                var amount = _amountCalculaterV1.getItemAmount(newBooking);
-                var user = await _customerServiceHandler.GetCustomer(dbBooking.Creater, dbBooking.ShopId??11);
-                var oldPayAmount = _amountCalculaterV1.getItemPayAmount(dbBooking, user);
-                var payAmount = _amountCalculaterV1.getItemPayAmount(newBooking, user);
+                var Oldamount = _amountCalculaterV1.getItemAmount(dbBooking.ConvertToAmount());
+                var amount = _amountCalculaterV1.getItemAmount(newBooking.ConvertToAmount());
+                var user = await _customerServiceHandler.GetCustomer(dbBooking.Creater, dbBooking.ShopId ?? 11);
+                var oldPayAmount = _amountCalculaterV1.getItemPayAmount(dbBooking.ConvertToAmount(), user);
+                var payAmount = _amountCalculaterV1.getItemPayAmount(newBooking.ConvertToAmount(), user);
                 if (amount != Oldamount)
                 {
+                    if (dbBooking.IntentType == IntentTypeEnum.PaymentIntent) {
+                        return new ResponseModel { msg = "订单已支付，如需修改请联系客服人员", code = 501, data = null };
+                    }
                     isChange++;
                     UpdateListField(operationInfo, dbBooking, newBooking, "Courses");
                     dbBooking.Courses = newBooking.Courses;
@@ -685,8 +692,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
                 DbPaymentInfo dbPaymentInfo = null;
                 if (!string.IsNullOrWhiteSpace(paymentId))
-                    dbPaymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == paymentId);
-                if (dbPaymentInfo == null || (dbPaymentInfo.SetupPay && payCurrencyVO.IntentType == 1) || (!dbPaymentInfo.SetupPay && payCurrencyVO.IntentType == 2))
+                    dbPaymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == paymentId&&!a.Paid);
+                if (dbPaymentInfo == null || (dbPaymentInfo.SetupPay && payCurrencyVO.IntentType == IntentTypeEnum.PaymentIntent) || (!dbPaymentInfo.SetupPay && payCurrencyVO.IntentType == IntentTypeEnum.SetupIntent))
                 {
                     dbPaymentInfo = new DbPaymentInfo();
                     dbPaymentInfo.Id = Guid.NewGuid().ToString();
@@ -701,14 +708,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 if (dbPaymentInfo.Amount == 0)
                 {
                     var dbUser = await _customerServiceHandler.UpdateCart(bookings, user.UserId, user.ShopId ?? 11);
-                    var booking = PlaceBooking(bookings, shopId, userInfo);
+                    var booking = PlaceBooking(bookings, shopId, userInfo, IntentTypeEnum.None);
                     return new ResponseModel { msg = "ok", code = 200, data = null };
                 }
                 string bookingIds = string.Join(',', bookingIdList);
 
-
                 string clientSecret = "";
-                if (payCurrencyVO.IntentType == 1)
+                if (payCurrencyVO.IntentType == IntentTypeEnum.PaymentIntent)
                     clientSecret = CreateIntent(dbPaymentInfo, userInfo, user, bookingIds).ClientSecret;
                 else
                     clientSecret = CreateSetupIntent(dbPaymentInfo, userInfo, user, bookingIds).ClientSecret;
@@ -749,7 +755,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             dbPaymentInfo.StripeClientSecretKey = paymentIntent.ClientSecret;
             return paymentIntent;
         }
-        public async Task<List<DbBooking>> PlaceBooking(List<DbBooking> cartInfos, int shopId, DbCustomer user)
+        public async Task<List<DbBooking>> PlaceBooking(List<DbBooking> cartInfos, int shopId, DbCustomer user, IntentTypeEnum intentType)
         {
 
             foreach (var item in cartInfos)
@@ -760,12 +766,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 item.ShopId = shopId;
                 item.Created = DateTime.UtcNow;
                 item.Status = OrderStatusEnum.UnAccepted;
+                item.IntentType = intentType;
                 await _bookingRepository.UpsertAsync(item);
                 var booking = user.CartInfos.FirstOrDefault(a => a.Id == item.Id);
                 user.CartInfos.Remove(booking);
             }
-            await SendEmail(cartInfos, shopId, user);
             await _customerServiceHandler.UpdateAccount(user, shopId);
+            await SendEmail(cartInfos, shopId, user);
             return cartInfos;
         }
         public async void SetupPaymentAction(string billId, string userId)
@@ -793,12 +800,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 DateTime now = DateTime.Now;
                 List<DbBooking> bookings = new List<DbBooking>();
-               
-               
-                while (bookings.Count==0)
+
+
+                while (bookings.Count == 0)
                 {
                     var books = await _bookingRepository.GetManyAsync(a => a.PaymentId == billId);
-                    bookings = books.ToList(); 
+                    bookings = books.ToList();
                     Thread.Sleep(500);
                     if ((DateTime.Now - now).TotalSeconds > 2)
                         break;
@@ -811,7 +818,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     {
                         booking.AllowCancel = false;
                         booking.AllowEdit = false;
-                        booking.IntentType = payment.SetupPay ? 1 : 2;
+                        booking.IntentType = payment.SetupPay ? IntentTypeEnum.SetupIntent : IntentTypeEnum.PaymentIntent;
                     }
 
                     await _bookingRepository.UpsertAsync(booking);
@@ -889,12 +896,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 if (user == null)
                     user = await _customerRepository.GetOneAsync(a => a.Id == userId);
-                var amount = _amountCalculaterV1.getItemAmount(item);
+                var amount = _amountCalculaterV1.getItemAmount(item.ConvertToAmount());
                 AmountInfo amountInfo = new AmountInfo()
                 {
                     Id = Guid.NewGuid().ToString(),
                     Amount = amount,
-                    PaidAmount = _amountCalculaterV1.getItemPayAmount(item, user),
+                    PaidAmount = _amountCalculaterV1.getItemPayAmount(item.ConvertToAmount(), user),
                     Reward = _amountCalculaterV1.GetReward(amount, item.BillInfo.RewardType, item.BillInfo.Reward, user)
                 };
                 item.AmountInfos.Add(amountInfo);
@@ -1086,7 +1093,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private async Task<DbBooking> UpdateForOutput(DbBooking dbBooking)
         {
             List<OrderStatusEnum> allowEditStatus = new List<OrderStatusEnum>() { OrderStatusEnum.UnAccepted, OrderStatusEnum.Accepted };
-            if (allowEditStatus.IndexOf(dbBooking.Status) >= 0 && !dbBooking.Charged)
+            if (allowEditStatus.IndexOf(dbBooking.Status) >= 0  )
             {
                 dbBooking.AllowCancel = true;
                 dbBooking.AllowEdit = true;
@@ -1095,8 +1102,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (paymentInfo != null && !paymentInfo.SetupPay)
             {
                 dbBooking.AllowCancel = false;
-                dbBooking.AllowEdit = false;
-                dbBooking.IntentType = paymentInfo.SetupPay ? 1 : 2;
+                //dbBooking.AllowEdit = false;
+                dbBooking.IntentType = paymentInfo.SetupPay ? IntentTypeEnum.SetupIntent : IntentTypeEnum.PaymentIntent;
             }
             return dbBooking;
         }
@@ -1273,13 +1280,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = res };
         }
 
-        public ResponseModel GetBookingItemAmount(List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate, PaymentTypeEnum rewardType, double reward, bool isOldCustomer)
+        public ResponseModel GetBookingItemAmount(BookingCalculateVO bookingCalculateVO, PaymentTypeEnum rewardType, double reward, bool isOldCustomer)
         {
             decimal amount = 0, paidAmount = 0;
-            DbBooking detail = new DbBooking() { Courses = menuItems, BillInfo = new RestaurantBillInfo() { IsOldCustomer = isOldCustomer, PaymentType = paymentType, PayRate = payRate } };
-
-            paidAmount = _amountCalculaterV1.getItemPayAmount(detail,new DbCustomer() {IsOldCustomer=isOldCustomer,RewardType=rewardType,Reward=reward });
-            amount = _amountCalculaterV1.getItemAmount(detail);
+            if (bookingCalculateVO != null)
+            {
+                paidAmount = _amountCalculaterV1.getItemPayAmount(bookingCalculateVO, new DbCustomer() { IsOldCustomer = isOldCustomer, RewardType = rewardType, Reward = reward });
+                amount = _amountCalculaterV1.getItemAmount(bookingCalculateVO);
+            }
             return new ResponseModel { msg = "ok", code = 200, data = new { amount, paidAmount } };
         }
         public async Task<ResponseModel> GetBookingAmount(bool isBookingModify, string currency, string userId, List<string> Ids)
@@ -1288,7 +1296,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             DateTime stime = DateTime.UtcNow;
             var user = await _customerRepository.GetOneAsync(a => a.Id == userId);
-            user=await _customerServiceHandler.RefreshCartInfo(user);
+            user = await _customerServiceHandler.RefreshCartInfo(user);
             Console.WriteLine("cart:" + (DateTime.UtcNow - stime).TotalMilliseconds);
             var details = user.CartInfos.FindAll(c => Ids.Contains(c.Id));
             if (details == null || details.Count() == 0)
@@ -1397,6 +1405,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<bool> OrderCheck()
         {
+            updateRest();
+            return true;
+            asyncBooking();
+            return true;
             asyncCities();
             return true;
             autoPayment();
@@ -1406,7 +1418,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 _exchangeUtil.UpdateExchangeRateToDB();
             }
-            asyncBooking();
+       
             //DateTime time = DateTime.UtcNow.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode("Ireland"));
             //if (time.Hour < 18 && time.Hour > 8)
             //{
@@ -1443,7 +1455,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private async void PayAction(DbPaymentInfo item, bool byadmin = false)
         {
 
-            if (item.PaymentType == 0)
+            //if (item.PaymentType == 0)
             {
                 var bookings = await _bookingRepository.GetManyAsync(a => a.PaymentId == item.Id);
                 bool isTimePass = true;
@@ -1462,30 +1474,32 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     SetupPaymentAction(item.Id, item.Creater);
                 }
             }
-            else
-            {
-                if ((DateTime.UtcNow - item.CheckoutTime).TotalHours > 24)
-                {
-                    SetupPaymentAction(item.Id, item.Creater);
-                }
-            }
+            //else
+            //{
+            //    if ((DateTime.UtcNow - item.CheckoutTime).TotalHours > 24)
+            //    {
+            //        SetupPaymentAction(item.Id, item.Creater);
+            //    }
+            //}
         }
         public async void asyncBooking()
         {
-            var rests = await _customerRepository.GetManyAsync(a => a.ShopId == 11);
-            foreach (var restaurant in rests)
-            {
-                restaurant.IsOldCustomer = true;
-                await _customerRepository.UpsertAsync(restaurant);
-            }
+           
 
 
             var bookings = await _restaurantBookingRepository.GetManyAsync(a => 1 == 1);
+            var users = await _customerRepository.GetManyAsync(a => a.ShopId == 11);
+            int i = 0;
             foreach (var booking in bookings)
             {
+                i++;
+                if (i > 5) break;
                 foreach (var book in booking.Details)
                 {
                     string paymentId = Guid.NewGuid().ToString();
+                    if (booking.IsDeleted|| book.Status == OrderStatusEnum.Canceled || book.Status == OrderStatusEnum.None)
+                    { }
+                    else
                     foreach (var pay in booking.PaymentInfos)
                     {
                         DbPaymentInfo paymentInfo = new DbPaymentInfo()
@@ -1506,26 +1520,30 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                             StripeSetupIntent = pay.StripeSetupIntent,
                             ShopId = booking.ShopId,
                             Created = booking.Created,
+                            
                         };
-                        await _paymentRepository.UpsertAsync(paymentInfo);
+                        //await _paymentRepository.UpsertAsync(paymentInfo);
                     }
+                    var cust = users.FirstOrDefault(a => a.Email == booking.Creater);
                     DbBooking dbBooking = new DbBooking()
                     {
                         Id = booking.Id,
                         PaymentId = paymentId,
                         AcceptReason = book.AcceptReason,
                         AcceptStatus = book.AcceptStatus,
-                        BookingRef = book.BookingRef,
+                        BookingRef = booking.BookingRef,
                         Courses = book.Courses,
                         Created = booking.Created,
                         Currency = book.Currency,
-                        GroupRef = booking.BookingRef,
+                        GroupRef = book.GroupRef,
                         IsDeleted = booking.IsDeleted,
                         SelectDateTime = book.SelectDateTime,
                         Memo = book.Memo,
                         ShopId = booking.ShopId,
                         Remark = book.Remark,
                         Status = book.Status,
+                        AmountInfos=book.AmountInfos,
+                        Creater= cust?.Id
 
                     };
                     dbBooking.ContactEmail = book.ContactEmail;
@@ -1551,7 +1569,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     dbBooking.BillInfo = book.BillInfo;
 
                     await _bookingRepository.UpsertAsync(dbBooking);
-
+                    continue;
                     foreach (var pay in booking.Operations)
                     {
                         DbOpearationInfo dbOpearationInfo = new DbOpearationInfo()
@@ -1573,27 +1591,75 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
 
         }
-
-        private void asyncCities()
+        private async void updateRest()
         {
-            string jsonStr = "{\\\"Countries\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"UK\\\",\\\"NameCN\\\":\\\"英国\\\",\\\"TimeZone\\\":\\\"Europe/London\\\",\\\"Currency\\\":\\\"UK\\\",\\\"ExchangeRate\\\":0.8542,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"£\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"London 伦敦\\\"},{\\\"SortOrder\\\":1,\\\"Name\\\":\\\"Cambridge 剑桥\\\"},{\\\"SortOrder\\\":2,\\\"Name\\\":\\\"Manchester 曼彻斯特\\\"},{\\\"SortOrder\\\":3,\\\"Name\\\":\\\"Birmingham 伯明翰\\\"},{\\\"SortOrder\\\":4,\\\"Name\\\":\\\"Oxford 牛津\\\"},{\\\"SortOrder\\\":5,\\\"Name\\\":\\\"Bicester 比斯特\\\"},{\\\"SortOrder\\\":6,\\\"Name\\\":\\\"Windermere 温德米尔湖区\\\"},{\\\"SortOrder\\\":7,\\\"Name\\\":\\\"Glawsgow 格拉斯哥\\\"},{\\\"SortOrder\\\":8,\\\"Name\\\":\\\"Edinburgh 爱丁堡\\\"},{\\\"SortOrder\\\":9,\\\"Name\\\":\\\"Liverpool 利物浦\\\"},{\\\"SortOrder\\\":10,\\\"Name\\\":\\\"利物浦彻斯特\\\"},{\\\"SortOrder\\\":11,\\\"Name\\\":\\\"普雷斯顿市\\\"},{\\\"SortOrder\\\":12,\\\"Name\\\":\\\"贝尔法斯特及北爱\\\"},{\\\"SortOrder\\\":13,\\\"Name\\\":\\\"York 约克\\\"},{\\\"SortOrder\\\":14,\\\"Name\\\":\\\"Stratford 莎士比亚\\\"},{\\\"SortOrder\\\":15,\\\"Name\\\":\\\"霍利希德\\\"},{\\\"SortOrder\\\":16,\\\"Name\\\":\\\"Bath 巴斯\\\"},{\\\"SortOrder\\\":17,\\\"Name\\\":\\\"Sheffield 谢菲尔德\\\"},{\\\"SortOrder\\\":18,\\\"Name\\\":\\\"Coventry 考文垂\\\"},{\\\"SortOrder\\\":19,\\\"Name\\\":\\\"Cardiff 卡迪夫\\\"},{\\\"SortOrder\\\":20,\\\"Name\\\":\\\"NTT 北安普顿\\\"},{\\\"SortOrder\\\":21,\\\"Name\\\":\\\"Bristol 布鲁斯托\\\"},{\\\"SortOrder\\\":22,\\\"Name\\\":\\\"Newcastle 纽卡斯尔\\\"},{\\\"SortOrder\\\":23,\\\"Name\\\":\\\"Brighton 布莱顿 \\\"},{\\\"SortOrder\\\":24,\\\"Name\\\":\\\"Aberdeen 阿伯丁\\\"},{\\\"SortOrder\\\":25,\\\"Name\\\":\\\"Swabsea 斯旺西\\\"},{\\\"SortOrder\\\":26,\\\"Name\\\":\\\"Leeds 利兹\\\"},{\\\"SortOrder\\\":27,\\\"Name\\\":\\\"多佛坎特伯雷\\\"},{\\\"SortOrder\\\":28,\\\"Name\\\":\\\"苏格兰高地\\\"},{\\\"SortOrder\\\":29,\\\"Name\\\":\\\"诺丁汉沿途\\\"}]},{\\\"SortOrder\\\":1,\\\"Name\\\":\\\"Ireland\\\",\\\"NameCN\\\":\\\"爱尔兰\\\",\\\"TimeZone\\\":\\\"Europe/Dublin\\\",\\\"Currency\\\":\\\"EU\\\",\\\"ExchangeRate\\\":1,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"€\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"Dublin 都柏林\\\"},{\\\"SortOrder\\\":1,\\\"Name\\\":\\\"Cork 科克\\\"},{\\\"SortOrder\\\":2,\\\"Name\\\":\\\"Galway 戈尔韦\\\"},{\\\"SortOrder\\\":3,\\\"Name\\\":\\\"Limerick 利莫瑞克\\\"},{\\\"SortOrder\\\":4,\\\"Name\\\":\\\"Killarney 基拉尼\\\"},{\\\"SortOrder\\\":5,\\\"Name\\\":\\\"莫赫悬崖及克莱尔郡\\\"},{\\\"SortOrder\\\":6,\\\"Name\\\":\\\"Athlone 阿斯隆周边\\\"}]},{\\\"SortOrder\\\":2,\\\"Name\\\":\\\"France\\\",\\\"NameCN\\\":\\\"法国\\\",\\\"TimeZone\\\":\\\"Europe/Paris\\\",\\\"Currency\\\":\\\"EU\\\",\\\"ExchangeRate\\\":1,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"€\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"Paris 巴黎\\\"},{\\\"SortOrder\\\":1,\\\"Name\\\":\\\"贝桑松\\\"},{\\\"SortOrder\\\":2,\\\"Name\\\":\\\"亚维农\\\"}]},{\\\"SortOrder\\\":3,\\\"Name\\\":\\\"Italy\\\",\\\"NameCN\\\":\\\"意大利\\\",\\\"TimeZone\\\":\\\"Europe/Rome\\\",\\\"Currency\\\":\\\"EU\\\",\\\"ExchangeRate\\\":1,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"€\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"罗马\\\"},{\\\"SortOrder\\\":1,\\\"Name\\\":\\\"米兰\\\"},{\\\"SortOrder\\\":2,\\\"Name\\\":\\\"佛罗伦萨\\\"},{\\\"SortOrder\\\":3,\\\"Name\\\":\\\"威尼斯\\\"},{\\\"SortOrder\\\":4,\\\"Name\\\":\\\"那不勒斯\\\"},{\\\"SortOrder\\\":5,\\\"Name\\\":\\\"拉斯佩齐亚\\\"}]},{\\\"SortOrder\\\":4,\\\"Name\\\":\\\"Switzerland\\\",\\\"NameCN\\\":\\\"瑞士\\\",\\\"TimeZone\\\":\\\"Europe/Zurich\\\",\\\"Currency\\\":\\\"CHF\\\",\\\"ExchangeRate\\\":1,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"CHF\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"苏黎世\\\"},{\\\"SortOrder\\\":1,\\\"Name\\\":\\\"卢塞恩\\\"},{\\\"SortOrder\\\":2,\\\"Name\\\":\\\"日内瓦\\\"}]},{\\\"SortOrder\\\":5,\\\"Name\\\":\\\"Spain\\\",\\\"NameCN\\\":\\\"西班牙\\\",\\\"TimeZone\\\":\\\"Europe/Madrid\\\",\\\"Currency\\\":\\\"EU\\\",\\\"ExchangeRate\\\":1,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"€\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"马德里\\\"},{\\\"SortOrder\\\":1,\\\"Name\\\":\\\"巴塞罗那\\\"},{\\\"SortOrder\\\":2,\\\"Name\\\":\\\"瓦伦西亚\\\"},{\\\"SortOrder\\\":3,\\\"Name\\\":\\\"科尔多瓦\\\"},{\\\"SortOrder\\\":4,\\\"Name\\\":\\\"塞维利亚\\\"},{\\\"SortOrder\\\":5,\\\"Name\\\":\\\"格拉纳达\\\"},{\\\"SortOrder\\\":6,\\\"Name\\\":\\\"托莱多\\\"}]},{\\\"SortOrder\\\":6,\\\"Name\\\":\\\"Portugal\\\",\\\"NameCN\\\":\\\"葡萄牙\\\",\\\"TimeZone\\\":\\\"Europe/Lisbon\\\",\\\"Currency\\\":\\\"EU\\\",\\\"ExchangeRate\\\":1,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"€\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"里斯本\\\"},{\\\"SortOrder\\\":1,\\\"Name\\\":\\\"辛特拉\\\"}]},{\\\"SortOrder\\\":7,\\\"Name\\\":\\\"Germany\\\",\\\"NameCN\\\":\\\"德国\\\",\\\"TimeZone\\\":\\\"Europe/Lisbon\\\",\\\"Currency\\\":\\\"EU\\\",\\\"ExchangeRate\\\":1,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"€\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"卡塞尔\\\"}]},{\\\"SortOrder\\\":8,\\\"Name\\\":\\\"Norway\\\",\\\"NameCN\\\":\\\"挪威\\\",\\\"TimeZone\\\":\\\"Europe/Lisbon\\\",\\\"Currency\\\":\\\"EU\\\",\\\"ExchangeRate\\\":1,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"€\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"卑尔根\\\"}]},{\\\"SortOrder\\\":9,\\\"Name\\\":\\\"Czech Republic\\\",\\\"NameCN\\\":\\\"捷克\\\",\\\"TimeZone\\\":\\\"Europe/Lisbon\\\",\\\"Currency\\\":\\\"EU\\\",\\\"ExchangeRate\\\":1,\\\"ExchangeRateExtra\\\":0.03,\\\"CurrencySymbol\\\":\\\"€\\\",\\\"Cities\\\":[{\\\"SortOrder\\\":0,\\\"Name\\\":\\\"布拉格\\\"},{\\\"SortOrder\\\":1,\\\"Name\\\":\\\"克鲁姆洛夫及周边\\\"},{\\\"SortOrder\\\":2,\\\"Name\\\":\\\"qq\\\"}]}],\\\"RateUpdateTime\\\":\\\"0001-01-01T00:00:00\\\",\\\"id\\\":\\\"oldCities\\\",\\\"ShopId\\\":11,\\\"Created\\\":null,\\\"Updated\\\":null,\\\"Updater\\\":null,\\\"SortOrder\\\":null,\\\"IsActive\\\":true,\\\"IsDeleted\\\":false,\\\"_rid\\\":\\\"1ekeAMqZTaMLAAAAAAAAAA==\\\",\\\"_self\\\":\\\"dbs/1ekeAA==/colls/1ekeAMqZTaM=/docs/1ekeAMqZTaMLAAAAAAAAAA==/\\\",\\\"_etag\\\":\\\"\\\\\"8f00c2d4-0000-0c00-0000-66f73e2e0000\\\\\"\\\",\\\"_attachments\\\":\\\"attachments/\\\",\\\"_ts\\\":1727479342}";
+            var rests = await _restaurantRepository.GetManyAsync(a => a.ShopId == 11);
+            var countrys = await _countryHandler.GetCountry(11);
+            foreach (var item in rests)
+            {
+                var count = countrys.FirstOrDefault(a => a.Code == item.Country);
+                if (count == null)
+                {
+
+                }
+                var city = count.Cities.FirstOrDefault(a => a.Name == item.City);
+                if (city == null)
+                { continue; }
+                item.TimeZone = city.TimeZone;
+                item.Currency = count.Currency;
+                if (item.BillInfo.PaymentType == PaymentTypeEnum.Full)
+                    item.IncluedVAT = true;
+               
+                await _restaurantRepository.UpsertAsync(item);
+            }
+            var customers = await _customerRepository.GetManyAsync(a => a.ShopId == 11);
+            foreach (var item in customers)
+            {
+                item.IsOldCustomer = true;
+                await _customerRepository.UpsertAsync(item);
+            }
+
+        }
+
+        private async void asyncCities()
+        {
+            string jsonStr = "{\"Countries\":[{\"SortOrder\":0,\"Name\":\"UK\",\"NameCN\":\"英国\",\"TimeZone\":\"Europe/London\",\"Currency\":\"UK\",\"ExchangeRate\":0.8542,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"£\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"London 伦敦\"},{\"SortOrder\":1,\"Name\":\"Cambridge 剑桥\"},{\"SortOrder\":2,\"Name\":\"Manchester 曼彻斯特\"},{\"SortOrder\":3,\"Name\":\"Birmingham 伯明翰\"},{\"SortOrder\":4,\"Name\":\"Oxford 牛津\"},{\"SortOrder\":5,\"Name\":\"Bicester 比斯特\"},{\"SortOrder\":6,\"Name\":\"Windermere 温德米尔湖区\"},{\"SortOrder\":7,\"Name\":\"Glawsgow 格拉斯哥\"},{\"SortOrder\":8,\"Name\":\"Edinburgh 爱丁堡\"},{\"SortOrder\":9,\"Name\":\"Liverpool 利物浦\"},{\"SortOrder\":10,\"Name\":\"普雷斯顿市\"},{\"SortOrder\":11,\"Name\":\"贝尔法斯特及北爱\"},{\"SortOrder\":12,\"Name\":\"York 约克\"},{\"SortOrder\":13,\"Name\":\"Stratford 莎士比亚\"},{\"SortOrder\":14,\"Name\":\"霍利希德\"},{\"SortOrder\":15,\"Name\":\"Bath 巴斯\"},{\"SortOrder\":16,\"Name\":\"Sheffield 谢菲尔德\"},{\"SortOrder\":17,\"Name\":\"Coventry 考文垂\"},{\"SortOrder\":18,\"Name\":\"Cardiff 卡迪夫\"},{\"SortOrder\":19,\"Name\":\"NTT 北安普顿\"},{\"SortOrder\":20,\"Name\":\"Bristol 布鲁斯托\"},{\"SortOrder\":21,\"Name\":\"Newcastle 纽卡斯尔\"},{\"SortOrder\":22,\"Name\":\"Brighton 布莱顿 \"},{\"SortOrder\":23,\"Name\":\"Aberdeen 阿伯丁\"},{\"SortOrder\":24,\"Name\":\"Swabsea 斯旺西\"},{\"SortOrder\":25,\"Name\":\"Leeds 利兹\"},{\"SortOrder\":26,\"Name\":\"多佛坎特伯雷\"},{\"SortOrder\":27,\"Name\":\"苏格兰高地\"},{\"SortOrder\":28,\"Name\":\"诺丁汉沿途\"}]},{\"SortOrder\":1,\"Name\":\"Ireland\",\"NameCN\":\"爱尔兰\",\"TimeZone\":\"Europe/Dublin\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"Dublin 都柏林\"},{\"SortOrder\":1,\"Name\":\"Cork 科克\"},{\"SortOrder\":2,\"Name\":\"Galway 戈尔韦\"},{\"SortOrder\":3,\"Name\":\"Limerick 利莫瑞克\"},{\"SortOrder\":4,\"Name\":\"Killarney 基拉尼\"},{\"SortOrder\":5,\"Name\":\"莫赫悬崖及克莱尔郡\"},{\"SortOrder\":6,\"Name\":\"Athlone 阿斯隆周边\"}]},{\"SortOrder\":2,\"Name\":\"France\",\"NameCN\":\"法国\",\"TimeZone\":\"Europe/Paris\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"Paris 巴黎\"},{\"SortOrder\":1,\"Name\":\"贝桑松\"},{\"SortOrder\":2,\"Name\":\"亚维农\"},{\"SortOrder\":3,\"Name\":\"尼斯\"}]},{\"SortOrder\":3,\"Name\":\"Italy\",\"NameCN\":\"意大利\",\"TimeZone\":\"Europe/Rome\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"罗马\"},{\"SortOrder\":1,\"Name\":\"米兰\"},{\"SortOrder\":2,\"Name\":\"佛罗伦萨\"},{\"SortOrder\":3,\"Name\":\"威尼斯\"},{\"SortOrder\":4,\"Name\":\"那不勒斯\"},{\"SortOrder\":5,\"Name\":\"拉斯佩齐亚\"},{\"SortOrder\":6,\"Name\":\"巴勒莫\"},{\"SortOrder\":7,\"Name\":\"维罗纳\"},{\"SortOrder\":8,\"Name\":\"墨西拿\"},{\"SortOrder\":9,\"Name\":\"卡塔尼亚\"},{\"SortOrder\":10,\"Name\":\"巴里\"}]},{\"SortOrder\":4,\"Name\":\"Switzerland\",\"NameCN\":\"瑞士\",\"TimeZone\":\"Europe/Zurich\",\"Currency\":\"CHF\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"CHF\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"苏黎世\"},{\"SortOrder\":1,\"Name\":\"琉森\"},{\"SortOrder\":2,\"Name\":\"卢塞恩\"},{\"SortOrder\":3,\"Name\":\"日内瓦\"},{\"SortOrder\":4,\"Name\":\"蒙特勒\"},{\"SortOrder\":5,\"Name\":\"洛迦诺\"},{\"SortOrder\":6,\"Name\":\"沙夫豪森\"},{\"SortOrder\":7,\"Name\":\"因特拉肯\"}]},{\"SortOrder\":5,\"Name\":\"Spain\",\"NameCN\":\"西班牙\",\"TimeZone\":\"Europe/Madrid\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"马德里\"},{\"SortOrder\":1,\"Name\":\"巴塞罗那\"},{\"SortOrder\":2,\"Name\":\"瓦伦西亚\"},{\"SortOrder\":3,\"Name\":\"科尔多瓦\"},{\"SortOrder\":4,\"Name\":\"塞维利亚\"},{\"SortOrder\":5,\"Name\":\"格拉纳达\"},{\"SortOrder\":6,\"Name\":\"托莱多\"},{\"SortOrder\":7,\"Name\":\"萨拉戈萨\"},{\"SortOrder\":8,\"Name\":\"赛哥维亚\"},{\"SortOrder\":9,\"Name\":\"托雷维耶哈\"}]},{\"SortOrder\":6,\"Name\":\"Portugal\",\"NameCN\":\"葡萄牙\",\"TimeZone\":\"Europe/Lisbon\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"里斯本\"},{\"SortOrder\":1,\"Name\":\"辛特拉\"}]},{\"SortOrder\":7,\"Name\":\"Germany\",\"NameCN\":\"德国\",\"TimeZone\":\"Europe/Lisbon\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"卡塞尔\"},{\"SortOrder\":1,\"Name\":\"慕尼黑\"},{\"SortOrder\":2,\"Name\":\"梅青根奥特莱斯\"}]},{\"SortOrder\":8,\"Name\":\"Norway\",\"NameCN\":\"挪威\",\"TimeZone\":\"Europe/Lisbon\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"卑尔根\"}]},{\"SortOrder\":9,\"Name\":\"Czech Republic\",\"NameCN\":\"捷克\",\"TimeZone\":\"Europe/Lisbon\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"布拉格\"},{\"SortOrder\":1,\"Name\":\"克鲁姆洛夫及周边\"}]},{\"SortOrder\":10,\"Name\":\"Serbia\",\"NameCN\":\"塞尔维亚\",\"TimeZone\":\"Europe/Paris\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"诺维萨德\"}]},{\"SortOrder\":11,\"Name\":\"Luxembourg\",\"NameCN\":\"卢森堡\",\"TimeZone\":\"Europe/Luxembourg\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"卢森堡\"}]}],\"RateUpdateTime\":\"0001-01-01T00:00:00\",\"id\":\"4E283F7E-E397-4632-9405-6C6261ABB75F\",\"ShopId\":11,\"Created\":null,\"Updated\":null,\"Updater\":null,\"SortOrder\":null,\"IsActive\":true,\"IsDeleted\":false,\"_rid\":\"XHMIAJZ0VlEBAAAAAAAAAA==\",\"_self\":\" \",\"_etag\":\" \",\"_attachments\":\" \",\"_ts\":1728808113}";
             citySource citySource = JsonConvert.DeserializeObject<citySource>(jsonStr);
+            var couns = await _countryHandler.GetCountry(11);
             foreach (var city in citySource.Countries)
             {
-                DbCountry dbCountry = new DbCountry()
+                DbCountry dbCountry = couns.FirstOrDefault(a => a.Code == city.Name);
+                if (dbCountry == null)
                 {
-                    Id = Guid.NewGuid().ToString(),
-                    Name = city.NameCN,
-                    Code = city.Name,
-                    Currency = city.Currency,
-                    CurrencySymbol = city.CurrencySymbol,
-                    ExchangeRate = city.ExchangeRate,
-                    ExchangeRateExtra = city.ExchangeRateExtra,
-                    VAT = 1.25,
-                    IsActive = false,
-                    SortOrder = city.SortOrder,
-                    ShopId = 11,
-                };
+                    dbCountry = new DbCountry()
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Name = city.NameCN,
+                        Code = city.Name,
+                        Currency = city.Currency,
+                        CurrencySymbol = city.CurrencySymbol,
+                        ExchangeRate = city.ExchangeRate,
+                        ExchangeRateExtra = city.ExchangeRateExtra,
+                        VAT = 1.25,
+                        IsActive = false,
+                        SortOrder = city.SortOrder,
+                        ShopId = 11,
+                        Cities = new List<City>()
+                    };
+                }
+                else
+                {
+                    dbCountry.Name = city.NameCN;
+                    dbCountry.Currency = city.Currency;
+                    dbCountry.CurrencySymbol = city.CurrencySymbol;
+                    dbCountry.ExchangeRate = city.ExchangeRate;
+                    dbCountry.ExchangeRateExtra = city.ExchangeRateExtra;
+                    dbCountry.VAT = 1.25;
+                    dbCountry.IsActive = false;
+                    dbCountry.SortOrder = city.SortOrder;
+                    dbCountry.ShopId = 11;
+                    dbCountry.Cities = new List<City>();
+                }
                 foreach (var item in city.Cities)
                 {
                     City _city = new City()

@@ -7,6 +7,7 @@ using App.Domain.Common.Auth;
 using App.Domain.Common.Customer;
 using App.Domain.Config;
 using App.Domain.TravelMeals;
+using App.Infrastructure.Exceptions;
 using App.Infrastructure.ServiceHandler.Common;
 using App.Infrastructure.Utility.Common;
 using KingfoodIO.Application.Filter;

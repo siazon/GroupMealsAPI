@@ -52,6 +52,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<ResponseModel> GetRestaurant(string Id);
         Task<ResponseModel> GetCitys(int shopId);
         Task<ResponseModel> GetCities(int shopId);
+        Task<ResponseModel> GetCities_old(int shopId);
         Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId);
         Task<ResponseModel> UpsetCities(DbCountry countries, int shopId);
         Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId);
@@ -356,9 +357,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<ResponseModel> UpsetCities(DbCountry countries, int shopId)
         {
             var cacheKey = string.Format("motionmedia-{1}-{0}", shopId, "cities");
+            if(countries==null)
+                return new ResponseModel { msg = "保存失败，请检查输入的内容是否正确", code = 501, data = null };
+
             var cacheKeycitys = string.Format("motionmedia-{1}-{0}", shopId, "citys");
             _memoryCache.Set<DbCountry>(cacheKey, null);
             _memoryCache.Set<Dictionary<string, List<string>>>(cacheKeycitys, null);
+            if (string.IsNullOrWhiteSpace(countries.Id))
+                countries.Id = Guid.NewGuid().ToString();
              _countryRepository.UpsertCountry(countries);
 
             _memoryCache.Set<DbCountry>(cacheKey, null);
@@ -385,7 +391,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 List<string> temo = new List<string>();
                 var temp = existingRestaurants.Where(a => a.Country.Trim() == country.Key);
                 var citys = temp.GroupBy(a => a.City.Trim());
-                temo.Add("ȫ��");
+                temo.Add("全部");
                 foreach (var city in citys)
                 {
                     temo.Add(city.Key);
@@ -396,6 +402,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _memoryCache.Set(cacheKey, cityRes);
 
             return new ResponseModel { msg = "ok", code = 200, data = cityRes };
+        }
+        public async Task<ResponseModel> GetCities_old(int shopId) {
+            _logger.LogInfo("azure functions actioned");
+
+            var existingCities = new DbCountryold() {   Countries = new List<Country>() {
+                new Country() { NameCN= "请访问groupmeals.com下载最新版本APP", Name= "请访问groupmeals.com下载最新版本APP", Cities=new List<City>(){ new City() { Name= "请访问groupmeals.com下载最新版本APP" } } } } };
+
+            return new ResponseModel { msg = "ok", code = 200, data = existingCities };
         }
         public async Task<ResponseModel> GetCities(int shopId)
         {

@@ -6,6 +6,7 @@ using App.Domain.Config;
 using App.Domain.Holiday;
 using App.Domain.TravelMeals;
 using App.Domain.TravelMeals.Restaurant;
+using App.Domain.TravelMeals.VO;
 using App.Infrastructure.Repository;
 using App.Infrastructure.ServiceHandler.Common;
 using App.Infrastructure.ServiceHandler.Tour;
@@ -198,7 +199,7 @@ namespace KingfoodIO.Controllers.Common
                                 List<DbBooking> bookings = _dbUser.CartInfos.FindAll(a => a.PaymentId == _dbpayment.Id && bookingIds.Contains(a.Id));
                                 _dbUser.StripeCustomerId = paymentIntent.CustomerId;
                                 await _customerServiceHandler.UpdateAccount(_dbUser, _dbpayment.ShopId ?? 11);
-                                await _trRestaurantBookingServiceHandler.PlaceBooking(bookings, _dbpayment.ShopId ?? 11, _dbUser);
+                                await _trRestaurantBookingServiceHandler.PlaceBooking(bookings, _dbpayment.ShopId ?? 11, _dbUser, IntentTypeEnum.PaymentIntent);
 
                             }
                         }
@@ -207,15 +208,15 @@ namespace KingfoodIO.Controllers.Common
                             _logger.LogInfo("ChargeSucceeded&PaymentIntentSucceeded.Error:" + ex.Message);
                         }
                         break;
-                    case Events.CheckoutSessionCompleted:
-                        {
-                            _logger.LogInfo("CheckoutSessionCompleted:" + stripeEvent.Type);
-                            _logger.LogInfo("webhook:CheckoutSessionCompleted");
-                            var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
-                            _logger.LogInfo("webhook:CheckoutSessionCompleted" + session.Id);
+                    //case Events.CheckoutSessionCompleted:
+                    //    {
+                    //        _logger.LogInfo("CheckoutSessionCompleted:" + stripeEvent.Type);
+                    //        _logger.LogInfo("webhook:CheckoutSessionCompleted");
+                    //        var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
+                    //        _logger.LogInfo("webhook:CheckoutSessionCompleted" + session.Id);
 
-                        }
-                        break;
+                    //    }
+                    //    break;
                     case Events.ChargeRefunded:
                         _logger.LogInfo("ChargeRefunded:" + stripeEvent.Type);
                         var charge = stripeEvent.Data.Object as Stripe.Charge;
@@ -256,7 +257,7 @@ namespace KingfoodIO.Controllers.Common
                             List<DbBooking> bookings = dbUser.CartInfos.FindAll(a => a.PaymentId == dbpayment.Id && bookingIds.Contains(a.Id));
                             dbUser.StripeCustomerId = setupIntent.CustomerId;
                             await _customerServiceHandler.UpdateAccount(dbUser, paymentInfo.ShopId ?? 11);
-                            await _trRestaurantBookingServiceHandler.PlaceBooking(bookings, paymentInfo.ShopId ?? 11, dbUser);
+                            await _trRestaurantBookingServiceHandler.PlaceBooking(bookings, paymentInfo.ShopId ?? 11, dbUser,IntentTypeEnum.SetupIntent);
 
 
                         }

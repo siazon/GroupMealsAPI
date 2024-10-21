@@ -181,7 +181,7 @@ namespace KingfoodIO
             services.AddHttpClient();
 
             //DI resolver
-            var assemblyToScan = Assembly.GetAssembly(typeof(BookingBatchServiceHandler));
+            var assemblyToScan = Assembly.GetAssembly(typeof(ShopServiceHandler));
 
             services.RegisterAssemblyPublicNonGenericClasses(assemblyToScan)
               .Where(c => c.Name.EndsWith("ServiceHandler"))
