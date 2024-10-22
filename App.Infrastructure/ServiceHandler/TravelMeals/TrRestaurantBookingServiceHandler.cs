@@ -1164,6 +1164,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     {
                         Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && a.IsDeleted), pageSize, continuationToken);
                         res = Bookings.Value.ToList();
+                        foreach (var order in res)
+                        {
+                            order.Details = order.Details.FindAll(d => d.IsDeleted);
+                        }
                     }
                     else
                     {
@@ -1175,7 +1179,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                             res = Bookings.Value.ToList();
                             foreach (var order in res)
                             {
-                                order.Details = order.Details.FindAll(d => d.SelectDateTime > stime && d.SelectDateTime <= etime);
+                                order.Details = order.Details.FindAll(d => d.IsDeleted&& d.SelectDateTime > stime && d.SelectDateTime <= etime);
                             }
                         }
                         else
@@ -1183,6 +1187,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                             Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && a.IsDeleted &&
                             a.Created > stime && a.Created <= etime), pageSize, continuationToken);
                             res = Bookings.Value.ToList();
+                            foreach (var order in res)
+                            {
+                                order.Details = order.Details.FindAll(d => d.IsDeleted);
+                            }
                         }
 
                     }
@@ -1194,6 +1202,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     {
                         Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted), pageSize, continuationToken);
                         res = Bookings.Value.ToList();
+                        foreach (var order in res)
+                        {
+                            order.Details = order.Details.FindAll(d => !d.IsDeleted);
+                        }
                     }
                     else
                     {
@@ -1205,7 +1217,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                             res = Bookings.Value.ToList();
                             foreach (var order in res)
                             {
-                                order.Details = order.Details.FindAll(d => d.SelectDateTime > stime && d.SelectDateTime <= etime);
+                                order.Details = order.Details.FindAll(d => !d.IsDeleted&& d.SelectDateTime > stime && d.SelectDateTime <= etime);
                             }
                         }
                         else
@@ -1213,6 +1225,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                             Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted &&
                             a.Created > stime && a.Created <= etime), pageSize, continuationToken);
                             res = Bookings.Value.ToList();
+                            foreach (var order in res)
+                            {
+                                order.Details = order.Details.FindAll(d => !d.IsDeleted);
+                            }
                         }
                     }
                 }
@@ -1225,7 +1241,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         res = Bookings.Value.ToList();
                         foreach (var order in res)
                         {
-                            order.Details = order.Details.FindAll(d => d.Status == (OrderStatusEnum)status);
+                            order.Details = order.Details.FindAll(d =>!d.IsDeleted&& d.Status == (OrderStatusEnum)status);
                         }
                     }
                     else
@@ -1238,7 +1254,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                             res = Bookings.Value.ToList();
                             foreach (var order in res)
                             {
-                                order.Details = order.Details.FindAll(d => d.Status == (OrderStatusEnum)status && d.SelectDateTime > stime && d.SelectDateTime <= etime);
+                                order.Details = order.Details.FindAll(d =>!d.IsDeleted&& d.Status == (OrderStatusEnum)status && d.SelectDateTime > stime && d.SelectDateTime <= etime);
                             }
                         }
                         else
@@ -1248,7 +1264,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                             res = Bookings.Value.ToList();
                             foreach (var order in res)
                             {
-                                order.Details = order.Details.FindAll(d => d.Status == (OrderStatusEnum)status);
+                                order.Details = order.Details.FindAll(d =>!d.IsDeleted&& d.Status == (OrderStatusEnum)status);
                             }
                         }
                     }
