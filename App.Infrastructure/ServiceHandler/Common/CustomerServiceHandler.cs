@@ -147,7 +147,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             {
                 return new ResponseModel() { msg = "密码错误" };
             }
-            var bookings = await _bookingRepository.GetManyAsync(a => a.Creater == customer.Id&&a.Status!=OrderStatusEnum.Settled&&a.Status!=OrderStatusEnum.Canceled&&a.Status!=OrderStatusEnum.None);
+            var bookings = await _bookingRepository.GetManyAsync(a => a.Creater == customer.Id && a.Status != OrderStatusEnum.Settled && a.Status != OrderStatusEnum.Canceled && a.Status != OrderStatusEnum.None);
             if (bookings != null && bookings.Count() > 0)
             {
                 return new ResponseModel() { msg = "您有订单未完成，请联系客服完成订单后再注销订单" };
@@ -340,7 +340,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             {
                 foreach (var item in cartInfos)
                 {
-                  
+
                     if (string.IsNullOrWhiteSpace(item.Id))
                         item.Id = Guid.NewGuid().ToString();
                     if (item.AmountInfos == null)
@@ -385,10 +385,11 @@ namespace App.Infrastructure.ServiceHandler.Common
                     item.RestaurantCountry = rest.Country;
                     item.Currency = rest.Currency;
                     item.RestaurantTimeZone = rest.TimeZone;
-                    item.BillInfo = rest.BillInfo;//更新最新的付款信息
+                    if (!customer.IsOldCustomer)
+                        item.BillInfo = rest.BillInfo;//更新最新的付款信息
                     item.BillInfo.IsOldCustomer = customer.IsOldCustomer;
                     item.RestaurantIncluedVAT = rest.IncluedVAT;
-                    item.IntentType=rest.BillInfo.PaymentType==PaymentTypeEnum.Full?IntentTypeEnum.PaymentIntent:IntentTypeEnum.SetupIntent;
+                    item.IntentType = rest.BillInfo.PaymentType == PaymentTypeEnum.Full ? IntentTypeEnum.PaymentIntent : IntentTypeEnum.SetupIntent;
                     List<TrDbRestaurantMenuItem> courses = new List<TrDbRestaurantMenuItem>();
                     foreach (var cate in rest.Categories)
                     {
@@ -433,20 +434,20 @@ namespace App.Infrastructure.ServiceHandler.Common
 
 
 
-            return new ResponseModel (){ msg = "ok", data = existingCustomer.CartInfos };
+            return new ResponseModel() { msg = "ok", data = existingCustomer.CartInfos };
         }
         public async Task<ResponseModel> Delete(DbCustomer item, string email, string pwd, int shopId)
         {
             Guard.NotNull(item);
             if (item.Email == email)
-                return new ResponseModel()  { msg = "无法删除你自己的账号", };
+                return new ResponseModel() { msg = "无法删除你自己的账号", };
             var passwordEncode = _encryptionHelper.EncryptString(pwd);
             var customer = await _customerRepository.GetOneAsync(r =>
                 r.Email == email && r.IsActive.HasValue && r.IsActive.Value
                 && r.ShopId == shopId);
             if (customer.Password != passwordEncode)
             {
-                return   new ResponseModel() { msg = "密码错误", };
+                return new ResponseModel() { msg = "密码错误", };
             }
 
             var existingItem = await _customerRepository.GetOneAsync(r => r.Id == item.Id && r.ShopId == shopId);

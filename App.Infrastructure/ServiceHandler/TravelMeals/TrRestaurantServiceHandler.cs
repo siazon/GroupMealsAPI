@@ -52,7 +52,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<ResponseModel> GetRestaurant(string Id);
         Task<ResponseModel> GetCitys(int shopId);
         Task<ResponseModel> GetCities(int shopId);
-        Task<ResponseModel> GetCities_old(int shopId);
+        Task<ResponseModel> GetCitiesV1(int shopId);
         Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId);
         Task<ResponseModel> UpsetCities(DbCountry countries, int shopId);
         Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId);
@@ -357,7 +357,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<ResponseModel> UpsetCities(DbCountry countries, int shopId)
         {
             var cacheKey = string.Format("motionmedia-{1}-{0}", shopId, "cities");
-            if(countries==null)
+            if (countries == null)
                 return new ResponseModel { msg = "保存失败，请检查输入的内容是否正确", code = 501, data = null };
 
             var cacheKeycitys = string.Format("motionmedia-{1}-{0}", shopId, "citys");
@@ -365,7 +365,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _memoryCache.Set<Dictionary<string, List<string>>>(cacheKeycitys, null);
             if (string.IsNullOrWhiteSpace(countries.Id))
                 countries.Id = Guid.NewGuid().ToString();
-             _countryRepository.UpsertCountry(countries);
+            _countryRepository.UpsertCountry(countries);
 
             _memoryCache.Set<DbCountry>(cacheKey, null);
             _memoryCache.Set<Dictionary<string, List<string>>>(cacheKeycitys, null);
@@ -403,33 +403,41 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             return new ResponseModel { msg = "ok", code = 200, data = cityRes };
         }
-        public async Task<ResponseModel> GetCities_old(int shopId) {
-            _logger.LogInfo("azure functions actioned");
-
-            var existingCities = new DbCountryold() {   Countries = new List<Country>() {
-                new Country() { NameCN= "请访问groupmeals.com下载最新版本APP", Name= "请访问groupmeals.com下载最新版本APP", Cities=new List<City>(){ new City() { Name= "请访问groupmeals.com下载最新版本APP" } } } } };
-
-            return new ResponseModel { msg = "ok", code = 200, data = existingCities };
-        }
         public async Task<ResponseModel> GetCities(int shopId)
         {
             _logger.LogInfo("azure functions actioned");
-            var cacheKey = string.Format("motionmedia-{1}-{0}", shopId, "cities");
-            var cacheResult = new DbCountry();
-            _memoryCache.TryGetValue(cacheKey, out cacheResult);//<Dictionary<string, List<string>>>(cacheKey);
-            if (cacheResult != null)
+            var existingCities = await _countryRepository.GetCountry(shopId);
+            if (existingCities == null)
+                return new ResponseModel { msg = "Cities can't fund", code = 501, };
+            DbCountryold dbCountryold = new DbCountryold() { Id = Guid.NewGuid().ToString(), Countries = new List<Country>() };
+            foreach (var item in existingCities)
             {
-                return new ResponseModel { msg = "ok", code = 200, data = cacheResult };
+                Country country = new Country()
+                {
+                    Currency = item.Currency,
+                    CurrencySymbol = item.CurrencySymbol,
+                    ExchangeRate = item.ExchangeRate,
+                    ExchangeRateExtra = item.ExchangeRateExtra,
+                    Name = item.Code,
+                    NameCN = item.Name,
+                    TimeZone = item.Cities[0].TimeZone,
+                    SortOrder = item.SortOrder ?? 0,
+                     Cities= item.Cities,
+                };
+                dbCountryold.Countries.Add(country);
             }
+            return new ResponseModel { msg = "ok", code = 200, data = dbCountryold };
+        }
+        public async Task<ResponseModel> GetCitiesV1(int shopId)
+        {
+            _logger.LogInfo("azure functions actioned");
+
             var existingCities = await _countryRepository.GetCountry(shopId);
             if (existingCities == null)
                 return new ResponseModel { msg = "Cities can't fund", code = 501, };
 
-
             existingCities = existingCities.OrderBy(x => x.SortOrder).ToList();
             existingCities.ToList().ForEach(x => { x.Cities = x.Cities.OrderBy(a => a.SortOrder).ToList(); });
-
-            _memoryCache.Set(cacheKey, existingCities);
 
             return new ResponseModel { msg = "ok", code = 200, data = existingCities };
 

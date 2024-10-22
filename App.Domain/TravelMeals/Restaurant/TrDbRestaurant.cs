@@ -130,6 +130,9 @@ namespace App.Domain.TravelMeals.Restaurant
         public string AmountText { get; set; }
         public string RewardText {  get; set; }
         public string UnPaidAmountText { get; set; }
+        public Dictionary<string, decimal> AmountList { get; set; } = new Dictionary<string, decimal>();
+        public Dictionary<string, decimal> UnPaidAmountList { get; set; } = new Dictionary<string, decimal>();
+
         public List<IntentTypeEnum> IntentType { get; set; } = new List<IntentTypeEnum>();
 
     }

@@ -152,7 +152,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> GetCitiesV1(int shopId, bool cache = false)
         {
-            return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetCities(shopId));
+            return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetCitiesV1(shopId));
         }
 
         [HttpGet]
@@ -161,7 +161,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         public async Task<IActionResult> GetCities(int shopId, bool cache = false)
         {
             //return new ContentResult { StatusCode = 501, Content = "请访问groupmeals.com下载最新版本APP继续使用" };
-            return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetCities_old(shopId));
+            return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetCities(shopId));
         }
         [HttpGet]
         [ServiceFilter(typeof(AuthActionFilter))]

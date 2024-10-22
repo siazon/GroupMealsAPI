@@ -23,7 +23,7 @@ namespace App.Infrastructure.ServiceHandler.Common
     {
         Task<StripeBase> GetBooking(string id);
         SetupIntent CreateSetupPayIntent(PayIntentParam bill, string bookingIds, DbToken user);
-        PaymentIntent CreatePayIntent(DbPaymentInfo dbPaymentInfo, string bookingIds, DbToken user);
+        PaymentIntent CreatePayIntent(DbPaymentInfo dbPaymentInfo, string bookingIds, string userId);
         void SetupPaymentAction(DbPaymentInfo paymentInfo, string userId);
     }
     public class StripeServiceHandler : IStripeServiceHandler
@@ -44,14 +44,14 @@ namespace App.Infrastructure.ServiceHandler.Common
             return Booking;
         }
 
-        public PaymentIntent CreatePayIntent(DbPaymentInfo dbPaymentInfo, string bookingIds, DbToken user)
+        public PaymentIntent CreatePayIntent(DbPaymentInfo dbPaymentInfo, string bookingIds, string userId)
         {
             Dictionary<string, string> meta = new Dictionary<string, string>
                 {
                     { "billId", dbPaymentInfo.Id}
                 };
             meta["bookingIds"] = bookingIds;
-            meta["userId"] = user.UserId;
+            meta["userId"] = userId;
             meta["intent_type"] = "2";
             var paymentIntentService = new PaymentIntentService();
             PaymentIntent paymentIntent = null;

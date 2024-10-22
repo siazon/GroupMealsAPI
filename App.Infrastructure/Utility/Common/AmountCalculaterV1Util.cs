@@ -42,6 +42,7 @@ namespace App.Infrastructure.Utility.Common
             Dictionary<string, decimal> dicUnPaidAmount = new Dictionary<string, decimal>();
             Dictionary<string, DicModel> dicInfo = new Dictionary<string, DicModel>();
             bool hasFullpay = false;
+            
             foreach (var item in details)
             {
                 var amount = getItemAmount(item.ConvertToAmount());//总金额
@@ -89,7 +90,7 @@ namespace App.Infrastructure.Utility.Common
                 //}
             }
 
-            if (hasFullpay)
+            if (hasFullpay|| customer.IsOldCustomer)
                 paymentAmountInfo.IntentType = new List<IntentTypeEnum> { IntentTypeEnum.PaymentIntent };
             else
                 paymentAmountInfo.IntentType = new List<IntentTypeEnum> { IntentTypeEnum.SetupIntent };
@@ -98,7 +99,8 @@ namespace App.Infrastructure.Utility.Common
             paymentAmountInfo.UnPaidAmountText = JionDictionary(dicInfo, countries, "unpaid");
             string rewardText = JionDictionary(dicInfo, countries, "reward");
             paymentAmountInfo.RewardText = rewardText;
-
+            paymentAmountInfo.AmountList = dicAmount;
+            paymentAmountInfo.UnPaidAmountList = dicUnPaidAmount;
             return paymentAmountInfo;
 
         }
@@ -217,7 +219,7 @@ namespace App.Infrastructure.Utility.Common
         {
             decimal _amount = 0;
             decimal amount = getItemAmount(bookingDetail);//总金额额
-            if (bookingDetail.BillInfo.IsOldCustomer)
+            if (customer.IsOldCustomer)
             {
                 if (bookingDetail.BillInfo.PaymentType == PaymentTypeEnum.Full)
                     return amount;

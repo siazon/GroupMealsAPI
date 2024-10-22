@@ -173,8 +173,11 @@ namespace KingfoodIO.Controllers.Common
 
                             paymentIntent.Metadata.TryGetValue("billId", out billId);
                             paymentIntent.Metadata.TryGetValue("userId", out userId);
+                            bookingIds = paymentIntent.Metadata["bookingIds"];
 
-                            _trRestaurantBookingServiceHandler.BookingCharged(billId, paymentIntent.Id, paymentIntent.ReceiptUrl);
+                            _trRestaurantBookingServiceHandler.BookingCharged(billId, bookingIds, paymentIntent.Id, paymentIntent.ReceiptUrl);
+                            _trRestaurantBookingServiceHandler.BookingChargedOld(bookingIds, paymentIntent.Id, paymentIntent.ReceiptUrl);
+
 
 
                         }
@@ -196,7 +199,7 @@ namespace KingfoodIO.Controllers.Common
                             if (_dbpayment != null)
                             {
                                var _dbUser = await _customerServiceHandler.GetCustomer(userId, _dbpayment.ShopId ?? 11);
-                                List<DbBooking> bookings = _dbUser.CartInfos.FindAll(a => a.PaymentId == _dbpayment.Id && bookingIds.Contains(a.Id));
+                                List<DbBooking> bookings = _dbUser.CartInfos.FindAll(a =>  bookingIds.Contains(a.Id));
                                 _dbUser.StripeCustomerId = paymentIntent.CustomerId;
                                 await _customerServiceHandler.UpdateAccount(_dbUser, _dbpayment.ShopId ?? 11);
                                 await _trRestaurantBookingServiceHandler.PlaceBooking(bookings, _dbpayment.ShopId ?? 11, _dbUser, IntentTypeEnum.PaymentIntent);
@@ -331,57 +334,28 @@ namespace KingfoodIO.Controllers.Common
 
             try
             {
-                //Dictionary<string, string> meta = new Dictionary<string, string>
-                //{
-                //    { "billId", bill.BillId}
-                //};
-                //DbBooking booking = null;
-                //DbBooking gpBooking = null;
-                //long Amount = 0;
+                TrDbRestaurantBooking gpBooking =  await _trRestaurantBookingServiceHandler.GetBookingOld(bill.BillId);
+                if (gpBooking == null)
+                {
+                    return BadRequest("Can't find the booking by Id");
+                }
+
+                var paymentinfo = await _paymentRepository.GetOneAsync(a => a.Id == gpBooking.Details[0].PaymentId);
+
+                PaymentIntent paymentIntent =  _stripeServiceHandler.CreatePayIntent(paymentinfo,bill.BillId, paymentinfo.Creater);
+
+                paymentinfo.StripeIntentId = paymentIntent.Id;
+                paymentinfo.StripeClientSecretKey = paymentIntent.ClientSecret;
+                paymentinfo.SetupPay = false;
+                await _paymentRepository.UpsertAsync(paymentinfo);
+
+                gpBooking.PaymentInfos[0].StripeIntentId = paymentIntent.Id;
+                gpBooking.PaymentInfos[0].SetupPay = false;
+                gpBooking.PaymentInfos[0].StripeClientSecretKey = paymentIntent.ClientSecret;
+                var res = await _trRestaurantBookingServiceHandler.UpdateBookingOld(gpBooking);
 
 
-                //gpBooking = await _trRestaurantBookingServiceHandler.GetBooking(bill.BillId);
-                //if (gpBooking == null)
-                //{
-                //    return BadRequest("Can't find the booking by Id");
-                //}
-                //booking = gpBooking;
-                //var shop = await _shopServiceHandler.GetShopInfo(shopId);
-                //if (bill.SetupPay == 1)
-                //    Amount = 100;
-                //else
-                //    Amount = await _amountCalculaterV1.CalculateOrderPaidAmount(gpBooking.Details, gpBooking.PayCurrency, gpBooking.ShopId ?? 11);//  CalculateOrderAmount(gpBooking, shop.ExchangeRate);
-                //string currency = "eur";
-                //if (gpBooking.PayCurrency == "UK")
-                //    currency = "gbp";
-                //if (booking != null && !string.IsNullOrWhiteSpace(booking.PaymentInfos[0].StripePaymentMethodId))//upload exist payment
-                //{
-                //    var service = new PaymentIntentService();
-                //    var existpaymentIntent = service.Get(booking.PaymentInfos[0].StripePaymentMethodId);
-                //    if (existpaymentIntent != null && existpaymentIntent.Status == "requires_payment_method")
-                //    {
-                //        var payment = UpdatePaymentIntent(booking.PaymentInfos[0].StripePaymentMethodId, Amount, meta);
-                //        _logger.LogInfo("UpdatePaymentIntent:" + booking.ToString() + bill.ToString());
-                //        return Json(new { clientSecret = payment.ClientSecret, paymentIntentId = payment.Id });
-                //    }
-                //}
-                //var options = new PaymentIntentCreateOptions
-                //{
-                //    Amount = Amount,
-                //    Currency = currency,
-                //    //PaymentMethodTypes = new List<string> { "card","alipay", "wechat_pay" },
-                //    AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions
-                //    {
-                //        Enabled = true,
-                //    },
-                //    Metadata = meta
-                //};
-                //var paymentIntentService = new PaymentIntentService();
-                //var paymentIntent = paymentIntentService.Create(options);
-                //_logger.LogInfo("AddPaymentIntent:" + booking.ToString() + bill.ToString());
-                //_trRestaurantBookingServiceHandler.BindingPayInfoToTourBooking(gpBooking, paymentIntent.Id, paymentIntent.ClientSecret, bill.SetupPay == 1);
-                //return Json(new { clientSecret = paymentIntent.ClientSecret, paymentIntentId = paymentIntent.Id });
-                return Json(new { });
+                return Json(new { clientSecret = paymentIntent.ClientSecret, paymentIntentId = paymentIntent.Id });
             }
             catch (Exception ex)
             {

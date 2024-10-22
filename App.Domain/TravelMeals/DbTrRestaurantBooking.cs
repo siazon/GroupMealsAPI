@@ -64,6 +64,7 @@ namespace App.Domain.TravelMeals
     {
         public int? PaymentType { get; set; }//0：订单结束扣款，1：24小时扣款
         public decimal Amount { get; set; }
+        public decimal PaidAmount { get; set; }
         public decimal RefundAmount { get; set; }
         public string Currency { get; set; }
         public DateTime PayTime { get; set; }
@@ -88,8 +89,8 @@ namespace App.Domain.TravelMeals
         public bool AllowEdit { get; set; }
         public bool AllowCancel { get; set; }
         public IntentTypeEnum IntentType { get; set; }
-        public OrderStatusEnum Status { get; set; }//0:defult,1:canceled
-        public AcceptStatusEnum AcceptStatus { get; set; }//0:Defult, 1:Accepted, 2:Declined
+        public OrderStatusEnum Status { get; set; }
+        public AcceptStatusEnum AcceptStatus { get; set; }
         public bool Modified { get; set; }
         public bool Charged { get; set; }
         public string AcceptReason { get; set; }
