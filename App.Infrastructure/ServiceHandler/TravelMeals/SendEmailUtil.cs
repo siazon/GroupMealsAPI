@@ -122,7 +122,19 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     Detail += $"<b style=\"color: red;\"> UnPaid(待支付)：{itemCurrencyStr}{amount - reward - paidAmount}</b>";
                 senderParams.BookingRef = item.BookingRef;
                 senderParams.BookingId = item.Id;
-                senderParams.PaidAmount = itemCurrencyStr + ": " + Math.Round(paidAmount, 2) + "（立减：" + reward + ")";
+                //
+                if (reward > 0)
+                {
+                    if (senderParams.isShortInfo == 1)
+                        senderParams.PaidAmount = itemCurrencyStr + ": " + Math.Round(paidAmount + reward, 2);
+                    else
+                    {
+                        senderParams.PaidAmount = itemCurrencyStr + ": " + Math.Round(paidAmount, 2);
+                        senderParams.PaidAmount += "<br>（平台优惠：" + reward + ")";
+                    }
+                }
+                else
+                    senderParams.PaidAmount = itemCurrencyStr + ": " + Math.Round(paidAmount, 2);
                 senderParams.UnPaidAmount = itemCurrencyStr + ": " + Math.Round((amount - reward - paidAmount), 2);
                 senderParams.Amount = itemCurrencyStr + ": " + Math.Round(amount, 2);
                 senderParams.MealTime = selectDateTimeStr;
@@ -143,6 +155,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string emailHtml = "";
             try
             {
+                senderParams.PaidAmount= new HtmlString(senderParams.PaidAmount?.ToString());
                 senderParams.Details = new HtmlString(senderParams.Details?.ToString());
                 senderParams.RestaurantInfo = new HtmlString(senderParams.RestaurantInfo?.ToString());
                 senderParams.CustomerInfo = new HtmlString(senderParams.CustomerInfo?.ToString());
@@ -223,10 +236,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     Detail += $"{course.MenuItemName}({itemCurrencyStr} {course.Price}) * {qty} 人 ";
                 }
                 Detail += $"<br> Amount(金额)：{itemCurrencyStr}{Math.Round(amount, 2)}，    Paid(已付){itemCurrencyStr}" +
-                    $"{Math.Round(paidAmount, 2)}（立减{itemCurrencyStr}{Math.Round(reward, 2)}）, <br>";
+                    $"{Math.Round(paidAmount, 2)} ";
+                if (reward > 0)
+                    Detail += $"（立减{itemCurrencyStr}{Math.Round(reward, 2)}）,";
+               Detail += "<br>";
                 if (amount - paidAmount > 0)
                 {
-                    decimal unpaid = Math.Round((amount -reward- paidAmount), 2);
+                    decimal unpaid = Math.Round((amount - reward - paidAmount), 2);
                     Detail += $"UnPaid(待支付)：<b style ='color: red;'>{itemCurrencyStr}{unpaid}</b> <br>";
                 }
                 Detail += "<br>";
@@ -278,7 +294,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             decimal amount = item?.AmountInfos.Sum(x => x.Amount) ?? 0;
             decimal paidAmount = item?.AmountInfos.Sum(x => x.PaidAmount) ?? 0;
-            decimal reward=item?.AmountInfos.Sum(x=>x.Reward) ?? 0;
+            decimal reward = item?.AmountInfos.Sum(x => x.Reward) ?? 0;
 
             selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(item.RestaurantTimeZone).ToString("yyyy-MM-dd HH:mm:ss");
             foreach (var course in item?.Courses)
@@ -343,7 +359,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             decimal paidAmount = 0; //item.AmountInfos.Sum(x => x.PaidAmount);
 
             paidAmount = booking.AmountInfos.Sum(x => x.PaidAmount);
-            var reward=booking.AmountInfos.Sum(x=>x.Reward);
+            var reward = booking.AmountInfos.Sum(x => x.Reward);
             amount = booking.AmountInfos.Sum(x => x.Amount);
 
             paidAmount = Math.Round(paidAmount, 2);
@@ -382,7 +398,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //_twilioUtil.sendSMS(booking.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
             Detail += $"<br> Amount(金额)：<b>{itemCurrencyStr}{booking.AmountInfos.Sum(x => x.Amount)}</b>, <br> Paid(已付)：<b>{itemCurrencyStr}{paidAmount}</b>,<br>";
             if (amount - paidAmount > 0)
-                Detail += $" UnPaid(待支付)：<b style=\"color: red;\">{itemCurrencyStr}{amount- reward - paidAmount}</b>";
+                Detail += $" UnPaid(待支付)：<b style=\"color: red;\">{itemCurrencyStr}{amount - reward - paidAmount}</b>";
             var detailstr = new HtmlString(Detail);
             Task.Run(async () =>
             {

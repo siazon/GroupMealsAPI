@@ -52,6 +52,7 @@ using SixLabors.ImageSharp.Memory;
 using Microsoft.AspNetCore.Razor.Language.Extensions;
 using App.Domain.TravelMeals.VO;
 using static Pipelines.Sockets.Unofficial.SocketConnection;
+using System.Numerics;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -903,7 +904,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 user.CartInfos.Remove(booking);
             }
             await _customerServiceHandler.UpdateAccount(user, shopId);
-
+            if(intentType==IntentTypeEnum.SetupIntent)
+                await SendEmail(cartInfos, user);
             return cartInfos;
         }
         public async void SetupPaymentAction(string billId, string userId)
@@ -2175,6 +2177,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         /// 
         /// </summary>
         public int _ts { get; set; }
+
+       
+
     }
 
 
