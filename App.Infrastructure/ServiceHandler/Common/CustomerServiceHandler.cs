@@ -57,6 +57,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         Task<object> GetCart(string UserId, int shopId);
 
         Task<object> Delete(DbCustomer item, string email, string pwd, int shopId);
+        Task<string> GetDbCountryTimezone(string countryName);
     }
 
     public class CustomerServiceHandler : ICustomerServiceHandler
@@ -72,12 +73,13 @@ namespace App.Infrastructure.ServiceHandler.Common
         private readonly IContentBuilder _contentBuilder;
         private readonly ISendEmailUtil _emailUtil;
         ITwilioUtil _twilioUtil;
+        IDbCommonRepository<DbCountry> _trRestaurantServiceHandler;
         ILogManager _logger;
         IAmountCalculaterUtil _amountCalculaterV1;
         IHostingEnvironment _environment;
         IMemoryCache _memoryCache;
 
-        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1, IMemoryCache memoryCache, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository,
+        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IDbCommonRepository<DbCountry> trRestaurantServiceHandler, IAmountCalculaterUtil amountCalculaterV1, IMemoryCache memoryCache, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository,
         ITwilioUtil twilioUtil, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<TrDbRestaurant> restaurantRepository,
         IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, ISendEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
         {
@@ -96,6 +98,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             _settingRepository = settingRepository;
             _environment = environment;
             _amountCalculaterV1 = amountCalculaterV1;
+            _trRestaurantServiceHandler= trRestaurantServiceHandler;
         }
 
         public async Task<List<DbCustomer>> List(int shopId)
@@ -328,7 +331,8 @@ namespace App.Infrastructure.ServiceHandler.Common
                     if (!string.IsNullOrWhiteSpace(item.MealTime))
                     {
                         DateTime.TryParse(item.MealTime, out dateTime);
-                        item.SelectDateTime = dateTime.GetTimeZoneByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry));
+                        string ianaCode = await GetDbCountryTimezone(item.RestaurantCountry);
+                        item.SelectDateTime = dateTime.GetTimeZoneByIANACode(ianaCode);
                     }
                     if (string.IsNullOrWhiteSpace(item.Id))
                         item.Id = Guid.NewGuid().ToString();
@@ -345,6 +349,11 @@ namespace App.Infrastructure.ServiceHandler.Common
             var savedCustomer = await _customerRepository.UpsertAsync(existingCustomer);
 
             return new { msg = "ok", data = savedCustomer.ClearForOutPut() };
+        }
+        public async Task<string> GetDbCountryTimezone(string countryName) {
+            var citis = await _trRestaurantServiceHandler.GetOneAsync(a => a.ShopId == 11 && a.IsActive == true);
+            string ianaCode = citis.Countries.FirstOrDefault(a => a.Name == countryName).TimeZone;
+            return ianaCode;
         }
         public async Task<object> GetCart(string userId, int shopId)
         {

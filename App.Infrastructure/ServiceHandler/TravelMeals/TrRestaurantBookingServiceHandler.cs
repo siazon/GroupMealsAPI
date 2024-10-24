@@ -758,7 +758,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 if (!string.IsNullOrWhiteSpace(item.MealTime))
                 {
                     DateTime.TryParse(item.MealTime, out dateTime);
-                    item.SelectDateTime = dateTime.GetTimeZoneByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry));
+                    string ianaCode = await _customerServiceHandler.GetDbCountryTimezone(item.RestaurantCountry);
+                    item.SelectDateTime = dateTime.GetTimeZoneByIANACode(ianaCode);
 
                     string[] temp = item.MealTime.Split(' ');
                     string[] timetemp = temp[1].Split(':');
@@ -1396,7 +1397,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     if (detail.IsDeleted || detail.Status == OrderStatusEnum.Canceled || detail.Status == OrderStatusEnum.Settled) continue;
                     Console.WriteLine(Booking.BookingRef + "." + detail.Status.ToString() + " : " + detail.AcceptStatus.ToString());
                     if ((int)detail.AcceptStatus > 1) continue;//只加入待接单与已接单的
-                    string selectDateTimeStr = detail.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(detail.RestaurantCountry ?? "UK")).ToString("yyyy-MM-dd HH:mm:ss");
+                    string timezone =await _customerServiceHandler.GetDbCountryTimezone(detail.RestaurantCountry ?? "UK");
+                    string selectDateTimeStr = detail.SelectDateTime.Value.GetLocaTimeByIANACode(timezone).ToString("yyyy-MM-dd HH:mm:ss");
                     string mealStr = "";
                     foreach (var meal in detail.Courses)
                     {

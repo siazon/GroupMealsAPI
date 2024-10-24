@@ -67,7 +67,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
         }
 
-        public void EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject)
+        public async void EmailBoss(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject)
         {
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";
@@ -83,7 +83,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 paidAmount = Math.Round(paidAmount, 2);
                 amount = Math.Round(amount, 2);
                 Detail = "";
-                string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm");
+                string timeZone = await _coutryHandler.GetDbCountryTimezone(item.RestaurantCountry);
+                string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(timeZone).ToString("yyyy-MM-dd HH:mm");
                 if (tempName == EmailConfigs.Instance.Emails[EmailTypeEnum.MealModified].TemplateName)
                 {
                     Detail += AppendRestaurantInfo(item);
@@ -151,7 +152,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return detailStr;
         }
 
-        public void EmailCustomerTotal(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject)
+        public async void EmailCustomerTotal(TrDbRestaurantBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject)
         {
             string htmlTemp = EmailTemplateUtil.ReadTemplate(wwwPath, tempName);
             string Detail = "";
@@ -163,7 +164,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 if (item.Status == OrderStatusEnum.Canceled) continue;
                 if (tempName != EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealCustomer].TemplateName)
                     Detail += AppendRestaurantInfo(item);
-                string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm");
+
+                string timeZone = await _coutryHandler.GetDbCountryTimezone(item.RestaurantCountry);
+                string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(timeZone).ToString("yyyy-MM-dd HH:mm");
                 Detail += selectDateTimeStr + " <br><br> ";
 
                 Detail += AppendCustomerInfo(item);
@@ -265,7 +268,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             totalAmount += amount;
             decimal paidAmount = item?.AmountInfos.Sum(x => x.PaidAmount) ?? 0;
             totalPaidAmount += paidAmount;
-            selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm:ss");
+
+            string timeZone = await _coutryHandler.GetDbCountryTimezone(item.RestaurantCountry);
+            selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(timeZone).ToString("yyyy-MM-dd HH:mm:ss");
             foreach (var course in item?.Courses)
             {
                 Detail += $"{course.MenuItemName} * {course.Qty}  人  {currencyStr}{paidAmount}/{amount}<br>";
@@ -314,7 +319,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             paidAmount = Math.Round(paidAmount, 2);
             amount = Math.Round(amount, 2);
 
-            string selectDateTimeStr = detail.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(detail.RestaurantCountry)).ToString("yyyy-MM-dd HH:mm:ss");
+            string timeZone = await _coutryHandler.GetDbCountryTimezone(detail.RestaurantCountry);
+            string selectDateTimeStr = detail.SelectDateTime.Value.GetLocaTimeByIANACode(timeZone).ToString("yyyy-MM-dd HH:mm:ss");
             string Detail = "";
             foreach (var course in detail.Courses)
             {

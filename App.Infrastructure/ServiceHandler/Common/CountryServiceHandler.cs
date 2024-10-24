@@ -9,6 +9,7 @@ using Microsoft.Extensions.Caching.Memory;
 using SendGrid.Helpers.Mail;
 using Stripe;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace App.Infrastructure.ServiceHandler.Common
@@ -16,6 +17,7 @@ namespace App.Infrastructure.ServiceHandler.Common
     public interface ICountryServiceHandler
     {
         Task<DbCountry> GetCountry(int shopId);
+        Task<string> GetDbCountryTimezone(string countryName);
     }
 
     public class CountryServiceHandler : ICountryServiceHandler
@@ -42,7 +44,12 @@ namespace App.Infrastructure.ServiceHandler.Common
             return countryInfo;
         }
 
-       
+        public async Task<string> GetDbCountryTimezone(string countryName)
+        {
+            var citis = await _countryRepository.GetOneAsync(a => a.ShopId == 11 && a.IsActive == true);
+            string ianaCode = citis.Countries.FirstOrDefault(a => a.Name == countryName).TimeZone;
+            return ianaCode;
+        }
 
     }
 }
