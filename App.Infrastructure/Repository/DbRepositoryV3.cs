@@ -194,7 +194,7 @@ namespace App.Infrastructure.Repository
                 List<T> results = new List<T>();
                 string continuation = null;
                 var query = container.GetItemLinqQueryable<T>(true)
-                         .Where(predicate);
+                         .Where(predicate).OrderByDescending(a=>a.Created);
 
                 using (var iterator = query.ToFeedIterator())
                 {

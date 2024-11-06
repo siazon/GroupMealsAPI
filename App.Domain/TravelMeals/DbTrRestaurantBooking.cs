@@ -82,6 +82,8 @@ namespace App.Domain.TravelMeals
         public string RestaurantCountry { get; set; }
         public string RestaurantTimeZone { get; set; }
         public bool RestaurantIncluedVAT { get; set; }
+        public bool ShowPaid { get; set; }
+        public double Vat { get; set; }
         public string Currency { get; set; }
         public string Remark { get; set; }
         public string SupporterEmail { get; set; }
@@ -124,6 +126,7 @@ namespace App.Domain.TravelMeals
         public string RestaurantWechat { get; set; }
         public string RestaurantEmail { get; set; }
         public string RestaurantCountry { get; set; }
+        public bool HidePaid { get; set; }
     }
     public class BookingCustomerInfo
     {
@@ -180,7 +183,9 @@ namespace App.Domain.TravelMeals
                 BillInfo = booking.BillInfo,
                 Courses = new List<MenuInfo>(),
                 Currency = booking.Currency,
-                RestaurantIncluedVAT = booking.RestaurantIncluedVAT
+                RestaurantIncluedVAT = booking.RestaurantIncluedVAT,
+                
+                
             };
             foreach (var item in booking.Courses)
             {

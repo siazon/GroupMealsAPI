@@ -27,12 +27,12 @@ namespace App.Domain.Common.Email
 
             Emails[EmailTypeEnum.VerifyCode] = new EmailSenderParams() { TemplateName = "verify_code", Subject = "来自Groupmeals.com的验证码",SenderEmail= "noreply@groupmeals.com", CCEmail = new List<string>() { "" } };
             Emails[EmailTypeEnum.NewMealCustomer] = new EmailSenderParams() { TemplateName = "new_meals_customer", Subject = "Thank you for your Booking", SenderEmail = "noreply@groupmeals.com", CCEmail = new List<string>() { "" } };
-            Emails[EmailTypeEnum.NewMealRestaurant] = new EmailSenderParams() { TemplateName = "new_meals_restaurant", Subject = "New Booking", SenderEmail = "noreply@groupmeals.com", CCEmail = new List<string>() { "sales.ie@groupmeals.com" } };
+            Emails[EmailTypeEnum.NewMealRestaurant] = new EmailSenderParams() { TemplateName = "new_meals_restaurant", Subject = "New Booking", SenderEmail = "noreply@groupmeals.com", CCEmail = new List<string>() { "sales.ie@groupmeals.com", "jiangyuxin0326@gmail.com" } };
             Emails[EmailTypeEnum.MealAccepted] = new EmailSenderParams() { TemplateName = "meal_accepted", Subject = "Your Booking has been Accepted", SenderEmail = "noreply@groupmeals.com", CCEmail = new List<string>() { "" } };
             Emails[EmailTypeEnum.MealAcceptedRestaurant] = new EmailSenderParams() { TemplateName = "meal_accepted_restaurant", Subject = "You Accepted an Booking", SenderEmail = "noreply@groupmeals.com", CCEmail = new List<string>() { "" } };
-            Emails[EmailTypeEnum.MealDeclined] = new EmailSenderParams() { TemplateName = "meal_declined", Subject = "Your Booking has been Declined", SenderEmail = "noreply@groupmeals.com", CCEmail = new List<string>() { "sales.ie@groupmeals.com" } };
-            Emails[EmailTypeEnum.MealModified] = new EmailSenderParams() { TemplateName = "meal_modify", Subject = "(订单修改)Booking Modified", SenderEmail = "noreply@groupmeals.com", CCEmail = new List<string>() { "sales.ie@groupmeals.com" } };
-            Emails[EmailTypeEnum.MealCancelled] = new EmailSenderParams() { TemplateName = "meal_canceled", Subject = "(订单取消)Booking Canceled", SenderEmail = "noreply@groupmeals.com", CCEmail = new List<string>() { "sales.ie@groupmeals.com" } };
+            Emails[EmailTypeEnum.MealDeclined] = new EmailSenderParams() { TemplateName = "meal_declined", Subject = "Your Booking has been Declined", SenderEmail = "noreply@groupmeals.com", CCEmail = new List<string>() { "sales.ie@groupmeals.com", "jiangyuxin0326@gmail.com" } };
+            Emails[EmailTypeEnum.MealModified] = new EmailSenderParams() { TemplateName = "meal_modify", Subject = "(订单修改)Booking Modified", SenderEmail = "noreply@groupmeals.com", CCEmail = new List<string>() { "sales.ie@groupmeals.com", "jiangyuxin0326@gmail.com" } };
+            Emails[EmailTypeEnum.MealCancelled] = new EmailSenderParams() { TemplateName = "meal_canceled", Subject = "(订单取消)Booking Canceled", SenderEmail = "noreply@groupmeals.com", CCEmail = new List<string>() { "sales.ie@groupmeals.com", "jiangyuxin0326@gmail.com" } };
         }
     }
     public class EmailSenderParams

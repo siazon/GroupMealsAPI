@@ -37,6 +37,7 @@ namespace App.Domain.TravelMeals.Restaurant
         public string TimeZone { get; set; }
         public string Country { get; set; }
         public string Currency { get; set; }
+        public double Vat { get; set; }
         public string Email { get; set; }
         public string ContactEmail { get; set; }
         public string SupportName { get; set; }
@@ -65,6 +66,7 @@ namespace App.Domain.TravelMeals.Restaurant
         public decimal PriceIncrease { get; set; }
         public decimal ChildrenPrice { get; set; }
         public bool IncluedVAT { get; set; }
+        public bool ShowPaid { get; set; }
 
         public RestaurantBillInfo BillInfo { get; set; }
 
@@ -91,6 +93,7 @@ namespace App.Domain.TravelMeals.Restaurant
                 Country = this.Country,
                 TimeZone = this.TimeZone,
                 Currency= this.Currency,
+                Vat= this.Vat,
                 Email = this.Email,
                 ContactEmail = this.ContactEmail,
                 OpenHours = this.OpenHours,
@@ -120,7 +123,7 @@ namespace App.Domain.TravelMeals.Restaurant
         public PaymentTypeEnum PaymentType { get; set; }//支付方式 全额支付，百分百，固定金额
         public double PayRate { get; set; }//百分比
         public bool IsOldCustomer { get; set; }
-        public PaymentTypeEnum RewardType { get; set; } = PaymentTypeEnum.Percentage;
+        public PaymentTypeEnum RewardType { get; set; } = PaymentTypeEnum.Percentage;//无返现，百分比，固定
         public double Reward { get; set; }
 
     }
@@ -135,6 +138,11 @@ namespace App.Domain.TravelMeals.Restaurant
 
         public List<IntentTypeEnum> IntentType { get; set; } = new List<IntentTypeEnum>();
 
+    }
+    public class ItemPayInfo {
+        public decimal PayAmount { get; set; }
+        public decimal Reward { get; set; }
+        public decimal Vat { get; set; }
     }
     public class MapPosition
     {

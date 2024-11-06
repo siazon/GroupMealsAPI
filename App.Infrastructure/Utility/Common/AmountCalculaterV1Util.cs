@@ -8,6 +8,7 @@ using Stripe;
 using Stripe.FinancialConnections;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,8 +22,7 @@ namespace App.Infrastructure.Utility.Common
         PaymentAmountInfo GetOrderPaidInfo(List<DbBooking> details, string payCurrency, int shopId, DbCustomer customer, List<DbCountry> country);
         decimal CalculateOrderPaidAmount(List<DbBooking> details, string PayCurrency, DbCustomer customer, List<DbCountry> countries);
         decimal getItemAmount(BookingCalculateVO bookingDetail);
-        decimal getItemPayAmount(BookingCalculateVO bookingDetail, DbCustomer customer, double VAT = 0.125);
-        decimal GetReward(decimal _amount, PaymentTypeEnum rewardType, double reward, DbCustomer user);
+        ItemPayInfo getItemPayAmount(BookingCalculateVO bookingDetail, DbCustomer customer, double VAT);
         decimal CalculatePayAmountByRate(decimal amount, string currency, string payCurrency, int shopId, List<DbCountry> country);
     }
 
@@ -42,13 +42,15 @@ namespace App.Infrastructure.Utility.Common
             Dictionary<string, decimal> dicUnPaidAmount = new Dictionary<string, decimal>();
             Dictionary<string, DicModel> dicInfo = new Dictionary<string, DicModel>();
             bool hasFullpay = false;
-            
+
             foreach (var item in details)
             {
                 var amount = getItemAmount(item.ConvertToAmount());//总金额
-                var payAmount = getItemPayAmount(item.ConvertToAmount(), customer);//线上支付金额
-                var reward = GetReward(amount, item.BillInfo.RewardType, item.BillInfo.Reward, customer);
-                paymentAmountInfo.TotalPayAmount += CalculatePayAmountByRate(payAmount, item.Currency, currency, shopId, countries);
+                var country = countries.FirstOrDefault(a => a.Code == item.RestaurantCountry);
+                var payAmount = getItemPayAmount(item.ConvertToAmount(), customer, country.VAT);//线上支付金额
+                var reward = payAmount.Reward;
+                paymentAmountInfo.TotalPayAmount += CalculatePayAmountByRate(payAmount.PayAmount, item.Currency, currency, shopId, countries);
+
                 if (paymentAmountInfo.TotalPayAmount > 0 && !item.BillInfo.IsOldCustomer)
                 {
 
@@ -57,21 +59,18 @@ namespace App.Infrastructure.Utility.Common
                         hasFullpay = true;
                     }
                 }
-                if (dicInfo.ContainsKey(item.Currency))
-                {
-                    dicInfo[item.Currency].Amount += Math.Round(amount, 2);
-                    dicInfo[item.Currency].UnPaidAmount += Math.Round(amount - payAmount - reward, 2);
-                    if (reward > 0)
-                        dicInfo[item.Currency].Reward += Math.Round(reward, 2);
-                }
-                else
+                if (!dicInfo.ContainsKey(item.Currency))
                 {
                     dicInfo.Add(item.Currency, new DicModel());
-                    dicInfo[item.Currency].Amount = Math.Round(amount, 2);
-                    dicInfo[item.Currency].UnPaidAmount = Math.Round(amount - payAmount - reward, 2);
-                    if (reward > 0)
-                        dicInfo[item.Currency].Reward = Math.Round(reward, 2);
                 }
+                dicInfo[item.Currency].Amount = Math.Round(amount, 2);
+                if (item.RestaurantIncluedVAT)
+                    dicInfo[item.Currency].UnPaidAmount = Math.Round(amount - payAmount.PayAmount - reward, 2);
+                else
+                    dicInfo[item.Currency].UnPaidAmount = Math.Round(amount - payAmount.PayAmount - reward , 2);
+                if (reward > 0)
+                    dicInfo[item.Currency].Reward = Math.Round(reward, 2);
+
                 //if (dicAmount.ContainsKey(item.Currency))
                 //    dicAmount[item.Currency] += Math.Round(amount, 2);
                 //else
@@ -89,8 +88,9 @@ namespace App.Infrastructure.Utility.Common
                 //        dicReward[item.Currency] = Math.Round(reward, 2);
                 //}
             }
-
-            if (hasFullpay|| customer.IsOldCustomer)
+            if (paymentAmountInfo.TotalPayAmount < 0.5m)
+                paymentAmountInfo.TotalPayAmount = 0;
+            if (hasFullpay || customer.IsOldCustomer)
                 paymentAmountInfo.IntentType = new List<IntentTypeEnum> { IntentTypeEnum.PaymentIntent };
             else
                 paymentAmountInfo.IntentType = new List<IntentTypeEnum> { IntentTypeEnum.SetupIntent };
@@ -109,10 +109,11 @@ namespace App.Infrastructure.Utility.Common
             decimal amount = 0;
             foreach (var item in details)
             {
-                var payAmount = getItemPayAmount(item.ConvertToAmount(), customer);//线上支付金额
+                var country = countries.FirstOrDefault(a => a.Code == item.RestaurantCountry);
+                var payAmount = getItemPayAmount(item.ConvertToAmount(), customer, country.VAT);//线上支付金额
                 var _amount = getItemAmount(item.ConvertToAmount());//总金额
-                var reward = GetReward(_amount, item.BillInfo.RewardType, item.BillInfo.Reward, customer);
-                var amountByRate = CalculatePayAmountByRate(payAmount, item.Currency, PayCurrency, customer.ShopId ?? 11, countries);
+                var reward = payAmount.Reward;
+                var amountByRate = CalculatePayAmountByRate(payAmount.PayAmount, item.Currency, PayCurrency, customer.ShopId ?? 11, countries);
                 amount += amountByRate;
             }
             return amount;
@@ -173,17 +174,21 @@ namespace App.Infrastructure.Utility.Common
             }
             return amount;
         }
-        public decimal GetReward(decimal _amount, PaymentTypeEnum rewardType, double reward, DbCustomer user)
+        private decimal GetReward(decimal _amount, PaymentTypeEnum rewardType, double reward, DbCustomer user, bool RestaurantIncluedVAT, decimal vat)
         {
             if (user.IsOldCustomer)
                 return 0;
             decimal amount = 0;
             var restaurantReward = FindValueByType(_amount, rewardType, reward);
             if (user.Reward == 0)
-                return restaurantReward;
-            var userReward = FindValueByType(_amount, user.RewardType, user.Reward);
-
-            amount = restaurantReward > userReward ? restaurantReward : userReward;
+            { amount = restaurantReward; }
+            else
+            {
+                var userReward = FindValueByType(_amount, user.RewardType, user.Reward);
+                amount = restaurantReward > userReward ? restaurantReward : userReward;
+            }
+            if (amount > 0 && vat > 0 && !RestaurantIncluedVAT)
+                amount -= vat;
             return amount;
         }
 
@@ -215,29 +220,35 @@ namespace App.Infrastructure.Utility.Common
         /// </summary>
         /// <param name="bookingDetail"></param>
         /// <returns></returns>
-        public decimal getItemPayAmount(BookingCalculateVO bookingDetail, DbCustomer customer, double VAT = 0.125)
+        public ItemPayInfo getItemPayAmount(BookingCalculateVO bookingDetail, DbCustomer customer, double VAT)
         {
             decimal _amount = 0;
             decimal amount = getItemAmount(bookingDetail);//总金额额
             if (customer.IsOldCustomer)
             {
                 if (bookingDetail.BillInfo.PaymentType == PaymentTypeEnum.Full)
-                    return amount;
+                    return new ItemPayInfo() { PayAmount = amount };//  amount;
                 else
-                    return 0;
+                    return new ItemPayInfo();
             }
             decimal dueAmout = GetDue(bookingDetail, amount);//应付
-            var reward = GetReward(amount, bookingDetail.BillInfo.RewardType, bookingDetail.BillInfo.Reward, customer);//
-            var vat = GetVATAmount(dueAmout - reward, VAT);
+            var vat = GetVATAmount(dueAmout, VAT);
+            var reward = GetReward(amount, bookingDetail.BillInfo.RewardType, bookingDetail.BillInfo.Reward, customer, bookingDetail.RestaurantIncluedVAT, vat);//
+            dueAmout += vat;
             if (bookingDetail.RestaurantIncluedVAT)
-            {
-                _amount = dueAmout + vat - reward - vat;
-            }
+                _amount = dueAmout - reward ;
+            else if(reward>0)
+                _amount = dueAmout - reward;
             else
+                _amount = dueAmout - reward - vat;
+
+            ItemPayInfo itemPayInfo = new ItemPayInfo()
             {
-                _amount = dueAmout - reward + vat;
-            }
-            return _amount;
+                PayAmount = _amount,
+                Reward = reward,
+                Vat = vat
+            };
+            return itemPayInfo;
         }
         /// <summary>
         /// 计算VAT

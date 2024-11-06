@@ -178,7 +178,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage;
                 if (isAllCountry && isAllCity && isContentEmpty)
                 {
-                    var cacheKey = string.Format("motionmedia-{1}-{0}-{2}", shopId, typeof(TrDbRestaurant).Name, 50);
+                    var cacheKey = string.Format("motionmedia-{1}-{0}-{2}", shopId, typeof(TrDbRestaurant).Name, pageSize);
                     var cacheResult = _memoryCache.Get<KeyValuePair<string, IEnumerable<TrDbRestaurant>>>(cacheKey);
                     if (cacheResult.Value != null && cacheResult.Value.Count() > 0 && string.IsNullOrWhiteSpace(continuationToke))
                     {

@@ -117,7 +117,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
                 string itemCurrencyStr = country.FirstOrDefault(a => a.Currency == item.Currency).CurrencySymbol;
                 //_twilioUtil.sendSMS(item.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
-                Detail += $"<br> Amount(金额)：<b>{itemCurrencyStr}{item.AmountInfos.Sum(x => x.Amount)}</b>, <br> Paid(已付)：<b>{itemCurrencyStr}{paidAmount}</b>,<br>";
+                Detail += $"<br> Amount(金额)：<b>{itemCurrencyStr}{item.AmountInfos.Sum(x => x.Amount)}</b>, <br>";
+                if (item.ShowPaid)
+                    Detail += " Paid(已付)：<b>{itemCurrencyStr}{paidAmount}</b>,<br>";
                 if (amount - paidAmount > 0)
                     Detail += $"<b style=\"color: red;\"> UnPaid(待支付)：{itemCurrencyStr}{amount - reward - paidAmount}</b>";
                 senderParams.BookingRef = item.BookingRef;
@@ -135,7 +137,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
                 else
                     senderParams.PaidAmount = itemCurrencyStr + ": " + Math.Round(paidAmount, 2);
-                senderParams.UnPaidAmount = itemCurrencyStr + ": " + Math.Round((amount - reward - paidAmount), 2);
+                if (!item.ShowPaid)
+                    senderParams.PaidAmount = "";
+                    senderParams.UnPaidAmount = itemCurrencyStr + ": " + Math.Round((amount - reward - paidAmount), 2);
                 senderParams.Amount = itemCurrencyStr + ": " + Math.Round(amount, 2);
                 senderParams.MealTime = selectDateTimeStr;
                 senderParams.Memo = item.Memo;

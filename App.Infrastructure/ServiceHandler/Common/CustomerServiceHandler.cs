@@ -346,7 +346,8 @@ namespace App.Infrastructure.ServiceHandler.Common
                     if (item.AmountInfos == null)
                         item.AmountInfos = new List<AmountInfo>();
                     item.AmountInfos?.Clear();
-                    AmountInfo amountInfo = new AmountInfo() { Amount = _amountCalculaterV1.getItemAmount(item.ConvertToAmount()), PaidAmount = _amountCalculaterV1.getItemPayAmount(item.ConvertToAmount(), existingCustomer) };
+                    var itemPayInfo = _amountCalculaterV1.getItemPayAmount(item.ConvertToAmount(), existingCustomer, item.Vat);
+                    AmountInfo amountInfo = new AmountInfo() { Amount = _amountCalculaterV1.getItemAmount(item.ConvertToAmount()), PaidAmount = itemPayInfo.PayAmount };
                     item.AmountInfos.Add(amountInfo);
                 }
             }
@@ -385,10 +386,13 @@ namespace App.Infrastructure.ServiceHandler.Common
                     item.RestaurantCountry = rest.Country;
                     item.Currency = rest.Currency;
                     item.RestaurantTimeZone = rest.TimeZone;
+                    item.Vat=rest.Vat;
                     if (!customer.IsOldCustomer)
                         item.BillInfo = rest.BillInfo;//更新最新的付款信息
                     item.BillInfo.IsOldCustomer = customer.IsOldCustomer;
                     item.RestaurantIncluedVAT = rest.IncluedVAT;
+                    item.ShowPaid = rest.ShowPaid;
+                    
                     item.IntentType = rest.BillInfo.PaymentType == PaymentTypeEnum.Full ? IntentTypeEnum.PaymentIntent : IntentTypeEnum.SetupIntent;
                     List<TrDbRestaurantMenuItem> courses = new List<TrDbRestaurantMenuItem>();
                     foreach (var cate in rest.Categories)
@@ -409,8 +413,9 @@ namespace App.Infrastructure.ServiceHandler.Common
                 foreach (var info in item.AmountInfos)
                 {
                     info.Amount = _amountCalculaterV1.getItemAmount(item.ConvertToAmount());
-                    info.PaidAmount = _amountCalculaterV1.getItemPayAmount(item.ConvertToAmount(), customer);
-                    info.Reward = _amountCalculaterV1.GetReward(info.Amount, item.BillInfo.RewardType, item.BillInfo.Reward, customer);
+                    var itemPayInfo = _amountCalculaterV1.getItemPayAmount(item.ConvertToAmount(), customer,item.Vat);
+                    info.PaidAmount = itemPayInfo.PayAmount;
+                    info.Reward =itemPayInfo.Reward;
                 }
                 DateTime dateTime = item.SelectDateTime.Value;
                 if (!string.IsNullOrWhiteSpace(item.MealTime))
