@@ -1,4 +1,5 @@
-﻿using App.Domain.Common.Auth;
+﻿using App.Domain.Common;
+using App.Domain.Common.Auth;
 using App.Domain.Config;
 using App.Infrastructure.Exceptions;
 using App.Infrastructure.Utility.Common;
@@ -25,7 +26,7 @@ namespace KingfoodIO.Controllers.Common
             _logger = logger;
         }
 
-        protected async Task<IActionResult> ExecuteAsync<T>(int shopId, bool cache,Func<Task<T>> action, bool validateShopId = true)
+        protected async Task<IActionResult> ExecuteAsync<T>(int shopId, bool cache, Func<Task<T>> action, bool validateShopId = true)
         {
             //if (validateShopId)
             //    ValidateKeyWithShopId(shopId);
@@ -56,7 +57,14 @@ namespace KingfoodIO.Controllers.Common
                     await _redisCache.Set(cacheKey, content);
                 else _memoryCache.Set(cacheKey, content);
             }
-
+            if (content is ResponseModel)
+            {
+                var data = content as ResponseModel;
+                if (data.code==501)
+                {
+                    return new ContentResult { StatusCode = 501, Content = data.msg };
+                }
+            }
             return Ok(content);
         }
 

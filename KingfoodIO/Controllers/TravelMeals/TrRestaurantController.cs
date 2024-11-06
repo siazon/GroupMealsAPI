@@ -9,6 +9,7 @@ using App.Domain.Common.Customer;
 using App.Domain.Config;
 using App.Domain.TravelMeals;
 using App.Domain.TravelMeals.Restaurant;
+using App.Infrastructure.ServiceHandler.Common;
 using App.Infrastructure.ServiceHandler.TravelMeals;
 using App.Infrastructure.Utility.Common;
 using KingfoodIO.Application.Filter;
@@ -30,6 +31,7 @@ namespace KingfoodIO.Controllers.TravelMeals
     /// PaymentType: Full, Deposit, PayAtStore
     /// Features: Special offers, 4+ stars, New, Halal, Vegetarian(Key为0到4)
     /// Country: Ireland, UK, France (Key为string)
+    /// PaymentMethod: Full, Percentage, Fixed(Key为0到2)
     /// </summary>
     [Route("api/[controller]/[action]")]
     public class TrRestaurantController : BaseController
@@ -38,7 +40,7 @@ namespace KingfoodIO.Controllers.TravelMeals
 
         IMemoryCache _memoryCache;
         ILogManager _logger;
-
+        ICountryServiceHandler _countryRepository;
         /// <summary>
         /// </summary>
         /// <param name="cachesettingConfig"></param>
@@ -49,12 +51,13 @@ namespace KingfoodIO.Controllers.TravelMeals
         /// <param name="logger"></param>
         public TrRestaurantController(
             IOptions<CacheSettingConfig> cachesettingConfig, IMemoryCache memoryCache, IRedisCache redisCache, ITrRestaurantBookingServiceHandler restaurantBookingServiceHandler,
-            ITrRestaurantServiceHandler restaurantServiceHandler, ILogManager logger) :
+ ICountryServiceHandler countryRepository, ITrRestaurantServiceHandler restaurantServiceHandler, ILogManager logger) :
             base(cachesettingConfig, memoryCache, redisCache, logger)
         {
             _restaurantServiceHandler = restaurantServiceHandler;
             _logger = logger;
             _memoryCache = memoryCache;
+            _countryRepository = countryRepository;
         }
 
         /// <summary>
@@ -147,12 +150,26 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpGet]
         //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> GetCities(int shopId, bool cache = false)
+        public async Task<IActionResult> GetCitiesV1(int shopId, bool cache = false)
         {
-
-            return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetCities(shopId));
+            return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetCitiesV1(shopId));
         }
 
+        [HttpGet]
+        //[ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> GetCities(int shopId, bool cache = false)
+        {
+            //return new ContentResult { StatusCode = 501, Content = "请访问groupmeals.com下载最新版本APP继续使用" };
+            return await ExecuteAsync(shopId, cache, async () => await _restaurantServiceHandler.GetCities(shopId));
+        }
+        [HttpGet]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> DeleteCountry(int shopId,string Id, bool cache = false)
+        {
+            return await ExecuteAsync(shopId, cache, async () => await _countryRepository.DeleteCountry(shopId,Id));
+        }
         /// <summary>
         /// 
         /// </summary>

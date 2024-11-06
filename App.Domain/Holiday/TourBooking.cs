@@ -47,7 +47,7 @@ namespace App.Domain.Holiday
             dest.SelectDate = source.SelectDate;
             dest.StripeClientSecretKey= source.StripeClientSecretKey;
             dest.StripeCustomerId = source.StripeCustomerId;
-            dest.StripePaymentId = source.StripePaymentId;
+            dest.StripePaymentMethodId = source.StripePaymentMethodId;
             dest.StripePriceId = source.StripePriceId;
             dest.StripeProductId = source.StripeProductId;
             dest.StripeReceiptUrl = source.StripeReceiptUrl;

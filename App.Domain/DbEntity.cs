@@ -13,6 +13,7 @@ namespace App.Domain
         public int? ShopId { get; set; }
 
         public DateTime? Created { get; set; }
+        public string Creater { get; set; }
         public DateTime? Updated { get; set; }
         public string Updater { get; set; }
 

@@ -53,6 +53,8 @@ namespace App.Infrastructure.Utility.Common
                 };
 
                 msg.AddTo(new EmailAddress(toEmail));
+
+#if RELEASE
                 if (CCEmail != null && CCEmail.Length > 0)
                 {
                     for (int i = 0; i < CCEmail.Length; i++)
@@ -62,7 +64,7 @@ namespace App.Infrastructure.Utility.Common
                     }
 
                 }
-
+#endif
 
                 if (string.IsNullOrEmpty(fromEmail))
                     msg.From = new EmailAddress("noreply@groupmeals.com", "Groupmeals.com");

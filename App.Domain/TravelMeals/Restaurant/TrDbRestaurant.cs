@@ -1,5 +1,6 @@
 using App.Domain.Common.Shop;
 using App.Domain.Enum;
+using App.Domain.TravelMeals.VO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -33,7 +34,10 @@ namespace App.Domain.TravelMeals.Restaurant
         public string Image { get; set; }
         public string Address { get; set; }
         public string City { get; set; }
+        public string TimeZone { get; set; }
         public string Country { get; set; }
+        public string Currency { get; set; }
+        public double Vat { get; set; }
         public string Email { get; set; }
         public string ContactEmail { get; set; }
         public string SupportName { get; set; }
@@ -61,7 +65,8 @@ namespace App.Domain.TravelMeals.Restaurant
         public decimal Price { get; set; }
         public decimal PriceIncrease { get; set; }
         public decimal ChildrenPrice { get; set; }
-        public MenuCalculateTypeEnum MenuCalculateType { get; set; }
+        public bool IncluedVAT { get; set; }
+        public bool ShowPaid { get; set; }
 
         public RestaurantBillInfo BillInfo { get; set; }
 
@@ -86,6 +91,9 @@ namespace App.Domain.TravelMeals.Restaurant
                 FoodCategory = this.FoodCategory,
                 City = this.City,
                 Country = this.Country,
+                TimeZone = this.TimeZone,
+                Currency= this.Currency,
+                Vat= this.Vat,
                 Email = this.Email,
                 ContactEmail = this.ContactEmail,
                 OpenHours = this.OpenHours,
@@ -107,14 +115,34 @@ namespace App.Domain.TravelMeals.Restaurant
     }
     public enum PaymentTypeEnum
     {
-        Full, Deposit, PayAtStore
+        Full, Percentage, Fixed
     }
     public class RestaurantBillInfo
     {
         public List<PaymentTypeEnum> SupportedPaymentTypes { get; set; }//1全额，2全额+到店支付，3全额+到店支付+百分比支付
-        public PaymentTypeEnum PaymentType { get; set; }//支付方式 0:全额,1:支付押金,2:到店支付
+        public PaymentTypeEnum PaymentType { get; set; }//支付方式 全额支付，百分百，固定金额
         public double PayRate { get; set; }//百分比
+        public bool IsOldCustomer { get; set; }
+        public PaymentTypeEnum RewardType { get; set; } = PaymentTypeEnum.Percentage;//无返现，百分比，固定
+        public double Reward { get; set; }
 
+    }
+    public class PaymentAmountInfo
+    { 
+        public decimal TotalPayAmount { get; set; }
+        public string AmountText { get; set; }
+        public string RewardText {  get; set; }
+        public string UnPaidAmountText { get; set; }
+        public Dictionary<string, decimal> AmountList { get; set; } = new Dictionary<string, decimal>();
+        public Dictionary<string, decimal> UnPaidAmountList { get; set; } = new Dictionary<string, decimal>();
+
+        public List<IntentTypeEnum> IntentType { get; set; } = new List<IntentTypeEnum>();
+
+    }
+    public class ItemPayInfo {
+        public decimal PayAmount { get; set; }
+        public decimal Reward { get; set; }
+        public decimal Vat { get; set; }
     }
     public class MapPosition
     {

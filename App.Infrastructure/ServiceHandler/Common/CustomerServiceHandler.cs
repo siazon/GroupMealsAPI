@@ -30,34 +30,37 @@ using App.Infrastructure.ServiceHandler.TravelMeals;
 using App.Domain.Common.Email;
 using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Razor.Language.Extensions;
+using App.Domain.TravelMeals.VO;
+using App.Domain.Common;
 
 namespace App.Infrastructure.ServiceHandler.Common
 {
     public interface ICustomerServiceHandler
     {
         Task<List<DbCustomer>> List(int shopId);
-
+        Task<DbCustomer> GetCustomer(string userId, int shopId);
         Task<DbCustomer> LoginCustomer(string email, string password, int shopId);
-        Task<object> CloseAccount(string userId, string email, string pwd);
+        Task<ResponseModel> CloseAccount(string userId, string email, string pwd);
 
-        Task<object> SendForgetPasswordVerifyCode(string email, int shopId);
+        Task<ResponseModel> SendForgetPasswordVerifyCode(string email, int shopId);
 
-        Task<object> RegisterAccount(DbCustomer customer, int shopId);
-        Task<object> VerityEmail(string email, string id, int shopId);
-        Task<object> SendRegistrationVerityCode(string email, int shopId);
+        Task<ResponseModel> RegisterAccount(DbCustomer customer, int shopId);
+        Task<ResponseModel> VerityEmail(string email, string id, int shopId);
+        Task<ResponseModel> SendRegistrationVerityCode(string email, int shopId);
 
-        Task<object> ResetPassword(string email, string resetCode, string password, int shopId);
-        Task<object> UpdatePassword(string email, string oldPassword, string password, int shopId);
+        Task<ResponseModel> ResetPassword(string email, string resetCode, string password, int shopId);
+        Task<ResponseModel> UpdatePassword(string email, string oldPassword, string password, int shopId);
 
         Task<DbCustomer> UpdateAccount(DbCustomer customer, int shopId);
+        Task<DbCustomer> RefreshCartInfo(DbCustomer customer);
 
         Task<DbCustomer> UpdatePassword(DbCustomer customer, int shopId);
         Task<DbCustomer> UpdateFavorite(DbCustomer customer, int shopId);
-        Task<object> UpdateCart(List<BookingDetail> cartInfos, string UserId, int shopId);
-        Task<object> GetCart(string UserId, int shopId);
+        Task<ResponseModel> UpdateCart(List<DbBooking> cartInfos, string UserId, int shopId);
+        Task<ResponseModel> UpdateCartInfo(List<DbBooking> cartInfos, DbCustomer user);
+        Task<ResponseModel> GetCart(string UserId, int shopId);
 
-        Task<object> Delete(DbCustomer item, string email, string pwd, int shopId);
-        Task<string> GetDbCountryTimezone(string countryName);
+        Task<ResponseModel> Delete(DbCustomer item, string email, string pwd, int shopId);
     }
 
     public class CustomerServiceHandler : ICustomerServiceHandler
@@ -65,7 +68,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         private readonly IDbCommonRepository<DbCustomer> _customerRepository;
         private readonly IDbCommonRepository<DbShop> _shopRepository;
         private readonly IDbCommonRepository<TrDbRestaurant> _restaurantRepository;
-        private readonly IDbCommonRepository<TrDbRestaurantBooking> _restaurantBookingRepository;
+        private readonly IDbCommonRepository<DbBooking> _bookingRepository;
         private readonly IDbCommonRepository<DbShopContent> _shopContentRepository;
         private readonly IDbCommonRepository<DbSetting> _settingRepository;
         private readonly IEncryptionHelper _encryptionHelper;
@@ -73,13 +76,12 @@ namespace App.Infrastructure.ServiceHandler.Common
         private readonly IContentBuilder _contentBuilder;
         private readonly ISendEmailUtil _emailUtil;
         ITwilioUtil _twilioUtil;
-        IDbCommonRepository<DbCountry> _trRestaurantServiceHandler;
         ILogManager _logger;
         IAmountCalculaterUtil _amountCalculaterV1;
         IHostingEnvironment _environment;
         IMemoryCache _memoryCache;
 
-        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IDbCommonRepository<DbCountry> trRestaurantServiceHandler, IAmountCalculaterUtil amountCalculaterV1, IMemoryCache memoryCache, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository,
+        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1, IMemoryCache memoryCache, IDbCommonRepository<DbBooking> bookingRepository,
         ITwilioUtil twilioUtil, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<TrDbRestaurant> restaurantRepository,
         IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, ISendEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
         {
@@ -89,7 +91,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             _dateTimeUtil = dateTimeUtil;
             _shopRepository = shopRepository;
             _shopContentRepository = shopContentRepository;
-            _restaurantBookingRepository = restaurantBookingRepository;
+            _bookingRepository = bookingRepository;
             _contentBuilder = contentBuilder;
             _emailUtil = emailUtil;
             _twilioUtil = twilioUtil;
@@ -98,20 +100,19 @@ namespace App.Infrastructure.ServiceHandler.Common
             _settingRepository = settingRepository;
             _environment = environment;
             _amountCalculaterV1 = amountCalculaterV1;
-            _trRestaurantServiceHandler= trRestaurantServiceHandler;
         }
 
         public async Task<List<DbCustomer>> List(int shopId)
         {
             Guard.GreaterThanZero(shopId);
             var customers = await _customerRepository.GetManyAsync(r => r.ShopId == shopId);
-            var bookings = await _restaurantBookingRepository.GetManyAsync(a => 1 == 1);
+            var bookings = await _bookingRepository.GetManyAsync(a => 1 == 1);
 
 
             int aaa = 0;
             foreach (var item in customers)
             {
-                int count = bookings.Sum(a => { if (a.CustomerEmail == item.Email) return a.Details.Count(); else return 0; });
+                int count = bookings.ToList().FindAll(a => a.Creater == item.Id).Count;
                 item.AuthValue = Convert.ToUInt64(count);
                 aaa += count;
             }
@@ -120,6 +121,13 @@ namespace App.Infrastructure.ServiceHandler.Common
             return returnCustomers.ToList().ClearForOutPut();
         }
 
+        public async Task<DbCustomer> GetCustomer(string userId, int shopId)
+        {
+            Guard.GreaterThanZero(shopId);
+            var customer = await _customerRepository.GetOneAsync(r => r.Id == userId && r.ShopId == shopId);
+
+            return customer;
+        }
         public async Task<DbCustomer> LoginCustomer(string email, string password, int shopId)
         {
 
@@ -132,24 +140,29 @@ namespace App.Infrastructure.ServiceHandler.Common
 
             return customer;
         }
-        public async Task<object> CloseAccount(string userId, string email, string pwd)
+        public async Task<ResponseModel> CloseAccount(string userId, string email, string pwd)
         {
             var customer = await _customerRepository.GetOneAsync(r => r.Id == userId);
-            if (customer != null && customer.Password == pwd)
+            if (customer != null && customer.Password != pwd)
             {
-                await _customerRepository.DeleteAsync(customer);
-                return new { msg = "ok", };
+                return new ResponseModel() { msg = "密码错误" };
             }
-            return new { msg = "用户不存在或密码错误", };
+            var bookings = await _bookingRepository.GetManyAsync(a => a.Creater == customer.Id && a.Status != OrderStatusEnum.Settled && a.Status != OrderStatusEnum.Canceled && a.Status != OrderStatusEnum.None);
+            if (bookings != null && bookings.Count() > 0)
+            {
+                return new ResponseModel() { msg = "您有订单未完成，请联系客服完成订单后再注销订单" };
+            }
+            await _customerRepository.DeleteAsync(customer);
+            return new ResponseModel() { msg = "ok" };
         }
-        public async Task<object> SendForgetPasswordVerifyCode(string email, int shopId)
+        public async Task<ResponseModel> SendForgetPasswordVerifyCode(string email, int shopId)
         {
             Guard.NotNull(email);
             Guard.GreaterThanZero(shopId);
             var customer = await _customerRepository.GetOneAsync(r =>
                 r.Email == email && r.IsActive.HasValue && r.IsActive.Value && r.ShopId == shopId);
             if (customer == null)
-                return new { msg = "用户不存在", };
+                return new ResponseModel() { msg = "用户不存在" };
 
             string code = GuidHashUtil.Get6DigitNumber();
             var cacheKey = string.Format("SendForgetPasswordVerifyCode-{1}-{0}", shopId, email);
@@ -162,23 +175,23 @@ namespace App.Infrastructure.ServiceHandler.Common
                 Thread.Sleep(60 * 5000);
                 resetCode(cacheKey);
             });
-            return new { msg = "ok", };
+            return new ResponseModel() { msg = "ok" };
         }
 
-        public async Task<object> RegisterAccount(DbCustomer customer, int shopId)
+        public async Task<ResponseModel> RegisterAccount(DbCustomer customer, int shopId)
         {
             Guard.NotNull(customer);
             if (customer.Email.Length < 3)
-                return new { msg = "Email invalid" };
+                return new ResponseModel() { msg = "Email invalid" };
             var newItem = customer.Clone();
             var existingCustomer =
                await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Email == customer.Email);
             if (existingCustomer != null)
-                return new { msg = "用户已注册，请使用密码登录" };
+                return new ResponseModel() { msg = "用户已注册，请使用密码登录" };
             var cacheKey = string.Format("SendRegistrationVerityCode-{1}-{0}", shopId, customer.Email);
             string code = _memoryCache.Get(cacheKey)?.ToString();
             if (customer.ResetCode != code)
-                return new { msg = "验证码错误或者已过期" };
+                return new ResponseModel() { msg = "验证码错误或者已过期" };
             newItem.Id = Guid.NewGuid().ToString();
             newItem.ShopId = shopId;
             newItem.Created = DateTime.UtcNow;
@@ -192,14 +205,14 @@ namespace App.Infrastructure.ServiceHandler.Common
             newItem.PinCode = GuidHashUtil.Get6DigitNumber();
             await _customerRepository.UpsertAsync(newItem);
 
-            return new { msg = "ok", data = newItem.ClearForOutPut() };
+            return new ResponseModel() { msg = "ok" };
         }
-        public async Task<object> SendRegistrationVerityCode(string email, int shopId)
+        public async Task<ResponseModel> SendRegistrationVerityCode(string email, int shopId)
         {
             var existingCustomer =
               await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Email == email);
             if (existingCustomer != null)
-                return new { msg = "用户已注册，请使用密码登录" };
+                return new ResponseModel() { msg = "用户已注册，请使用密码登录" };
 
             string code = GuidHashUtil.Get6DigitNumber();
             var cacheKey = string.Format("SendRegistrationVerityCode-{1}-{0}", shopId, email);
@@ -212,7 +225,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                 Thread.Sleep(60 * 5000);
                 resetCode(cacheKey);
             });
-            return new { msg = "ok", };
+            return new ResponseModel() { msg = "ok" };
 
         }
         private void resetCode(string cacheKey)
@@ -220,40 +233,40 @@ namespace App.Infrastructure.ServiceHandler.Common
             string code = "";
             _memoryCache.Set(cacheKey, code);
         }
-        public async Task<object> VerityEmail(string email, string id, int shopId)
+        public async Task<ResponseModel> VerityEmail(string email, string id, int shopId)
         {
             var customer = await _customerRepository.GetOneAsync(c => c.Id == id);
             if (customer == null)
-                return new { msg = "用户不存在" };
+                return new ResponseModel() { msg = "用户不存在" };
             customer.IsVerity = true;
             var savedCustomer = await _customerRepository.UpsertAsync(customer);
             if (savedCustomer != null)
             {
-                return new { msg = "ok", data = savedCustomer.ClearForOutPut() };
+                return new ResponseModel() { msg = "ok" };
             }
             else
-                return new { msg = "error" };
+                return new ResponseModel() { msg = "操作失败" };
         }
 
-        public async Task<object> ResetPassword(string email, string resetCode, string password, int shopId)
+        public async Task<ResponseModel> ResetPassword(string email, string resetCode, string password, int shopId)
         {
             Guard.NotNull(email);
             Guard.GreaterThanZero(shopId);
             var customer = await _customerRepository.GetOneAsync(r =>
                 r.Email == email && r.IsActive.HasValue && r.IsActive.Value && r.ShopId == shopId);
             if (customer == null)
-                return new { msg = "用户不存在", };
+                return new ResponseModel() { msg = "用户不存在" };
             var cacheKey = string.Format("SendForgetPasswordVerifyCode-{1}-{0}", shopId, email);
             string code = _memoryCache.Get(cacheKey)?.ToString();
 
             if (code != resetCode)
-                return new { msg = "验证码错误或已过期", };
+                return new ResponseModel() { msg = "验证码错误或已过期" };
 
             customer.Password = _encryptionHelper.EncryptString(password);
             var updatedCustomer = await _customerRepository.UpsertAsync(customer);
-            return new { msg = "ok", data = updatedCustomer.ClearForOutPut() };
+            return new ResponseModel() { msg = "ok", data = updatedCustomer.ClearForOutPut() };
         }
-        public async Task<object> UpdatePassword(string email, string oldPassword, string password, int shopId)
+        public async Task<ResponseModel> UpdatePassword(string email, string oldPassword, string password, int shopId)
         {
             Guard.NotNull(email);
             Guard.GreaterThanZero(shopId);
@@ -261,19 +274,19 @@ namespace App.Infrastructure.ServiceHandler.Common
             var customer = await _customerRepository.GetOneAsync(r =>
                 r.Email == email && r.Password == passwordEncode && r.IsActive.HasValue && r.IsActive.Value && r.ShopId == shopId);
             if (customer == null)
-                return new { msg = "用户不存在，或原密码错误", };
+                return new ResponseModel() { msg = "用户不存在，或原密码错误" };
 
             customer.Password = _encryptionHelper.EncryptString(password);
             var updatedCustomer = await _customerRepository.UpsertAsync(customer);
 
-            return new { msg = "ok", data = updatedCustomer.ClearForOutPut() };
+            return new ResponseModel() { msg = "ok", data = updatedCustomer.ClearForOutPut() };
         }
 
         public async Task<DbCustomer> UpdateAccount(DbCustomer customer, int shopId)
         {
             Guard.NotNull(customer);
             var existingCustomer =
-               await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Email == customer.Email);
+               await _customerRepository.GetOneAsync(r => r.ShopId == customer.ShopId && r.Id == customer.Id);
             if (existingCustomer == null)
                 throw new ServiceException("Customer Not Exists");
 
@@ -316,54 +329,71 @@ namespace App.Infrastructure.ServiceHandler.Common
 
             return savedCustomer.ClearForOutPut();
         }
-        public async Task<object> UpdateCart(List<BookingDetail> cartInfos, string userId, int shopId)
+        public async Task<ResponseModel> UpdateCart(List<DbBooking> cartInfos, string userId, int shopId)
         {
             var existingCustomer =
                 await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == userId);
             if (existingCustomer == null)
-                return new { msg = "User not found!(用户不存在)", };
+                return new ResponseModel { msg = "User not found!(用户不存在)", };
 
             if (cartInfos != null)
             {
                 foreach (var item in cartInfos)
                 {
-                    DateTime dateTime = item.SelectDateTime.Value;
-                    if (!string.IsNullOrWhiteSpace(item.MealTime))
-                    {
-                        DateTime.TryParse(item.MealTime, out dateTime);
-                        string ianaCode = await GetDbCountryTimezone(item.RestaurantCountry);
-                        item.SelectDateTime = dateTime.GetTimeZoneByIANACode(ianaCode);
-                    }
+
                     if (string.IsNullOrWhiteSpace(item.Id))
                         item.Id = Guid.NewGuid().ToString();
                     if (item.AmountInfos == null)
                         item.AmountInfos = new List<AmountInfo>();
                     item.AmountInfos?.Clear();
-                    AmountInfo amountInfo = new AmountInfo() { Amount = _amountCalculaterV1.getItemAmount(item), PaidAmount = _amountCalculaterV1.getItemPayAmount(item) };
+                    var itemPayInfo = _amountCalculaterV1.getItemPayAmount(item.ConvertToAmount(), existingCustomer, item.Vat);
+                    AmountInfo amountInfo = new AmountInfo() { Amount = _amountCalculaterV1.getItemAmount(item.ConvertToAmount()), PaidAmount = itemPayInfo.PayAmount };
                     item.AmountInfos.Add(amountInfo);
                 }
             }
 
 
             existingCustomer.CartInfos = cartInfos;
+            existingCustomer = await RefreshCartInfo(existingCustomer);
             var savedCustomer = await _customerRepository.UpsertAsync(existingCustomer);
 
-            return new { msg = "ok", data = savedCustomer.ClearForOutPut() };
+            return new ResponseModel() { msg = "ok", data = savedCustomer.ClearForOutPut() };
         }
-        public async Task<string> GetDbCountryTimezone(string countryName) {
-            var citis = await _trRestaurantServiceHandler.GetOneAsync(a => a.ShopId == 11 && a.IsActive == true);
-            string ianaCode = citis.Countries.FirstOrDefault(a => a.Name == countryName).TimeZone;
-            return ianaCode;
-        }
-        public async Task<object> GetCart(string userId, int shopId)
+        public async Task<ResponseModel> UpdateCartInfo(List<DbBooking> cartInfos, DbCustomer existingCustomer)
         {
-            var existingCustomer =
-                await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == userId);
-            foreach (var item in existingCustomer.CartInfos)
+            foreach (var item in cartInfos)
+            {
+                int idx = existingCustomer.CartInfos.FindIndex(a => a.Id == item.Id);
+                existingCustomer.CartInfos[idx] = item;
+            }
+            existingCustomer = await RefreshCartInfo(existingCustomer);
+            var savedCustomer = await _customerRepository.UpsertAsync(existingCustomer);
+            return new ResponseModel() { msg = "ok", data = savedCustomer.ClearForOutPut() };
+        }
+        public async Task<DbCustomer> RefreshCartInfo(DbCustomer customer)
+        {
+            foreach (var item in customer?.CartInfos)
             {
                 var rest = await _restaurantRepository.GetOneAsync(a => a.Id == item.RestaurantId);
                 if (rest != null)
                 {
+                    item.RestaurantName = rest.StoreName;
+                    item.RestaurantEmail = rest.Email;
+                    item.RestaurantAddress = rest.Address;
+                    item.RestaurantPhone = rest.PhoneNumber;
+                    item.EmergencyPhone = rest.ContactPhone;
+                    item.RestaurantWechat = rest.Wechat;
+                    item.RestaurantCountry = rest.Country;
+                    item.Currency = rest.Currency;
+                    item.RestaurantTimeZone = rest.TimeZone;
+                    item.Vat=rest.Vat;
+                    if (!customer.IsOldCustomer)
+                        item.BillInfo = rest.BillInfo;//更新最新的付款信息
+                    item.BillInfo.IsOldCustomer = customer.IsOldCustomer;
+                    item.RestaurantIncluedVAT = rest.IncluedVAT;
+                    item.ShowPaid = rest.ShowPaid;
+                    
+                    item.IntentType = rest.BillInfo.PaymentType == PaymentTypeEnum.Full ? IntentTypeEnum.PaymentIntent : IntentTypeEnum.SetupIntent;
                     List<TrDbRestaurantMenuItem> courses = new List<TrDbRestaurantMenuItem>();
                     foreach (var cate in rest.Categories)
                     {
@@ -378,36 +408,51 @@ namespace App.Infrastructure.ServiceHandler.Common
                             course.Price = menu.Price;
                             course.ChildrenPrice = menu.ChildrenPrice;
                         }
-
                     }
                 }
                 foreach (var info in item.AmountInfos)
                 {
-                    info.Amount = _amountCalculaterV1.getItemAmount(item);
-                    info.PaidAmount = _amountCalculaterV1.getItemPayAmount(item);
+                    info.Amount = _amountCalculaterV1.getItemAmount(item.ConvertToAmount());
+                    var itemPayInfo = _amountCalculaterV1.getItemPayAmount(item.ConvertToAmount(), customer,item.Vat);
+                    info.PaidAmount = itemPayInfo.PayAmount;
+                    info.Reward =itemPayInfo.Reward;
+                }
+                DateTime dateTime = item.SelectDateTime.Value;
+                if (!string.IsNullOrWhiteSpace(item.MealTime))
+                {
+                    DateTime.TryParse(item.MealTime, out dateTime);
+                    item.SelectDateTime = dateTime.GetTimeZoneByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry));
                 }
             }
+            return customer;
+        }
+        public async Task<ResponseModel> GetCart(string userId, int shopId)
+        {
+            var existingCustomer =
+                await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Id == userId);
+            if (existingCustomer == null)
+                return new ResponseModel() { msg = "User not found!(用户不存在)" };
+            existingCustomer = await RefreshCartInfo(existingCustomer);
             if (existingCustomer.CartInfos.Count > 0)
                 existingCustomer = await _customerRepository.UpsertAsync(existingCustomer);
 
-            if (existingCustomer == null)
-                return new { msg = "User not found!(用户不存在)", };
 
 
-            return new { msg = "ok", data = existingCustomer.CartInfos };
+
+            return new ResponseModel() { msg = "ok", data = existingCustomer.CartInfos };
         }
-        public async Task<object> Delete(DbCustomer item, string email, string pwd, int shopId)
+        public async Task<ResponseModel> Delete(DbCustomer item, string email, string pwd, int shopId)
         {
             Guard.NotNull(item);
             if (item.Email == email)
-                return new { msg = "无法删除你自己的账号", };
+                return new ResponseModel() { msg = "无法删除你自己的账号", };
             var passwordEncode = _encryptionHelper.EncryptString(pwd);
             var customer = await _customerRepository.GetOneAsync(r =>
                 r.Email == email && r.IsActive.HasValue && r.IsActive.Value
                 && r.ShopId == shopId);
             if (customer.Password != passwordEncode)
             {
-                return new { msg = "密码错误", };
+                return new ResponseModel() { msg = "密码错误", };
             }
 
             var existingItem = await _customerRepository.GetOneAsync(r => r.Id == item.Id && r.ShopId == shopId);
@@ -416,7 +461,7 @@ namespace App.Infrastructure.ServiceHandler.Common
 
             item = await _customerRepository.DeleteAsync(item);
 
-            return new { msg = "ok", };
+            return new ResponseModel() { msg = "ok", };
         }
 
 

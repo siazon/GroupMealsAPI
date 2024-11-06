@@ -3,6 +3,7 @@ using App.Domain.Common.Shop;
 using App.Domain.TravelMeals.Restaurant;
 using App.Infrastructure.Exceptions;
 using App.Infrastructure.Repository;
+using App.Infrastructure.ServiceHandler.Common;
 using Microsoft.AspNetCore.Http.Metadata;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -25,12 +26,12 @@ namespace App.Infrastructure.Utility.Common
     public class ExchangeUtil : IExchangeUtil
     {
         private readonly IHttpClientFactory _httpClientFactory;
-        IDbCommonRepository<DbCountry> _countryRepository;
+        ICountryServiceHandler _countryServiceHandler;
 
-        public ExchangeUtil(IHttpClientFactory httpClientFactory, IDbCommonRepository<DbCountry> countryRepository)
+        public ExchangeUtil(IHttpClientFactory httpClientFactory, ICountryServiceHandler countryRepository)
         {
             _httpClientFactory = httpClientFactory;
-            _countryRepository = countryRepository;
+            _countryServiceHandler = countryRepository;
         }
 
         public async Task<ExchangeModel> getGBPExchangeRate()
@@ -56,14 +57,15 @@ namespace App.Infrastructure.Utility.Common
         }
         public async void UpdateExchangeRateToDB()
         {
-            var existRate = await _countryRepository.GetOneAsync(r => r.ShopId == 11);
+            var existRate = await _countryServiceHandler.GetCountry(11);
             if (existRate != null)
             {
-                if ((DateTime.UtcNow - existRate.RateUpdateTime).TotalHours < 23)
+                var contries = existRate.ToList();
+                if ((DateTime.UtcNow - contries[0].Updated.Value).TotalHours < 23)
                     return;
                 ExchangeModel exchange = await getGBPExchangeRate();
                 if (exchange == null) return;
-                foreach (var item in existRate.Countries)
+                foreach (var item in contries)
                 {
                     string sValue = "0";
                     double rate = 1;
@@ -72,7 +74,7 @@ namespace App.Infrastructure.Utility.Common
                         case "UK":
                             sValue = exchange.conversion_rates["GBP"];
                             double.TryParse(sValue, out rate);
-                            item.ExchangeRate = rate+item.ExchangeRateExtra;
+                            item.ExchangeRate = rate + item.ExchangeRateExtra;
                             break;
                         case "EU":
                             item.ExchangeRate = rate + item.ExchangeRateExtra;
@@ -83,10 +85,11 @@ namespace App.Infrastructure.Utility.Common
                             item.ExchangeRate = rate + item.ExchangeRateExtra;
                             break;
                     }
+                    item.Updated = DateTime.UtcNow;
+                    _countryServiceHandler.UpsertCountry(item);
                 }
 
-                existRate.RateUpdateTime = DateTime.UtcNow;
-                var savedShop = await _countryRepository.UpsertAsync(existRate);
+
             }
         }
     }
