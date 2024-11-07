@@ -178,7 +178,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         public async Task<ResponseModel> SettleBooking(string bookingId, string detailId, string userEmail)
         {
-            var booking = await _bookingRepository.GetOneAsync(a => a.Id == bookingId);
+            var booking = await _bookingRepository.GetOneAsync(a => a.Id == detailId);
             if (booking == null || booking.AcceptStatus == AcceptStatusEnum.Declined || booking.AcceptStatus == AcceptStatusEnum.CanceledBeforeAccepted ||
                 booking.AcceptStatus == AcceptStatusEnum.CanceledAfterAccepted || booking.Status == OrderStatusEnum.Canceled || booking.Status == OrderStatusEnum.None)
             {
@@ -193,7 +193,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<ResponseModel> UpsetBookingRemark(string bookingId, string detailId, string remark, string userEmail)
         {
-            var booking = await _bookingRepository.GetOneAsync(a => a.Id == bookingId);
+            var booking = await _bookingRepository.GetOneAsync(a => a.Id == detailId);
             booking.Remark = remark;
             booking.Updater = userEmail;
             booking.Updated = DateTime.UtcNow;
@@ -204,7 +204,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {//Europe/Dublin Europe/London Europe/Paris
 
 
-            var booking = await _bookingRepository.GetOneAsync(a => a.Id == bookingId);
+            var booking = await _bookingRepository.GetOneAsync(a => a.Id == detailId);
             if (booking == null || booking.Status == OrderStatusEnum.Canceled)
                 return new ResponseModel() { code = 0, msg = "订单已取消" };
             else

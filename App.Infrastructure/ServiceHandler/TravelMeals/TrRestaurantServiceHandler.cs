@@ -351,7 +351,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (existingRestaurant != null)
                 return new ResponseModel { msg = "ok", code = 200, data = existingRestaurant };
             else
-                return new ResponseModel { msg = "Restaurant Already Exists", code = 501, data = existingRestaurant };
+                return new ResponseModel { msg = "Restaurant not Exists", code = 501, data = existingRestaurant };
 
         }
         public async Task<ResponseModel> UpsetCities(DbCountry countries, int shopId)
