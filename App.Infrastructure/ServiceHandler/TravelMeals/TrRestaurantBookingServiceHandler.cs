@@ -251,43 +251,44 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         }
         public async Task<ResponseModel> CancelOld(string bookingId, string detailId, string userEmail, bool isAdmin) {
-            var booking = await _bookingRepository.GetOneAsync(a => a.Id == detailId);
-            if (booking == null || booking.Status == OrderStatusEnum.Canceled)
-                return new ResponseModel() { code = 0, msg = "订单已取消" };
-            else
+            var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
+            foreach (var item in booking.Details)
             {
+                if (item.Id == detailId)
+                {
+                    if (item.Status == OrderStatusEnum.Canceled)
+                        return new ResponseModel { code = 0, msg = "订单已取消", };
+                    else
+                    {
 
-                //if (!isAdmin && (item.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry)) - DateTime.UtcNow.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry))).TotalHours < 24)
-                //{
-                //return new { code = 0, msg = "距离用餐时间24小时内取消请联系客服人员：微信：groupmeals", };
-                //}
+                        //if (!isAdmin && (item.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry)) - DateTime.UtcNow.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry))).TotalHours < 24)
+                        //{
+                        //return new { code = 0, msg = "距离用餐时间24小时内取消请联系客服人员：微信：groupmeals", };
+                        //}
+                    }
+                    item.Status = OrderStatusEnum.Canceled;
+                    if (item.AcceptStatus == AcceptStatusEnum.Declined) { }//已拒绝不作反应
+                    else if (item.AcceptStatus == AcceptStatusEnum.Accepted)
+                        item.AcceptStatus = AcceptStatusEnum.CanceledAfterAccepted;
+                    else
+                        item.AcceptStatus = AcceptStatusEnum.CanceledBeforeAccepted;
+                    var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
+                    if (shopInfo == null)
+                    {
+                        _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
+                        throw new ServiceException("Cannot find shop info");
+                    }
+                }
             }
-            booking.Status = OrderStatusEnum.Canceled;
-            if (booking.AcceptStatus == AcceptStatusEnum.Declined) { }//已拒绝不作反应
-            else if (booking.AcceptStatus == AcceptStatusEnum.Accepted)
-                booking.AcceptStatus = AcceptStatusEnum.CanceledAfterAccepted;
-            else
-                booking.AcceptStatus = AcceptStatusEnum.CanceledBeforeAccepted;
-            var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
-            if (shopInfo == null)
-            {
-                _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
-                throw new ServiceException("Cannot find shop info");
-            }
-            _twilioUtil.sendSMS("+353874858555", $"你有订单: {booking.BookingRef}被取消。 请登录groupmeal.com查看更多");
-            var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealCancelled];
-            emailParams.ReceiverEmail = booking.RestaurantEmail;
-            emailParams.isShortInfo = 1;
-            await _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParams);
             booking.Status = OrderStatusEnum.Canceled;
             booking.Updated = DateTime.UtcNow;
             booking.Updater = userEmail;
-            //OperationInfo operationInfo = new OperationInfo() { ModifyType = 3, Operater = userEmail, UpdateTime = DateTime.UtcNow, Operation = "订单取消" };
-            //booking.Operations.Add(operationInfo);
+            OperationInfo operationInfo = new OperationInfo() { ModifyType = 3, Operater = userEmail, UpdateTime = DateTime.UtcNow, Operation = "订单取消" };
+            booking.Operations.Add(operationInfo);
 
-            var savedRestaurant = await _bookingRepository.UpsertAsync(booking);
+            var savedRestaurant = await _restaurantBookingRepository.UpsertAsync(booking);
 
-            return new ResponseModel() { code = 0, msg = "ok" };
+            return new ResponseModel { code = 0, msg = "ok", };
         }
         public async Task<bool> UpdateBooking(string billId, string productId, string priceId)
         {
@@ -433,6 +434,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             SendEamilByUpdateAccept(acceptType, booking, shopInfo);
             return new ResponseModel() { code = 0, msg = "ok", data = booking };
         }
+
+        public async Task<ResponseModel> UpdateAcceptedold(string billId, string subBillId, int acceptType, string operater) { 
+        
+        }
+
         private void SendEamilByUpdateAccept(int acceptType, DbBooking booking, DbShop shopInfo)
         {
             System.Threading.Tasks.Task.Run(async () =>
@@ -1951,10 +1957,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
 
 
+            asyncBooking();
+            return true;
 
             ExportBooking();
-            return true;
-            asyncBooking();
             return true;
             asyncCustomer();
             return true;
@@ -2045,12 +2051,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string token = "";
             while (token != null)
             {
-                var temo = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && a.Created > new DateTime(2024, 11, 5, 18, 30, 36)), 500, token);
+                var temo = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && a.Created > new DateTime(2024, 11, 7, 18, 30, 36)), 500, token);
                 var list = temo.Value.ToList();
                 bookings.AddRange(list);
                 token = temo.Key;
             }
-
+            var temooo = await _bookingRepository.GetManyAsync(a => a.Created > new DateTime(2024, 11, 7, 18, 30, 36));
 
             var users = await _customerRepository.GetManyAsync(a => a.ShopId == 11);
             int i = 0;
