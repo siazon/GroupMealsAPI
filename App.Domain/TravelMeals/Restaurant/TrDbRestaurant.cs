@@ -143,6 +143,7 @@ namespace App.Domain.TravelMeals.Restaurant
         public decimal PayAmount { get; set; }
         public decimal Reward { get; set; }
         public decimal Vat { get; set; }
+        public decimal Commission { get; set; }
     }
     public class MapPosition
     {

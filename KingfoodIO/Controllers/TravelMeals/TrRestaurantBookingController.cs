@@ -116,7 +116,12 @@ namespace KingfoodIO.Controllers.TravelMeals
         {
             return await ExecuteAsync(11, cache, async () => await _restaurantBookingServiceHandler.OrderCheck());
         }
-
+        [HttpGet]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> ExportBooking(bool cache = false)
+        {
+            return await ExecuteAsync(11, cache, async () => await _restaurantBookingServiceHandler.ExportBooking());
+        }
         [HttpGet]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]

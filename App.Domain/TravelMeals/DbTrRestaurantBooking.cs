@@ -174,6 +174,26 @@ namespace App.Domain.TravelMeals
         public MenuCalculateTypeEnum MenuCalculateType { get; set; }
     }
 
+    public class BookingExportModel : DbBooking {
+        public string MealDate { get; set; }
+        public string MealTimeStr { get; set; }
+        public string CreaterName { get; set; }
+        public string CreaterEmail { get; set; }
+        public string CreateDate { get; set; }
+        public string CreateTime { get; set; }
+        public decimal Amount { get; set; }
+        public decimal Unpaid { get; set; }
+        public decimal Commission { get; set; }
+        public decimal Reward { get; set; }
+        public string StatusStr { get; set; }
+        public string  MenuStr { get; set; }
+        public string Qty { get; set; }
+        public string Price { get; set; }
+        
+
+    }
+
+
     public static class TrDbRestaurantBookingExt
     {
         public static BookingCalculateVO ConvertToAmount(this DbBooking booking)
@@ -199,4 +219,6 @@ namespace App.Domain.TravelMeals
 
 
     }
+
+
 }

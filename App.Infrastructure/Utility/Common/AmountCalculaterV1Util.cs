@@ -231,10 +231,10 @@ namespace App.Infrastructure.Utility.Common
                 else
                     return new ItemPayInfo();
             }
-            decimal dueAmout = GetDue(bookingDetail, amount);//应付
-            var vat = GetVATAmount(dueAmout, VAT);
+            decimal Commission = GetDue(bookingDetail, amount);//应付
+            var vat = GetVATAmount(Commission, VAT);
             var reward = GetReward(amount, bookingDetail.BillInfo.RewardType, bookingDetail.BillInfo.Reward, customer, bookingDetail.RestaurantIncluedVAT, vat);//
-            dueAmout += vat;
+           var dueAmout = Commission+ vat;
             if (bookingDetail.RestaurantIncluedVAT)
                 _amount = dueAmout - reward ;
             else if(reward>0)
@@ -246,7 +246,8 @@ namespace App.Infrastructure.Utility.Common
             {
                 PayAmount = _amount,
                 Reward = reward,
-                Vat = vat
+                Vat = vat,
+                Commission = Commission
             };
             return itemPayInfo;
         }

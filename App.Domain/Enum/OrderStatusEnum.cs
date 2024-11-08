@@ -9,12 +9,18 @@ namespace App.Domain.Enum
 {
     public enum OrderStatusEnum
     {
+        [Description("默认")]
         None = 0,//支付失败
-        UnAccepted=1,
-        Accepted=2,
-        Canceled=3,
+        [Description("待接收")]
+        UnAccepted =1,
+        [Description("已接收")]
+        Accepted =2,
+        [Description("已取消")]
+        Canceled =3,
+        [Description("未结单")]
         OpenOrder = 4,
-        Settled=5,
+        [Description("已结单")]
+        Settled =5,
 
     }
     public enum AcceptStatusEnum
