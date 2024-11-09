@@ -194,14 +194,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             booking.AcceptStatus = AcceptStatusEnum.SettledByAdmin;
             booking.Status = OrderStatusEnum.Settled;
             await _bookingRepository.UpsertAsync(booking);
-            DbOpearationInfo operationInfo = new DbOpearationInfo() { ModifyType = 3, ReferenceId=booking.Id, Operater = userEmail, UpdateTime = DateTime.UtcNow, Operation = "结单" };
+            DbOpearationInfo operationInfo = new DbOpearationInfo() { ModifyType = 3, ReferenceId = booking.Id, Operater = userEmail, UpdateTime = DateTime.UtcNow, Operation = "结单" };
             await _opearationRepository.UpsertAsync(operationInfo);
             var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == booking.PaymentId);
             PayAction(paymentInfo, true);
-            SettleBookingOld(bookingId,detailId,userEmail);
+            SettleBookingOld(bookingId, detailId, userEmail);
             return new ResponseModel() { code = 0, msg = "ok" };
         }
-        public async void SettleBookingOld(string bookingId, string detailId, string userEmail) {
+        public async void SettleBookingOld(string bookingId, string detailId, string userEmail)
+        {
             var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
             foreach (var item in booking.Details)
             {
@@ -258,7 +259,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             booking.Status = OrderStatusEnum.Canceled;
             booking.Updated = DateTime.UtcNow;
             booking.Updater = userEmail;
-            DbOpearationInfo operationInfo = new DbOpearationInfo() { ModifyType = 3,ReferenceId=booking.Id, Operater = userEmail, UpdateTime = DateTime.UtcNow, Operation = "订单取消" };
+            DbOpearationInfo operationInfo = new DbOpearationInfo() { ModifyType = 3, ReferenceId = booking.Id, Operater = userEmail, UpdateTime = DateTime.UtcNow, Operation = "订单取消" };
             await _opearationRepository.UpsertAsync(operationInfo);
 
             var savedRestaurant = await _bookingRepository.UpsertAsync(booking);
@@ -266,8 +267,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return new ResponseModel() { code = 0, msg = "ok" };
 
         }
-        public async Task<ResponseModel> CancelOld(string bookingId, string detailId, string userEmail, bool isAdmin) {
+        public async Task<ResponseModel> CancelOld(string bookingId, string detailId, string userEmail, bool isAdmin)
+        {
             var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
+
             foreach (var item in booking.Details)
             {
                 if (item.Id == detailId)
@@ -354,16 +357,18 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (temp != null)
             {
 
-                var opt = new DbOpearationInfo() { Id = Guid.NewGuid().ToString(),ReferenceId=id, Operater = user.UserEmail, Operation = statusEnum.ToString(), UpdateTime = DateTime.UtcNow };
+                var opt = new DbOpearationInfo() { Id = Guid.NewGuid().ToString(), ReferenceId = id, Operater = user.UserEmail, Operation = statusEnum.ToString(), UpdateTime = DateTime.UtcNow };
                 await _opearationRepository.UpsertAsync(opt);
             }
             UpdateStatusByAdminOld(id, status, user);
             return new ResponseModel { msg = "ok", code = 200, data = new { } };
         }
 
-        public async void UpdateStatusByAdminOld(string id, int status, DbToken user) {
+        public async void UpdateStatusByAdminOld(string id, int status, DbToken user)
+        {
 
-            TrDbRestaurantBooking booking = await _restaurantBookingRepository.GetOneAsync(a=>a.Details.Any(d=>d.Id==id));
+            TrDbRestaurantBooking booking = await _restaurantBookingRepository.GetOneAsync(a => a.Details.Any(d => d.Id == id));
+            if (booking == null) return;
             AcceptStatusEnum statusEnum = (AcceptStatusEnum)status;
             foreach (var item in booking.Details)
             {
@@ -448,7 +453,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //{
             //    _stripeUtil.RefundGroupMeals(booking);
             //}
-            DbOpearationInfo opt = new DbOpearationInfo() { Id = Guid.NewGuid().ToString(),ReferenceId=booking.Id, Operater = operater, Operation = acceptType == 1 ? "接收预订" : "拒绝预订", UpdateTime = DateTime.UtcNow };
+            DbOpearationInfo opt = new DbOpearationInfo() { Id = Guid.NewGuid().ToString(), ReferenceId = booking.Id, Operater = operater, Operation = acceptType == 1 ? "接收预订" : "拒绝预订", UpdateTime = DateTime.UtcNow };
             await _opearationRepository.UpsertAsync(opt);
             var temp = await _bookingRepository.UpsertAsync(booking);
             string msg = $"您于{booking.Created.Value.ToString("yyyy-MM-dd HH:mm")}  提交的订单已被接收，请按时就餐";
@@ -470,11 +475,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return new ResponseModel() { code = 0, msg = "ok", data = booking };
         }
 
-        public async void UpdateAcceptedold(string billId, string subBillId, int acceptType, string operater) 
-        
+        public async void UpdateAcceptedold(string billId, string subBillId, int acceptType, string operater)
+
         {
-            TrDbRestaurantBooking booking = await _restaurantBookingRepository.GetOneAsync(a => a.Details.Any(d=>d.Id==billId));
-        
+            TrDbRestaurantBooking booking = await _restaurantBookingRepository.GetOneAsync(a => a.Details.Any(d => d.Id == billId));
+            if (booking == null) return;
             foreach (var item in booking.Details)
             {
                 if (item.Id == billId)
@@ -590,7 +595,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var temp = await _bookingRepository.UpsertAsync(booking);
             if (temp != null)
             {
-                var opt = new DbOpearationInfo() { Operater = operater,ReferenceId=billId, Operation = "添加原因", UpdateTime = DateTime.UtcNow };
+                var opt = new DbOpearationInfo() { Operater = operater, ReferenceId = billId, Operation = "添加原因", UpdateTime = DateTime.UtcNow };
                 await _opearationRepository.UpsertAsync(opt);
             }
 
@@ -674,7 +679,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var dbBooking = await _bookingRepository.GetOneAsync(r => !r.IsDeleted && r.Id == newBooking.Id);
             if (dbBooking == null) return new ResponseModel { msg = "booking not found", code = 200, data = null };
             newBooking.BillInfo = dbBooking.BillInfo;
-            DbOpearationInfo operationInfo = new DbOpearationInfo() { Id = Guid.NewGuid().ToString(),ReferenceId=newBooking.Id, ModifyType = 4, Operater = email, UpdateTime = DateTime.UtcNow, Operation = "订单修改" };
+            DbOpearationInfo operationInfo = new DbOpearationInfo() { Id = Guid.NewGuid().ToString(), ReferenceId = newBooking.Id, ModifyType = 4, Operater = email, UpdateTime = DateTime.UtcNow, Operation = "订单修改" };
             int isChange = 0; int isDtlChanged = 0;
 
             if (newBooking != null)
@@ -1185,6 +1190,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var rest = await _restaurantRepository.GetOneAsync(a => a.Id == item.RestaurantId);
             if (rest != null)
             {
+
                 item.RestaurantName = rest.StoreName;
                 item.RestaurantEmail = rest.Email;
                 item.RestaurantAddress = rest.Address;
@@ -1924,7 +1930,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<ResponseModel> ExportBooking()
         {
-            
+
             List<DbBooking> Bookings = new List<DbBooking>();
             string token = "";
             while (token != null)
@@ -1947,7 +1953,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         }
 
-        private List<BookingExportModel> BookingExportBuilder(List<DbBooking> data, List<DbCustomer> users,List<DbPaymentInfo> payments)
+        private List<BookingExportModel> BookingExportBuilder(List<DbBooking> data, List<DbCustomer> users, List<DbPaymentInfo> payments)
         {
             List<BookingExportModel> bookings = new List<BookingExportModel>();
             foreach (var item in data)
@@ -1972,7 +1978,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     amountInfo = _amountCalculaterV1.getItemPayAmount(item.ConvertToAmount(), user, 0.125);
                 }
                 var payment = payments.FirstOrDefault(a => a.Id == item.PaymentId);
-                if (payment != null) {
+                if (payment != null)
+                {
                     paid = payment.PaidAmount;
                 }
                 BookingExportModel model = new BookingExportModel()
@@ -2004,7 +2011,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     Qty = qty.ToString(),
                     Price = price.ToString(),
                     Commission = amountInfo?.Commission ?? 0,
-                    Reward= amountInfo.Reward,
+                    Reward = amountInfo.Reward,
                     Memo = item.Memo,
                     Remark = item.Remark
                 };
