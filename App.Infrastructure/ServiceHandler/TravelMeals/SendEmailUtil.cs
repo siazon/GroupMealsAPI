@@ -256,9 +256,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (!string.IsNullOrWhiteSpace(bookings[0].PaymentId))
             {
                 DbPaymentInfo dbPaymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == bookings[0].PaymentId);
-
-                var currencySymbol = country.FirstOrDefault(a => a.Currency.ToLower() == dbPaymentInfo.Currency.ToLower()).CurrencySymbol;
-                PaidAmountStr = currencySymbol + Math.Round(dbPaymentInfo.Amount, 2);
+                if (dbPaymentInfo != null)
+                {
+                    var currencySymbol = country.FirstOrDefault(a => a.Currency.ToLower() == dbPaymentInfo?.Currency.ToLower())?.CurrencySymbol;
+                    PaidAmountStr = currencySymbol + Math.Round(dbPaymentInfo.Amount, 2);
+                }
             }
             string UnpaidAmountStr = AmountInfo.UnPaidAmountText;
             string AmountStr = AmountInfo.AmountText;

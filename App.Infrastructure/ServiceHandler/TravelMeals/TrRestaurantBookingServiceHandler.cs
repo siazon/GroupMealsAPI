@@ -194,9 +194,25 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             booking.AcceptStatus = AcceptStatusEnum.SettledByAdmin;
             booking.Status = OrderStatusEnum.Settled;
             await _bookingRepository.UpsertAsync(booking);
+            DbOpearationInfo operationInfo = new DbOpearationInfo() { ModifyType = 3, ReferenceId=booking.Id, Operater = userEmail, UpdateTime = DateTime.UtcNow, Operation = "结单" };
+            await _opearationRepository.UpsertAsync(operationInfo);
             var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == booking.PaymentId);
             PayAction(paymentInfo, true);
+            SettleBookingOld(bookingId,detailId,userEmail);
             return new ResponseModel() { code = 0, msg = "ok" };
+        }
+        public async void SettleBookingOld(string bookingId, string detailId, string userEmail) {
+            var booking = await _restaurantBookingRepository.GetOneAsync(a => a.Id == bookingId);
+            foreach (var item in booking.Details)
+            {
+                if (item.Id == detailId)
+                {
+                    item.Status = OrderStatusEnum.Settled;
+                    item.AcceptStatus = AcceptStatusEnum.SettledByAdmin;
+                }
+            }
+            booking.Status = OrderStatusEnum.Settled;
+            await _restaurantBookingRepository.UpsertAsync(booking);
         }
         public async Task<ResponseModel> UpsetBookingRemark(string bookingId, string detailId, string remark, string userEmail)
         {
@@ -242,8 +258,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             booking.Status = OrderStatusEnum.Canceled;
             booking.Updated = DateTime.UtcNow;
             booking.Updater = userEmail;
-            //OperationInfo operationInfo = new OperationInfo() { ModifyType = 3, Operater = userEmail, UpdateTime = DateTime.UtcNow, Operation = "订单取消" };
-            //booking.Operations.Add(operationInfo);
+            DbOpearationInfo operationInfo = new DbOpearationInfo() { ModifyType = 3,ReferenceId=booking.Id, Operater = userEmail, UpdateTime = DateTime.UtcNow, Operation = "订单取消" };
+            await _opearationRepository.UpsertAsync(operationInfo);
 
             var savedRestaurant = await _bookingRepository.UpsertAsync(booking);
             CancelOld(bookingId, detailId, userEmail, isAdmin);
@@ -338,11 +354,30 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (temp != null)
             {
 
-                var opt = new DbOpearationInfo() { Id = Guid.NewGuid().ToString(), Operater = user.UserId, Operation = statusEnum.ToString(), UpdateTime = DateTime.UtcNow };
+                var opt = new DbOpearationInfo() { Id = Guid.NewGuid().ToString(),ReferenceId=id, Operater = user.UserEmail, Operation = statusEnum.ToString(), UpdateTime = DateTime.UtcNow };
                 await _opearationRepository.UpsertAsync(opt);
             }
+            UpdateStatusByAdminOld(id, status, user);
             return new ResponseModel { msg = "ok", code = 200, data = new { } };
         }
+
+        public async void UpdateStatusByAdminOld(string id, int status, DbToken user) {
+
+            TrDbRestaurantBooking booking = await _restaurantBookingRepository.GetOneAsync(a=>a.Details.Any(d=>d.Id==id));
+            AcceptStatusEnum statusEnum = (AcceptStatusEnum)status;
+            foreach (var item in booking.Details)
+            {
+                if (item.Id == id)
+                {
+                    UpdateStatus(item, status);
+                }
+            }
+            var opt = new OperationInfo() { Operater = user.UserId, Operation = statusEnum.ToString(), UpdateTime = DateTime.UtcNow };
+            booking.Operations.Add(opt);
+            var temp = await _restaurantBookingRepository.UpsertAsync(booking);
+
+        }
+
         public async Task<ResponseModel> UpdateAccepted(string billId, string subBillId, int acceptType, string operater)
         {
             DbBooking booking = await _bookingRepository.GetOneAsync(a => a.Id == subBillId);
@@ -413,7 +448,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //{
             //    _stripeUtil.RefundGroupMeals(booking);
             //}
-            DbOpearationInfo opt = new DbOpearationInfo() { Id = Guid.NewGuid().ToString(), Operater = operater, Operation = acceptType == 1 ? "接收预订" : "拒绝预订", UpdateTime = DateTime.UtcNow };
+            DbOpearationInfo opt = new DbOpearationInfo() { Id = Guid.NewGuid().ToString(),ReferenceId=booking.Id, Operater = operater, Operation = acceptType == 1 ? "接收预订" : "拒绝预订", UpdateTime = DateTime.UtcNow };
             await _opearationRepository.UpsertAsync(opt);
             var temp = await _bookingRepository.UpsertAsync(booking);
             string msg = $"您于{booking.Created.Value.ToString("yyyy-MM-dd HH:mm")}  提交的订单已被接收，请按时就餐";
@@ -430,13 +465,87 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
                 return new ResponseModel() { code = 501, msg = "Cannot find shop info" };
             }
-
+            UpdateAcceptedold(billId, subBillId, acceptType, operater);
             SendEamilByUpdateAccept(acceptType, booking, shopInfo);
             return new ResponseModel() { code = 0, msg = "ok", data = booking };
         }
 
-        public async Task<ResponseModel> UpdateAcceptedold(string billId, string subBillId, int acceptType, string operater) { 
+        public async void UpdateAcceptedold(string billId, string subBillId, int acceptType, string operater) 
         
+        {
+            TrDbRestaurantBooking booking = await _restaurantBookingRepository.GetOneAsync(a => a.Details.Any(d=>d.Id==billId));
+        
+            foreach (var item in booking.Details)
+            {
+                if (item.Id == billId)
+                {
+                    switch (item.AcceptStatus)
+                    {
+                        case AcceptStatusEnum.UnAccepted:
+                            UpdateStatus(item, acceptType);
+                            break;
+                        case AcceptStatusEnum.Accepted:
+                            var customer = await _customerRepository.GetOneAsync(a => a.Email == operater);
+                            if (customer != null)
+                            {
+                                bool IsAdmin = customer.AuthValue.AuthVerify(8);
+                                if (IsAdmin)
+                                {
+                                    UpdateStatus(item, acceptType);
+                                }
+                                else
+                                {
+                                }
+                            }
+
+                            break;
+                        case AcceptStatusEnum.Declined:
+                            customer = await _customerRepository.GetOneAsync(a => a.Email == operater);
+                            if (customer != null)
+                            {
+                                bool IsAdmin = customer.AuthValue.AuthVerify(8);
+                                if (IsAdmin)
+                                {
+                                    UpdateStatus(item, acceptType);
+                                }
+                                else
+                                {
+                                }
+                            }
+
+                            break;
+                        case AcceptStatusEnum.CanceledBeforeAccepted:
+                        case AcceptStatusEnum.CanceledAfterAccepted:
+                            customer = await _customerRepository.GetOneAsync(a => a.Email == operater);
+                            if (customer != null)
+                            {
+                                bool IsAdmin = customer.AuthValue.AuthVerify(8);
+                                if (IsAdmin)
+                                {
+                                    UpdateStatus(item, acceptType);
+                                }
+                                else
+                                {
+                                }
+                            }
+
+
+
+                            break;
+                        case AcceptStatusEnum.Settled:
+                        case AcceptStatusEnum.SettledByAdmin:
+                        default:
+                            break;
+                    }
+
+                }
+            }
+
+            await _restaurantBookingRepository.UpsertAsync(booking);
+
+
+
+
         }
 
         private void SendEamilByUpdateAccept(int acceptType, DbBooking booking, DbShop shopInfo)
@@ -481,7 +590,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var temp = await _bookingRepository.UpsertAsync(booking);
             if (temp != null)
             {
-                var opt = new DbOpearationInfo() { Operater = operater, Operation = "添加原因", UpdateTime = DateTime.UtcNow };
+                var opt = new DbOpearationInfo() { Operater = operater,ReferenceId=billId, Operation = "添加原因", UpdateTime = DateTime.UtcNow };
                 await _opearationRepository.UpsertAsync(opt);
             }
 
@@ -565,7 +674,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var dbBooking = await _bookingRepository.GetOneAsync(r => !r.IsDeleted && r.Id == newBooking.Id);
             if (dbBooking == null) return new ResponseModel { msg = "booking not found", code = 200, data = null };
             newBooking.BillInfo = dbBooking.BillInfo;
-            DbOpearationInfo operationInfo = new DbOpearationInfo() { Id = Guid.NewGuid().ToString(), ModifyType = 4, Operater = email, UpdateTime = DateTime.UtcNow, Operation = "订单修改" };
+            DbOpearationInfo operationInfo = new DbOpearationInfo() { Id = Guid.NewGuid().ToString(),ReferenceId=newBooking.Id, ModifyType = 4, Operater = email, UpdateTime = DateTime.UtcNow, Operation = "订单修改" };
             int isChange = 0; int isDtlChanged = 0;
 
             if (newBooking != null)
