@@ -119,7 +119,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 //_twilioUtil.sendSMS(item.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
                 Detail += $"<br> Amount(金额)：<b>{itemCurrencyStr}{item.AmountInfos.Sum(x => x.Amount)}</b>, <br>";
                 if (item.ShowPaid)
-                    Detail += " Paid(已付)：<b>{itemCurrencyStr}{paidAmount}</b>,<br>";
+                    Detail += $" Paid(已付)：<b>{itemCurrencyStr}{paidAmount}</b>,<br>";
                 if (amount - paidAmount > 0)
                     Detail += $"<b style=\"color: red;\"> UnPaid(待支付)：{itemCurrencyStr}{amount - reward - paidAmount}</b>";
                 senderParams.BookingRef = item.BookingRef;
