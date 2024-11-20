@@ -85,7 +85,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         public async Task<bool> EmailEach(List<DbBooking> bookings, DbShop shopInfo, EmailSenderParams senderParams)
         {
-            var country = await _countryHandler.GetCountry(shopInfo.ShopId ?? 11);
+            var country = await _countryHandler.GetCountries(shopInfo.ShopId ?? 11);
             string Detail = "";
             foreach (var item in bookings)
             {
@@ -216,7 +216,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<bool> EmailGroup(List<DbBooking> bookings, DbShop shopInfo, EmailSenderParams senderParams, DbCustomer user)
         {
             string Detail = "";
-            var country = await _countryHandler.GetCountry(11);
+            var country = await _countryHandler.GetCountries(11);
             foreach (var item in bookings)
             {
                 if (item.Status == OrderStatusEnum.Canceled) continue;
@@ -435,7 +435,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task SendCancelEmail(DbShop shopInfo, DbBooking booking, string webPath, string tempName, string subject, params string[] ccEmail)
         {
-            var country = await _coutryHandler.GetCountry(booking.ShopId ?? 11);
+            var country = await _coutryHandler.GetCountries(booking.ShopId ?? 11);
             var con = country.FirstOrDefault(a => a.Name == booking.RestaurantCountry);
             if (con == null) return;
             string currencyStr = country.FirstOrDefault(a => a.Currency == booking.PayCurrency).CurrencySymbol;

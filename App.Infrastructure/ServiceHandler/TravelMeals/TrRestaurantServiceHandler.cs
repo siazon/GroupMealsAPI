@@ -55,6 +55,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<ResponseModel> GetCitiesV1(int shopId);
         Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId);
         Task<ResponseModel> UpsetCities(DbCountry countries, int shopId);
+        Task<ResponseModel> ExportRestaurants();
         Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId);
         Task<ResponseModel> DeleteRestaurant(string id, string email, string pwd, int shopId);
 
@@ -199,7 +200,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         if (isAllCity)
                             currentPage = await _restaurantRepository.GetManyAsync(a => a.Country == country, pageSize, continuationToke);
                         else
-                            currentPage = await _restaurantRepository.GetManyAsync(a => a.Country == country && a.City == city, pageSize, continuationToke);
+                            currentPage = await _restaurantRepository.GetManyAsync(a => a.Country == country && a.City.Contains(city), pageSize, continuationToke);
 
                     }
                     else
@@ -341,6 +342,21 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return new ResponseModel { msg = "ok", code = 200, token = continuationToke, data = data };
 
         }
+        public async Task<ResponseModel> ExportRestaurants()
+        {
+
+            List<TrDbRestaurant> restaurants = new List<TrDbRestaurant>();
+            string token = "";
+            while (token != null)
+            {
+                var temo = await _restaurantRepository.GetManyAsync(a => (1 == 1), 500, token);
+                var list = temo.Value.ToList();
+                restaurants.AddRange(list);
+                token = temo.Key;
+            }
+
+            return new ResponseModel { msg = "ok", code = 200, data = restaurants };
+        }
 
         public async Task<ResponseModel> GetRestaurant(string Id)
         {
@@ -354,22 +370,79 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 return new ResponseModel { msg = "Restaurant not Exists", code = 501, data = existingRestaurant };
 
         }
-        public async Task<ResponseModel> UpsetCities(DbCountry countries, int shopId)
+
+        public async Task<ResponseModel> UpsetCities(DbCountry country, int shopId)
         {
             var cacheKey = string.Format("motionmedia-{1}-{0}", shopId, "cities");
-            if (countries == null)
+            if (country == null)
                 return new ResponseModel { msg = "保存失败，请检查输入的内容是否正确", code = 501, data = null };
-
+            var Dbcountry = await _countryRepository.GetCountry(country.Id);
+            var isChanged = IsCityNameChanged(country, Dbcountry);
+            if (isChanged)
+                return new ResponseModel { msg = "城市名称不可修改，请删除后新增", code = 501, data = null };
+            var deleteDisable = await IsDeleteCity(country, Dbcountry);
+            if(deleteDisable)
+                return new ResponseModel { msg = "此城市不能删除，请先删除与本城市关联的餐厅", code = 501, data = null };
             var cacheKeycitys = string.Format("motionmedia-{1}-{0}", shopId, "citys");
             _memoryCache.Set<DbCountry>(cacheKey, null);
             _memoryCache.Set<Dictionary<string, List<string>>>(cacheKeycitys, null);
-            if (string.IsNullOrWhiteSpace(countries.Id))
-                countries.Id = Guid.NewGuid().ToString();
-            _countryRepository.UpsertCountry(countries);
+            if (string.IsNullOrWhiteSpace(country.Id))
+                country.Id = Guid.NewGuid().ToString();
+            var dbCity = await _countryRepository.UpsertCountry(country);
+            var rests = await _restaurantRepository.GetManyAsync(a => a.Country == dbCity.Code);
+            foreach (var item in dbCity.Cities)
+            {
+                var res = rests.Where(a => a.Country == dbCity.Code && a.City == item.Name).ToList();
+                foreach (var city in res)
+                {
+                    city.Currency = dbCity.Currency;
+                    city.Vat = dbCity.VAT;
+                    city.TimeZone = item.TimeZone;
+                    await _restaurantRepository.UpsertAsync(city);
+                }
+            }
+
 
             _memoryCache.Set<DbCountry>(cacheKey, null);
             _memoryCache.Set<Dictionary<string, List<string>>>(cacheKeycitys, null);
             return new ResponseModel { msg = "ok", code = 200, data = null };
+        }
+        private bool IsCityNameChanged(DbCountry country, DbCountry dbCountry)
+        {
+            if (dbCountry != null && dbCountry.Cities.Count == country.Cities.Count)
+            {
+                foreach (var item in dbCountry.Cities)
+                {
+                    var city = country.Cities.FirstOrDefault(a => a.Name == item.Name);
+                    if (city == null)
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        private async Task<bool> IsDeleteCity(DbCountry country, DbCountry dbCountry)
+        {
+            if (dbCountry != null && dbCountry.Cities.Count > country.Cities.Count)
+            {
+                foreach (var item in dbCountry.Cities)
+                {
+                    var city = country.Cities.FirstOrDefault(a => a.Name == item.Name);
+                    if (city == null)
+                    {
+                        var res = await _restaurantRepository.GetManyAsync(a => a.City == item.Name);
+                        if (res != null&&res.Count()>0)
+                        {
+                            return true;
+                        }
+                        else
+                            return false;
+                    }
+                }
+               
+            }
+            return false;
         }
         public async Task<ResponseModel> GetCitys(int shopId)
         {
@@ -406,7 +479,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<ResponseModel> GetCities(int shopId)
         {
             _logger.LogInfo("azure functions actioned");
-            var existingCities = await _countryRepository.GetCountry(shopId);
+            var existingCities = await _countryRepository.GetCountries(shopId);
             if (existingCities == null)
                 return new ResponseModel { msg = "Cities can't fund", code = 501, };
             DbCountryold dbCountryold = new DbCountryold() { Id = Guid.NewGuid().ToString(), Countries = new List<Country>() };
@@ -422,7 +495,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     NameCN = item.Name,
                     TimeZone = item.Cities[0].TimeZone,
                     SortOrder = item.SortOrder ?? 0,
-                     Cities= item.Cities,
+                    Cities = item.Cities,
                 };
                 dbCountryold.Countries.Add(country);
             }
@@ -432,7 +505,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             _logger.LogInfo("azure functions actioned");
 
-            var existingCities = await _countryRepository.GetCountry(shopId);
+            var existingCities = await _countryRepository.GetCountries(shopId);
             if (existingCities == null)
                 return new ResponseModel { msg = "Cities can't fund", code = 501, };
 
@@ -528,12 +601,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 && r.ShopId == shopId);
             if (customer.Password != passwordEncode)
             {
-                return new ResponseModel { msg = "�������", code = 200 };
+                return new ResponseModel { msg = "密码错误", code = 501 };
             }
 
             var existingItem = await _restaurantRepository.GetOneAsync(r => r.Id == id && r.ShopId == shopId);
             if (existingItem == null)
-                return new ResponseModel { msg = "����������", code = 200 };
+                return new ResponseModel { msg = "餐厅不存在", code = 501 };
 
             var item = await _restaurantRepository.DeleteAsync(existingItem);
             _memoryCache.Set(cacheKey, cityRes);

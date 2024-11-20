@@ -286,7 +286,7 @@ namespace KingfoodIO.Controllers.TravelMeals
             var userInfo = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
 
             return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantBookingServiceHandler.SearchBookings(shopId, userInfo.UserEmail, content, pageSize, pageToken));
+                async () => await _restaurantBookingServiceHandler.SearchBookings(shopId, userInfo, content, pageSize, pageToken));
         }
 
         /// <summary>

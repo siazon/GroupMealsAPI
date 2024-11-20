@@ -90,7 +90,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<bool> DeleteBooking(string bookingId, int shopId);
         Task<bool> UndoDeleteDetail(string bookingId, string detailId, int shopId);
         Task<ResponseModel> SearchBookingsV1(int shopId, string userId, string content, int pageSize = -1, string continuationToke = null);
-        Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToken = null);
+        Task<ResponseModel> SearchBookings(int shopId, DbToken user, string content, int pageSize = -1, string continuationToken = null);
         Task<ResponseModel> SearchBookingsByRestaurant(int shopId, string email, string content, int pageSize = -1, string continuationToke = null);
         Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, int filterTime, DateTime stime, DateTime etime, int status, int pageSize = -1, string continuationToke = null);
         Task<List<DbBooking>> PlaceBooking(List<DbBooking> cartInfos, int shopId, DbCustomer user, IntentTypeEnum intentType);
@@ -199,7 +199,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == booking.PaymentId);
             PayAction(paymentInfo, true);
             SettleBookingOld(bookingId, detailId, userEmail);
-            return new ResponseModel() { code = 0, msg = "ok" };
+            return new ResponseModel() { code = 200, msg = "ok" };
         }
         public async void SettleBookingOld(string bookingId, string detailId, string userEmail)
         {
@@ -222,7 +222,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             booking.Updater = userEmail;
             booking.Updated = DateTime.UtcNow;
             await _bookingRepository.UpsertAsync(booking);
-            return new ResponseModel() { code = 0, msg = "ok" };
+            return new ResponseModel() { code = 200, msg = "ok" };
         }
         public async Task<ResponseModel> CancelBooking(string bookingId, string detailId, string userEmail, bool isAdmin)
         {//Europe/Dublin Europe/London Europe/Paris
@@ -230,13 +230,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             var booking = await _bookingRepository.GetOneAsync(a => a.Id == detailId);
             if (booking == null || booking.Status == OrderStatusEnum.Canceled)
-                return new ResponseModel() { code = 0, msg = "订单已取消" };
+                return new ResponseModel() { code = 501, msg = "订单已取消" };
             else
             {
 
                 //if (!isAdmin && (item.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry)) - DateTime.UtcNow.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry))).TotalHours < 24)
                 //{
-                //return new { code = 0, msg = "距离用餐时间24小时内取消请联系客服人员：微信：groupmeals", };
+                //return new { code = 200, msg = "距离用餐时间24小时内取消请联系客服人员：微信：groupmeals", };
                 //}
             }
             booking.Status = OrderStatusEnum.Canceled;
@@ -264,7 +264,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             var savedRestaurant = await _bookingRepository.UpsertAsync(booking);
             CancelOld(bookingId, detailId, userEmail, isAdmin);
-            return new ResponseModel() { code = 0, msg = "ok" };
+            return new ResponseModel() { code = 200, msg = "ok" };
 
         }
         public async Task<ResponseModel> CancelOld(string bookingId, string detailId, string userEmail, bool isAdmin)
@@ -276,13 +276,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 if (item.Id == detailId)
                 {
                     if (item.Status == OrderStatusEnum.Canceled)
-                        return new ResponseModel { code = 0, msg = "订单已取消", };
+                        return new ResponseModel { code = 501, msg = "订单已取消", };
                     else
                     {
 
                         //if (!isAdmin && (item.SelectDateTime.Value.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry)) - DateTime.UtcNow.GetLocaTimeByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry))).TotalHours < 24)
                         //{
-                        //return new { code = 0, msg = "距离用餐时间24小时内取消请联系客服人员：微信：groupmeals", };
+                        //return new { code = 200, msg = "距离用餐时间24小时内取消请联系客服人员：微信：groupmeals", };
                         //}
                     }
                     item.Status = OrderStatusEnum.Canceled;
@@ -307,7 +307,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             var savedRestaurant = await _restaurantBookingRepository.UpsertAsync(booking);
 
-            return new ResponseModel { code = 0, msg = "ok", };
+            return new ResponseModel { code = 200, msg = "ok", };
         }
         public async Task<bool> UpdateBooking(string billId, string productId, string priceId)
         {
@@ -388,7 +388,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             DbBooking booking = await _bookingRepository.GetOneAsync(a => a.Id == subBillId);
 
             if (booking == null || booking.IsDeleted)
-                return new ResponseModel() { code = 1, msg = "Order Deleted(无效操作，订单已删除)", };
+                return new ResponseModel() { code = 501, msg = "Order Deleted(无效操作，订单已删除)", };
             switch (booking.AcceptStatus)
             {
                 case AcceptStatusEnum.UnAccepted:
@@ -405,7 +405,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         }
                         else
                         {
-                            return new ResponseModel() { code = 1, msg = "Order Accepted(订单已接受，如需修改请联系客服)" };
+                            return new ResponseModel() { code = 501, msg = "Order Accepted(订单已接受，如需修改请联系客服)" };
                         }
                     }
 
@@ -421,7 +421,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         }
                         else
                         {
-                            return new ResponseModel() { code = 2, msg = "Order Declined(订单已被拒绝，如需修改请联系客服)" };
+                            return new ResponseModel() { code = 501, msg = "Order Declined(订单已被拒绝，如需修改请联系客服)" };
                         }
                     }
 
@@ -438,13 +438,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         }
                         else
                         {
-                            return new ResponseModel() { code = 2, msg = "Order Declined(订单已取消，如需修改请联系客服)" };
+                            return new ResponseModel() { code = 501, msg = "Order Declined(订单已取消，如需修改请联系客服)" };
                         }
                     }
                     break;
                 case AcceptStatusEnum.Settled:
                 case AcceptStatusEnum.SettledByAdmin:
-                    return new ResponseModel() { code = 2, msg = "Order Settled(已结单，如需修改请联系客服)" };
+                    return new ResponseModel() { code = 501, msg = "Order Settled(已结单，如需修改请联系客服)" };
                 default:
                     break;
             }
@@ -472,7 +472,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             UpdateAcceptedold(billId, subBillId, acceptType, operater);
             SendEamilByUpdateAccept(acceptType, booking, shopInfo);
-            return new ResponseModel() { code = 0, msg = "ok", data = booking };
+            return new ResponseModel() { code = 200, msg = "ok", data = booking };
         }
 
         public async void UpdateAcceptedold(string billId, string subBillId, int acceptType, string operater)
@@ -677,9 +677,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (newBooking.Charged)
                 return new ResponseModel { msg = "订单已扣款，不可再修改", code = 501, data = null };
             var dbBooking = await _bookingRepository.GetOneAsync(r => !r.IsDeleted && r.Id == newBooking.Id);
-            if (dbBooking == null) return new ResponseModel { msg = "booking not found", code = 200, data = null };
+            if (dbBooking == null) return new ResponseModel { msg = "booking not found", code = 501, data = null };
             newBooking.BillInfo = dbBooking.BillInfo;
-            DbOpearationInfo operationInfo = new DbOpearationInfo() { Id = Guid.NewGuid().ToString(), ReferenceId = newBooking.Id, ModifyType = 4, Operater = email, UpdateTime = DateTime.UtcNow, Operation = "订单修改" };
+            newBooking.RestaurantIncluedVAT = dbBooking.RestaurantIncluedVAT;
+            DbOpearationInfo operationInfo = new DbOpearationInfo() { Id = Guid.NewGuid().ToString(), ReferenceId = newBooking.Id, ModifyType = 4,
+                Operater = email, UpdateTime = DateTime.UtcNow, Operation = "订单修改" };
             int isChange = 0; int isDtlChanged = 0;
 
             if (newBooking != null)
@@ -789,7 +791,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 if (isNotify)
                     SendModifyEmail(savedBooking);
             }
-            return new ResponseModel { msg = "", code = 200, data = null };
+            return new ResponseModel { msg = "ok", code = 200, data = null };
         }
 
         private bool UpdateField(OperationInfo operationInfo, DbBooking item, DbBooking detail, string fieldName, bool record = true)
@@ -852,7 +854,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //    _logger.LogInfo(" Make a booking.time: " + item.SelectDateTime);
             //    if ((item.SelectDateTime - DateTime.UtcNow).Value.TotalHours < 12)
             //    {
-            //        return new ResponseModel { msg = "用餐时间少于12个小时", code = 200, data = null };
+            //        return new ResponseModel { msg = "用餐时间少于12个小时", code = 501, data = null };
             //    }
             //}
             TourBooking newBooking;
@@ -884,7 +886,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 if (!string.IsNullOrWhiteSpace(item.MealTime))
                 {
                     DateTime.TryParse(item.MealTime, out dateTime);
-                    item.SelectDateTime = dateTime.GetTimeZoneByIANACode(_dateTimeUtil.GetIANACode(item.RestaurantCountry));
+                    item.SelectDateTime = dateTime.GetTimeZoneByIANACode(item.RestaurantTimeZone);
 
                     string[] temp = item.MealTime.Split(' ');
                     string[] timetemp = temp[1].Split(':');
@@ -946,7 +948,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 var res = PlaceBooking(booking.Details, shopId, userInfo, IntentTypeEnum.None);
                 await SendEmail(booking.Details, userInfo);
             }
-            return new ResponseModel { msg = "", code = 200, data = newItem };
+            return new ResponseModel { msg = "ok", code = 200, data = newItem };
         }
         public async Task<ResponseModel> MakeABooking(PayCurrencyVO payCurrencyVO, int shopId, DbToken user)
         {
@@ -1000,7 +1002,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     dbPaymentInfo.Created = DateTime.UtcNow;
                 }
 
-                var countries = await _countryHandler.GetCountry(userInfo.ShopId ?? 11);
+                var countries = await _countryHandler.GetCountries(userInfo.ShopId ?? 11);
                 dbPaymentInfo.Amount = _amountCalculaterV1.CalculateOrderPaidAmount(bookings, payCurrencyVO.PayCurrency, userInfo, countries);
                 dbPaymentInfo.Currency = currency;
 
@@ -1082,7 +1084,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == billId);
             var bookings = await _bookingRepository.GetManyAsync(a => a.PaymentId == billId);
             var bookingList = bookings.ToList();
-            var countries = await _countryHandler.GetCountry(user.ShopId ?? 11);
+            var countries = await _countryHandler.GetCountries(user.ShopId ?? 11);
             paymentInfo.Amount = _amountCalculaterV1.CalculateOrderPaidAmount(bookingList, paymentInfo.Currency, user, countries);
             _stripeServiceHandler.SetupPaymentAction(paymentInfo, userId);
         }
@@ -1383,15 +1385,21 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var savedRestaurant = await _bookingRepository.UpsertAsync(booking);
             return savedRestaurant != null;
         }
-        public async Task<ResponseModel> SearchBookings(int shopId, string email, string content, int pageSize = -1, string continuationToken = null)
+        public async Task<ResponseModel> SearchBookings(int shopId, DbToken user, string content, int pageSize = -1, string continuationToken = null)
         {
+            var listres =await SearchBookingsV1(shopId, user.UserId, content, pageSize, continuationToken);
+            List<DbBooking> dbBookings = listres.data as List<DbBooking>;
+            var aaa = getBooking(dbBookings);
+            listres.data = aaa;
+            return listres;
+
             pageSize = -1;
             //SettleOrder();
             List<TrDbRestaurantBooking> res = new List<TrDbRestaurantBooking>();
             string pageToken = "";
             if (string.IsNullOrWhiteSpace(content))
             {
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.CustomerEmail == email), pageSize, continuationToken);
+                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.CustomerEmail == user.UserEmail), pageSize, continuationToken);
                 res = Bookings.Value.ToList();
                 pageToken = Bookings.Key;
 
@@ -1400,7 +1408,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             else
             {
                 var _content = content.ToLower().Trim();
-                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.CustomerEmail == email &&
+                var Bookings = await _restaurantBookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.CustomerEmail == user.UserEmail &&
                 (a.BookingRef.ToLower().Contains(_content) ||
                 a.Details.Any(d => d.RestaurantName.ToLower().Contains(_content)))), pageSize, continuationToken);
 
@@ -1413,6 +1421,39 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var list = res.OrderByDescending(a => a.Details.Max(d => d.SelectDateTime)).ToList();
 
             return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = list };
+        }
+        public List<TrDbRestaurantBooking> getBooking(List<DbBooking> source)
+        {
+
+            List<TrDbRestaurantBooking> res = new List<TrDbRestaurantBooking>();
+            foreach (var item in source)
+            {
+                if (item.BillInfo.PaymentType == PaymentTypeEnum.Percentage || item.BillInfo.PaymentType == PaymentTypeEnum.Fixed)
+                {
+                    item.BillInfo.PaymentType = PaymentTypeEnum.Fixed;
+                }
+                else {
+                    item.BillInfo.PaymentType = PaymentTypeEnum.Full;
+                }
+                TrDbRestaurantBooking booking = new TrDbRestaurantBooking()
+                {
+                    Id = item.Id,
+                    BookingRef = item.BookingRef,
+                    Created = item.Created,
+                    Creater = item.Creater,
+                    CustomerEmail = item.ContactEmail,
+                    CustomerName = item.ContactName,
+                    CustomerPhone = item.ContactPhone,
+                    IsActive = item.IsActive,
+                    IsDeleted = item.IsDeleted,
+                    PayCurrency = item.PayCurrency,
+                    ShopId = item.ShopId,
+                    Status = item.Status,
+                    Details = new List<DbBooking>() { item }
+                };
+                res.Add(booking);
+            }
+            return res;
         }
         public async Task<ResponseModel> SearchBookingsV1(int shopId, string userId, string content, int pageSize = -1, string continuationToken = null)
         {
@@ -1448,6 +1489,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = res };
 
         }
+
 
         private async Task<DbBooking> UpdateForOutput(DbBooking dbBooking)
         {
@@ -1692,7 +1734,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 return new ResponseModel { msg = "detailId can't find in cartinfo", code = 501, };
             }
 
-            var countries = await _countryHandler.GetCountry(user.ShopId ?? 11);
+            var countries = await _countryHandler.GetCountries(user.ShopId ?? 11);
 
             var amountInfo = _amountCalculaterV1.GetOrderPaidInfo(details, currency, user.ShopId ?? 11, user, countries);
 
@@ -1728,7 +1770,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             var user = await _customerRepository.GetOneAsync(a => a.Id == userId);
             user = await _customerServiceHandler.RefreshCartInfo(user);
-            var countries = await _countryHandler.GetCountry(user.ShopId ?? 11);
+            var countries = await _countryHandler.GetCountries(user.ShopId ?? 11);
             var amountInfo = _amountCalculaterV1.GetOrderPaidInfo(details, currency, user.ShopId ?? 11, user, countries);
             return amountInfo;
         }
@@ -1768,7 +1810,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     }
                     var user = await _customerRepository.GetOneAsync(a => a.Id == userId);
                     user = await _customerServiceHandler.RefreshCartInfo(user);
-                    var countries = await _countryHandler.GetCountry(user.ShopId ?? 11);
+                    var countries = await _countryHandler.GetCountries(user.ShopId ?? 11);
                     var amountInfo = _amountCalculaterV1.GetOrderPaidInfo(details, currency, user.ShopId ?? 11, user, countries);
                     totalPayAmount = amountInfo.TotalPayAmount;
 
@@ -1788,7 +1830,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
                 }
 
-                var countries = await _countryHandler.GetCountry(user.ShopId ?? 11);
+                var countries = await _countryHandler.GetCountries(user.ShopId ?? 11);
                 List<DbBooking> details = new List<DbBooking>();
                 foreach (var bo in items)
                 {
@@ -1925,7 +1967,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 return new ResponseModel { msg = "ok", code = 200, data = url };
             }
             else
-                return new ResponseModel { msg = "保存失败", code = 200, };
+                return new ResponseModel { msg = "保存失败", code = 501, };
 
         }
         public async Task<ResponseModel> ExportBooking()
@@ -1935,7 +1977,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string token = "";
             while (token != null)
             {
-                var temo = await _bookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None), 500, token);
+                var temo = await _bookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None&&!a.IsDeleted), 500, token);
                 var list = temo.Value.ToList();
                 Bookings.AddRange(list);
                 token = temo.Key;
@@ -1956,6 +1998,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private List<BookingExportModel> BookingExportBuilder(List<DbBooking> data, List<DbCustomer> users, List<DbPaymentInfo> payments)
         {
             List<BookingExportModel> bookings = new List<BookingExportModel>();
+
             foreach (var item in data)
             {
 
@@ -1972,9 +2015,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     price = a.Price;
                 });
                 ItemPayInfo amountInfo = new ItemPayInfo();
+                bool isNewCustomer = false;
                 var user = users.FirstOrDefault(a => a.Id == item.Creater);
                 if (user != null)
                 {
+                    isNewCustomer = !user.IsOldCustomer;
                     amountInfo = _amountCalculaterV1.getItemPayAmount(item.ConvertToAmount(), user, 0.125);
                 }
                 var payment = payments.FirstOrDefault(a => a.Id == item.PaymentId);
@@ -2003,6 +2048,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     CreateTime = item.Created.Value.ToString("HH:mm"),
                     CreaterName = user?.UserName,
                     CreaterEmail = user?.Email,
+                    IsNewCustomer=isNewCustomer,
                     PayCurrency = item.PayCurrency ?? item.Currency,
                     Amount = amount,
                     Unpaid = amount - paid,
@@ -2071,16 +2117,16 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<bool> OrderCheck()
         {
 
+            updateRest();
+            return true;
 
-
+            return true;
             asyncBooking();
             return true;
 
             ExportBooking();
             return true;
             asyncCustomer();
-            return true;
-            updateRest();
             return true;
             autoPayment();
             return true;
@@ -2172,11 +2218,24 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 bookings.AddRange(list);
                 token = temo.Key;
             }
-            var temooo = await _bookingRepository.GetManyAsync(a => a.Created > new DateTime(2024, 11, 7, 18, 30, 36));
+
+            var rests = await _restaurantRepository.GetManyAsync(a => a.BillInfo.SupportedPaymentTypes.Count==0);
+
+            foreach (var item in rests)
+            {
+                if (item.BillInfo.PaymentType == PaymentTypeEnum.Full)
+                {
+                    item.BillInfo.SupportedPaymentTypes = new List<PaymentTypeEnum>() { PaymentTypeEnum.Full };
+                }
+                else
+                    item.BillInfo.SupportedPaymentTypes = new List<PaymentTypeEnum>() { PaymentTypeEnum.Fixed};
+            }
+
+
+            var temooo = await _bookingRepository.GetManyAsync(a => a.RestaurantId == null);
 
             var users = await _customerRepository.GetManyAsync(a => a.ShopId == 11);
             int i = 0;
-            var rests = await _restaurantRepository.GetManyAsync(a => 1 == 1);
             foreach (var booking in bookings)
             {
 
@@ -2243,6 +2302,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     var rest = rests.FirstOrDefault(a => a.Id == book.RestaurantId);
                     if (rest != null)
                     {
+                        dbBooking.RestaurantId = rest.Id;
                         dbBooking.RestaurantName = rest.StoreName;
                         dbBooking.RestaurantEmail = rest.Email;
                         dbBooking.RestaurantAddress = rest.Address;
@@ -2282,50 +2342,47 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private async void updateRest()
         {
             var rests = await _restaurantRepository.GetManyAsync(a => a.ShopId == 11);
-            var countrys = await _countryHandler.GetCountry(11);
+            var countrys = await _countryHandler.GetCountries(11);
             foreach (var item in rests)
-            {
-                if (item.Id == "6e28457f-68d8-4002-9e74-f639ff489191")
-                {
-
-
-                }
+            { 
                 var count = countrys.FirstOrDefault(a => a.Code == item.Country);
                 if (count == null)
                 {
                     continue;
                 }
-                var city = count.Cities.FirstOrDefault(a => a.Name == item.City);
+                var city = count.Cities.FirstOrDefault(a =>  item.City.Contains(a.Name));
                 if (city == null)
-                { continue; }
+                { 
+                    continue; }
+                item.City = city.Name;
                 item.TimeZone = city.TimeZone;
                 item.Currency = count.Currency;
                 item.Vat = count.VAT;
 
 
-                if (item.BillInfo.SupportedPaymentTypes.Count == 1)
-                {
-                    if (item.BillInfo.SupportedPaymentTypes[0] == PaymentTypeEnum.Fixed)
-                    {
-                        item.BillInfo.PaymentType = PaymentTypeEnum.Full;
-                        item.BillInfo.RewardType = PaymentTypeEnum.Full;
-                        item.IncluedVAT = false;
-                        item.ShowPaid = false;
-                    }
-                    else
-                    {
+                //if (item.BillInfo.SupportedPaymentTypes.Count == 1)
+                //{
+                //    if (item.BillInfo.SupportedPaymentTypes[0] == PaymentTypeEnum.Fixed)
+                //    {
+                //        item.BillInfo.PaymentType = PaymentTypeEnum.Full;
+                //        item.BillInfo.RewardType = PaymentTypeEnum.Full;
+                //        item.IncluedVAT = false;
+                //        item.ShowPaid = false;
+                //    }
+                //    else
+                //    {
 
-                    }
+                //    }
 
-                }
-                else
-                {
-                    item.BillInfo.PaymentType = PaymentTypeEnum.Percentage;
-                    item.BillInfo.PayRate = 0;
-                    item.BillInfo.RewardType = PaymentTypeEnum.Full;
-                    item.BillInfo.Reward = 0;
-                    item.ShowPaid = true;
-                }
+                //}
+                //else
+                //{
+                //    item.BillInfo.PaymentType = PaymentTypeEnum.Percentage;
+                //    item.BillInfo.PayRate = 0;
+                //    item.BillInfo.RewardType = PaymentTypeEnum.Full;
+                //    item.BillInfo.Reward = 0;
+                //    item.ShowPaid = true;
+                //}
 
                 await _restaurantRepository.UpsertAsync(item);
             }
@@ -2347,7 +2404,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             string jsonStr = "{\"Countries\":[{\"SortOrder\":0,\"Name\":\"UK\",\"NameCN\":\"英国\",\"TimeZone\":\"Europe/London\",\"Currency\":\"UK\",\"ExchangeRate\":0.8542,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"£\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"London 伦敦\"},{\"SortOrder\":1,\"Name\":\"Cambridge 剑桥\"},{\"SortOrder\":2,\"Name\":\"Manchester 曼彻斯特\"},{\"SortOrder\":3,\"Name\":\"Birmingham 伯明翰\"},{\"SortOrder\":4,\"Name\":\"Oxford 牛津\"},{\"SortOrder\":5,\"Name\":\"Bicester 比斯特\"},{\"SortOrder\":6,\"Name\":\"Windermere 温德米尔湖区\"},{\"SortOrder\":7,\"Name\":\"Glawsgow 格拉斯哥\"},{\"SortOrder\":8,\"Name\":\"Edinburgh 爱丁堡\"},{\"SortOrder\":9,\"Name\":\"Liverpool 利物浦\"},{\"SortOrder\":10,\"Name\":\"普雷斯顿市\"},{\"SortOrder\":11,\"Name\":\"贝尔法斯特及北爱\"},{\"SortOrder\":12,\"Name\":\"York 约克\"},{\"SortOrder\":13,\"Name\":\"Stratford 莎士比亚\"},{\"SortOrder\":14,\"Name\":\"霍利希德\"},{\"SortOrder\":15,\"Name\":\"Bath 巴斯\"},{\"SortOrder\":16,\"Name\":\"Sheffield 谢菲尔德\"},{\"SortOrder\":17,\"Name\":\"Coventry 考文垂\"},{\"SortOrder\":18,\"Name\":\"Cardiff 卡迪夫\"},{\"SortOrder\":19,\"Name\":\"NTT 北安普顿\"},{\"SortOrder\":20,\"Name\":\"Bristol 布鲁斯托\"},{\"SortOrder\":21,\"Name\":\"Newcastle 纽卡斯尔\"},{\"SortOrder\":22,\"Name\":\"Brighton 布莱顿 \"},{\"SortOrder\":23,\"Name\":\"Aberdeen 阿伯丁\"},{\"SortOrder\":24,\"Name\":\"Swabsea 斯旺西\"},{\"SortOrder\":25,\"Name\":\"Leeds 利兹\"},{\"SortOrder\":26,\"Name\":\"多佛坎特伯雷\"},{\"SortOrder\":27,\"Name\":\"苏格兰高地\"},{\"SortOrder\":28,\"Name\":\"诺丁汉沿途\"}]},{\"SortOrder\":1,\"Name\":\"Ireland\",\"NameCN\":\"爱尔兰\",\"TimeZone\":\"Europe/Dublin\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"Dublin 都柏林\"},{\"SortOrder\":1,\"Name\":\"Cork 科克\"},{\"SortOrder\":2,\"Name\":\"Galway 戈尔韦\"},{\"SortOrder\":3,\"Name\":\"Limerick 利莫瑞克\"},{\"SortOrder\":4,\"Name\":\"Killarney 基拉尼\"},{\"SortOrder\":5,\"Name\":\"莫赫悬崖及克莱尔郡\"},{\"SortOrder\":6,\"Name\":\"Athlone 阿斯隆周边\"}]},{\"SortOrder\":2,\"Name\":\"France\",\"NameCN\":\"法国\",\"TimeZone\":\"Europe/Paris\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"Paris 巴黎\"},{\"SortOrder\":1,\"Name\":\"贝桑松\"},{\"SortOrder\":2,\"Name\":\"亚维农\"},{\"SortOrder\":3,\"Name\":\"尼斯\"},{\"SortOrder\":4,\"Name\":\"圣米歇尔山附近\"},{\"SortOrder\":5,\"Name\":\"兰斯\"},{\"SortOrder\":6,\"Name\":\"博纳\"},{\"SortOrder\":7,\"Name\":\"里昂\"},{\"SortOrder\":8,\"Name\":\"比利时-安特卫普\"}]},{\"SortOrder\":3,\"Name\":\"Italy\",\"NameCN\":\"意大利\",\"TimeZone\":\"Europe/Rome\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"罗马\"},{\"SortOrder\":1,\"Name\":\"米兰\"},{\"SortOrder\":2,\"Name\":\"佛罗伦萨\"},{\"SortOrder\":3,\"Name\":\"威尼斯\"},{\"SortOrder\":4,\"Name\":\"那不勒斯\"},{\"SortOrder\":5,\"Name\":\"拉斯佩齐亚\"},{\"SortOrder\":6,\"Name\":\"巴勒莫\"},{\"SortOrder\":7,\"Name\":\"维罗纳\"},{\"SortOrder\":8,\"Name\":\"墨西拿\"},{\"SortOrder\":9,\"Name\":\"卡塔尼亚\"},{\"SortOrder\":10,\"Name\":\"巴里\"}]},{\"SortOrder\":4,\"Name\":\"Switzerland\",\"NameCN\":\"瑞士\",\"TimeZone\":\"Europe/Zurich\",\"Currency\":\"CHF\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"CHF\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"苏黎世\"},{\"SortOrder\":1,\"Name\":\"琉森\"},{\"SortOrder\":2,\"Name\":\"卢塞恩\"},{\"SortOrder\":3,\"Name\":\"日内瓦\"},{\"SortOrder\":4,\"Name\":\"蒙特勒\"},{\"SortOrder\":5,\"Name\":\"洛迦诺\"},{\"SortOrder\":6,\"Name\":\"沙夫豪森\"},{\"SortOrder\":7,\"Name\":\"因特拉肯\"},{\"SortOrder\":8,\"Name\":\"列支敦士登-瓦杜兹\"}]},{\"SortOrder\":5,\"Name\":\"Spain\",\"NameCN\":\"西班牙\",\"TimeZone\":\"Europe/Madrid\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"马德里\"},{\"SortOrder\":1,\"Name\":\"巴塞罗那\"},{\"SortOrder\":2,\"Name\":\"瓦伦西亚\"},{\"SortOrder\":3,\"Name\":\"科尔多瓦\"},{\"SortOrder\":4,\"Name\":\"塞维利亚\"},{\"SortOrder\":5,\"Name\":\"格拉纳达\"},{\"SortOrder\":6,\"Name\":\"托莱多\"},{\"SortOrder\":7,\"Name\":\"萨拉戈萨\"},{\"SortOrder\":8,\"Name\":\"赛哥维亚\"},{\"SortOrder\":9,\"Name\":\"托雷维耶哈\"},{\"SortOrder\":10,\"Name\":\"龙达\"},{\"SortOrder\":11,\"Name\":\"安道尔\"}]},{\"SortOrder\":6,\"Name\":\"Portugal\",\"NameCN\":\"葡萄牙\",\"TimeZone\":\"Europe/Lisbon\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"里斯本\"},{\"SortOrder\":1,\"Name\":\"辛特拉\"},{\"SortOrder\":2,\"Name\":\"卡斯凯什\"}]},{\"SortOrder\":7,\"Name\":\"Germany\",\"NameCN\":\"德国\",\"TimeZone\":\"Europe/Lisbon\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"卡塞尔\"},{\"SortOrder\":1,\"Name\":\"慕尼黑\"},{\"SortOrder\":2,\"Name\":\"梅青根奥特莱斯\"},{\"SortOrder\":3,\"Name\":\"帕绍\"},{\"SortOrder\":4,\"Name\":\"亚琛\"},{\"SortOrder\":5,\"Name\":\"德累斯顿\"},{\"SortOrder\":6,\"Name\":\"波恩\"},{\"SortOrder\":7,\"Name\":\"法兰克福\"},{\"SortOrder\":8,\"Name\":\"柏林\"}]},{\"SortOrder\":8,\"Name\":\"Norway\",\"NameCN\":\"挪威\",\"TimeZone\":\"Europe/Lisbon\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"卑尔根\"}]},{\"SortOrder\":9,\"Name\":\"Czech Republic\",\"NameCN\":\"捷克\",\"TimeZone\":\"Europe/Lisbon\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"布拉格\"},{\"SortOrder\":1,\"Name\":\"克鲁姆洛夫及周边\"},{\"SortOrder\":2,\"Name\":\"布尔诺\"}]},{\"SortOrder\":10,\"Name\":\"Serbia\",\"NameCN\":\"塞尔维亚\",\"TimeZone\":\"Europe/Paris\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"诺维萨德\"},{\"SortOrder\":1,\"Name\":\"佩拉斯特\"},{\"SortOrder\":2,\"Name\":\"贝尔格莱德\"},{\"SortOrder\":3,\"Name\":\"哥鲁拜克\"},{\"SortOrder\":4,\"Name\":\"兹拉蒂博尔\"}]},{\"SortOrder\":11,\"Name\":\"Luxembourg\",\"NameCN\":\"卢森堡\",\"TimeZone\":\"Europe/Luxembourg\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"卢森堡\"}]},{\"SortOrder\":12,\"Name\":\"Austria\",\"NameCN\":\"奥地利\",\"TimeZone\":\"Europe/Vienna\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"格拉茨\"},{\"SortOrder\":1,\"Name\":\"萨尔兹堡\"},{\"SortOrder\":2,\"Name\":\"哈尔施塔特\"},{\"SortOrder\":3,\"Name\":\"梅尔克\"},{\"SortOrder\":4,\"Name\":\"巴德伊舍\"},{\"SortOrder\":5,\"Name\":\"因斯布鲁克\"},{\"SortOrder\":6,\"Name\":\"维也纳\"}]},{\"SortOrder\":13,\"Name\":\"Bulgaria\",\"NameCN\":\"保加利亚\",\"TimeZone\":\"Europe/Sofia\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"索菲亚\"},{\"SortOrder\":1,\"Name\":\"大特尔诺沃\"}]},{\"SortOrder\":14,\"Name\":\"Croatia\",\"NameCN\":\"克罗地亚\",\"TimeZone\":\"Europe/Zagreb\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"斯普利特\"},{\"SortOrder\":1,\"Name\":\"杜布罗夫尼克\"},{\"SortOrder\":2,\"Name\":\"萨格勒布\"}]},{\"SortOrder\":15,\"Name\":\"Malta\",\"NameCN\":\"马耳他\",\"TimeZone\":\"Europe/Valletta\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"马耳他\"}]},{\"SortOrder\":16,\"Name\":\"Hungary\",\"NameCN\":\"匈牙利\",\"TimeZone\":\"Europe/Budapest\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"布达佩斯\"},{\"SortOrder\":1,\"Name\":\"塞格德\"}]},{\"SortOrder\":17,\"Name\":\"Romania\",\"NameCN\":\"罗马尼亚\",\"TimeZone\":\"Europe/Bucharest\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"布拉勒斯特\"},{\"SortOrder\":1,\"Name\":\"锡纳亚\"}]},{\"SortOrder\":18,\"Name\":\"Montenegro\",\"NameCN\":\"黑山/波黑\",\"TimeZone\":\"Europe/Podgorica\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"佩拉斯特\"},{\"SortOrder\":1,\"Name\":\"科托尔海湾\"},{\"SortOrder\":2,\"Name\":\"萨拉热窝\"},{\"SortOrder\":3,\"Name\":\"波德戈里察\"},{\"SortOrder\":4,\"Name\":\"布德瓦\"},{\"SortOrder\":5,\"Name\":\"莫斯塔尔\"},{\"SortOrder\":6,\"Name\":\"特雷比涅\"},{\"SortOrder\":7,\"Name\":\"塔拉河峡谷\"}]}],\"RateUpdateTime\":\"0001-01-01T00:00:00\",\"id\":\"4E283F7E-E397-4632-9405-6C6261ABB75F\",\"ShopId\":11,\"Created\":null,\"Updated\":null,\"Updater\":null,\"SortOrder\":null,\"IsActive\":true,\"IsDeleted\":false,\"_rid\":\"XHMIAJZ0VlEBAAAAAAAAAA==\",\"_self\":\"dbs/XHMIAA==/colls/XHMIAJZ0VlE=/docs/XHMIAJZ0VlEBAAAAAAAAAA==/\",\"_etag\":\"\\\"9c00ac47-0000-0c00-0000-672bb1700000\\\"\",\"_attachments\":\"attachments/\",\"_ts\":1730916720}";
             citySource citySource = JsonConvert.DeserializeObject<citySource>(jsonStr);
-            var couns = await _countryHandler.GetCountry(11);
+            var couns = await _countryHandler.GetCountries(11);
             foreach (var city in citySource.Countries)
             {
                 DbCountry dbCountry = couns.FirstOrDefault(a => a.Code == city.Name);

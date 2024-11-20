@@ -170,6 +170,14 @@ namespace KingfoodIO.Controllers.TravelMeals
         {
             return await ExecuteAsync(shopId, cache, async () => await _countryRepository.DeleteCountry(shopId,Id));
         }
+
+        [HttpGet]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> ExportRestaurants(bool cache = false)
+        {
+            return await ExecuteAsync(11, cache, async () => await _restaurantServiceHandler.ExportRestaurants());
+        }
+
         /// <summary>
         /// 
         /// </summary>

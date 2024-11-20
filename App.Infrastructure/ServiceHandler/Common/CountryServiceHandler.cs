@@ -19,8 +19,9 @@ namespace App.Infrastructure.ServiceHandler.Common
 {
     public interface ICountryServiceHandler
     {
-        Task<List<DbCountry>> GetCountry(int shopId);
-        void UpsertCountry(DbCountry country);
+        Task<List<DbCountry>> GetCountries(int shopId);
+        Task<DbCountry> GetCountry(string id);
+        Task<DbCountry> UpsertCountry(DbCountry country);
         Task<bool> DeleteCountry(int shopId, string Id);
     }
 
@@ -34,8 +35,11 @@ namespace App.Infrastructure.ServiceHandler.Common
             _memoryCache = memoryCache;
             _countryRepository = countryRepository;
         }
+        public async Task<DbCountry> GetCountry(string id) { 
+        return await _countryRepository.GetOneAsync(a => a.Id==id);
+        }
 
-        public async Task<List<DbCountry>> GetCountry(int shopId)
+        public async Task<List<DbCountry>> GetCountries(int shopId)
         {
             var cacheKey = string.Format("motionmedia-{1}-{0}", shopId, typeof(DbCountry).Name);
             var cacheResult = _memoryCache.Get<List<DbCountry>>(cacheKey);
@@ -48,10 +52,11 @@ namespace App.Infrastructure.ServiceHandler.Common
             _memoryCache.Set(cacheKey, contries);
             return contries;
         }
-        public async void UpsertCountry(DbCountry country) {
+        public async Task<DbCountry> UpsertCountry(DbCountry country) {
             var cacheKey = string.Format("motionmedia-{1}-{0}", country.ShopId, typeof(DbCountry).Name);
             _memoryCache.Set<List<DbCountry>>(cacheKey, null);
            var temp= await _countryRepository.UpsertAsync(country);
+            return temp;
         }
 
         public async Task<bool> DeleteCountry(int shopId, string Id) {

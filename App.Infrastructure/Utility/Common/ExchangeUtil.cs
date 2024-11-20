@@ -57,7 +57,7 @@ namespace App.Infrastructure.Utility.Common
         }
         public async void UpdateExchangeRateToDB()
         {
-            var existRate = await _countryServiceHandler.GetCountry(11);
+            var existRate = await _countryServiceHandler.GetCountries(11);
             if (existRate != null)
             {
                 var contries = existRate.ToList();

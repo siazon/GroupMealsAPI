@@ -189,7 +189,8 @@ namespace App.Domain.TravelMeals
         public string  MenuStr { get; set; }
         public string Qty { get; set; }
         public string Price { get; set; }
-        
+        public bool IsNewCustomer { get; set; }
+
 
     }
 

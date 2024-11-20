@@ -38,11 +38,13 @@ namespace App.Infrastructure.ServiceHandler.Common
             if (shop != null)
             {
                 var version = shop.ShopSettings.FirstOrDefault(a => a.SettingKey == "app.version")?.SettingValue;
+                var minVersion = shop.ShopSettings.FirstOrDefault(a => a.SettingKey == "app.minVersion")?.SettingValue;
                 var appUrl = shop.ShopSettings.FirstOrDefault(a => a.SettingKey == "app.url")?.SettingValue;
-                if(!string.IsNullOrWhiteSpace(version)&&!string.IsNullOrWhiteSpace(appUrl))
-                return new ResponseModel { msg = "ok", data = new { version, appUrl } };
+                var appMsg = shop.ShopSettings.FirstOrDefault(a => a.SettingKey == "app.msg")?.SettingValue;
+                if (!string.IsNullOrWhiteSpace(version)&&!string.IsNullOrWhiteSpace(appUrl))
+                return new ResponseModel { msg = "ok",code=200, data = new { version, appUrl, minVersion,msg= appMsg } };
             }
-            return new ResponseModel { msg = "error", data = null };
+            return new ResponseModel { msg = "error",code=501, data = null };
         }
 
     }
