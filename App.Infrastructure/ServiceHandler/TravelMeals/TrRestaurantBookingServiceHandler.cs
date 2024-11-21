@@ -228,7 +228,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {//Europe/Dublin Europe/London Europe/Paris
 
 
-            var booking = await _bookingRepository.GetOneAsync(a => a.Id == detailId);
+            var booking = await _bookingRepository.GetOneAsync(a => a.Id == bookingId);
             if (booking == null || booking.Status == OrderStatusEnum.Canceled)
                 return new ResponseModel() { code = 501, msg = "订单已取消" };
             else
@@ -259,11 +259,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             booking.Status = OrderStatusEnum.Canceled;
             booking.Updated = DateTime.UtcNow;
             booking.Updater = userEmail;
-            DbOpearationInfo operationInfo = new DbOpearationInfo() { ModifyType = 3, ReferenceId = booking.Id, Operater = userEmail, UpdateTime = DateTime.UtcNow, Operation = "订单取消" };
+            DbOpearationInfo operationInfo = new DbOpearationInfo() {Id=Guid.NewGuid().ToString(),ModifyType = 3, 
+                ReferenceId = booking.Id, Operater = userEmail, UpdateTime = DateTime.UtcNow, Operation = "订单取消" };
             await _opearationRepository.UpsertAsync(operationInfo);
 
             var savedRestaurant = await _bookingRepository.UpsertAsync(booking);
-            CancelOld(bookingId, detailId, userEmail, isAdmin);
+            //CancelOld(bookingId, detailId, userEmail, isAdmin);
             return new ResponseModel() { code = 200, msg = "ok" };
 
         }
@@ -680,6 +681,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (dbBooking == null) return new ResponseModel { msg = "booking not found", code = 501, data = null };
             newBooking.BillInfo = dbBooking.BillInfo;
             newBooking.RestaurantIncluedVAT = dbBooking.RestaurantIncluedVAT;
+            
             DbOpearationInfo operationInfo = new DbOpearationInfo() { Id = Guid.NewGuid().ToString(), ReferenceId = newBooking.Id, ModifyType = 4,
                 Operater = email, UpdateTime = DateTime.UtcNow, Operation = "订单修改" };
             int isChange = 0; int isDtlChanged = 0;
@@ -1011,6 +1013,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     var dbUser = await _customerServiceHandler.UpdateCart(bookings, user.UserId, user.ShopId ?? 11);
                     var booking = PlaceBooking(bookings, shopId, userInfo, IntentTypeEnum.None);
+                    await SendEmail(bookings, userInfo);
                     return new ResponseModel { msg = "ok", code = 200, data = null };
                 }
                 string bookingIds = string.Join(',', bookingIdList);

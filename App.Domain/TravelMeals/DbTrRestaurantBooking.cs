@@ -55,10 +55,20 @@ namespace App.Domain.TravelMeals
         public decimal Amount { get; set; }
         public decimal PaidAmount { get; set; }
         public decimal Reward { get; set; }
+        private decimal _unpaid;
+
+        public decimal Unpaid
+        {
+            get {
+                _unpaid = Amount - PaidAmount - Reward;
+                return _unpaid; }
+            set { _unpaid = value; }
+        }
+
     }
     public enum PaymentStatusEnum
     {
-        NoPayment, UnPaid, Paid
+        NoPayment, Unpaid, Paid
     }
     public class PaymentInfo : StripeBase
     {

@@ -416,6 +416,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                     var itemPayInfo = _amountCalculaterV1.getItemPayAmount(item.ConvertToAmount(), customer,item.Vat);
                     info.PaidAmount = itemPayInfo.PayAmount;
                     info.Reward =itemPayInfo.Reward;
+                    
                 }
                 DateTime dateTime = item.SelectDateTime.Value;
                 if (!string.IsNullOrWhiteSpace(item.MealTime))
