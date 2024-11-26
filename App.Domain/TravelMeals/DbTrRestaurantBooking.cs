@@ -104,6 +104,7 @@ namespace App.Domain.TravelMeals
         public OrderStatusEnum Status { get; set; }
         public AcceptStatusEnum AcceptStatus { get; set; }
         public bool Modified { get; set; }
+        public bool isOldCustomer { get; set; }
         public bool Charged { get; set; }
         public string AcceptReason { get; set; }
         public RestaurantBillInfo BillInfo { get; set; } = new RestaurantBillInfo();

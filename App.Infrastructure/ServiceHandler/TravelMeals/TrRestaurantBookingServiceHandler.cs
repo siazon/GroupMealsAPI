@@ -592,6 +592,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<bool> UpdateAcceptedReason(string billId, string subBillId, string reason, string operater)
         {
             DbBooking booking = await GetBooking(billId);
+            booking.AcceptReason = reason;
             if (booking == null) return false;
             var temp = await _bookingRepository.UpsertAsync(booking);
             if (temp != null)
@@ -1072,6 +1073,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 item.Created = DateTime.UtcNow;
                 item.Status = OrderStatusEnum.UnAccepted;
                 item.IntentType = intentType;
+                item.isOldCustomer = user.IsOldCustomer;
                 await _bookingRepository.UpsertAsync(item);
                 var booking = user.CartInfos.FirstOrDefault(a => a.Id == item.Id);
                 user.CartInfos.Remove(booking);
