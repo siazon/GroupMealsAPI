@@ -989,10 +989,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     bookings.Add(item);
                     bookingIdList.Add(item.Id);
                     paymentId = item.PaymentId;
-
-
-
-
                 }
                 DbPaymentInfo dbPaymentInfo = null;
                 if (!string.IsNullOrWhiteSpace(paymentId))
