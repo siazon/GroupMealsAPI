@@ -78,6 +78,7 @@ namespace App.Domain.Common.Customer
         {
             source = new DbCustomer()
             {
+                 Id=copyValue.Id,
                 UserName = copyValue.UserName,
                 Email = copyValue.Email,
                 WeChat = copyValue.WeChat,
