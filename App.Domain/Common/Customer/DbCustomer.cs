@@ -76,32 +76,44 @@ namespace App.Domain.Common.Customer
 
         public static DbCustomer Copy(this DbCustomer source, DbCustomer copyValue)
         {
-            source.UserName = copyValue.UserName;
-            source.Email = copyValue.Email;
-            source.WeChat = copyValue.WeChat;
-            source.Phone = copyValue.Phone;
-            source.Password = copyValue.Password;
-            source.ResetCode= copyValue.ResetCode;
-            source.Latitude = copyValue.Latitude;
-            source.Longitude = copyValue.Longitude;
-            source.Address = copyValue.Address;
-            source.IpAddress = copyValue.IpAddress;
-            source.MarketPermission = copyValue.MarketPermission;
-            source.Eircode = copyValue.Eircode;
-            source.FirstPurchaseDate = copyValue.FirstPurchaseDate;
-            source.Area = copyValue.Area;
-            source.DeliveryCharge = copyValue.DeliveryCharge;
-            source.PinCode = copyValue.PinCode;
-            source.IsVerity = copyValue.IsVerity;
-            source.IsActive = copyValue.IsActive;
-            source.IsBoss   = copyValue.IsBoss;
-            source.IsOldCustomer = copyValue.IsOldCustomer;
-            source.StripeCustomerId = copyValue.StripeCustomerId;
-            source.AuthValue = copyValue.AuthValue;
-            source.Favorites = copyValue.Favorites;
-            source.CartInfos= copyValue.CartInfos;
-            source.RewardType= copyValue.RewardType;
-            source.Reward= copyValue.Reward;
+            source = new DbCustomer()
+            {
+                UserName = copyValue.UserName,
+                Email = copyValue.Email,
+                WeChat = copyValue.WeChat,
+                Phone = copyValue.Phone,
+                //source.Password = copyValue.Password,
+                //source.ResetCode= copyValue.ResetCode,
+                //source.PinCode = copyValue.PinCode,
+                Latitude = copyValue.Latitude,
+                Longitude = copyValue.Longitude,
+                Address = copyValue.Address,
+                IpAddress = copyValue.IpAddress,
+                MarketPermission = copyValue.MarketPermission,
+                Eircode = copyValue.Eircode,
+                FirstPurchaseDate = copyValue.FirstPurchaseDate,
+                Area = copyValue.Area,
+                DeliveryCharge = copyValue.DeliveryCharge,
+                IsVerity = copyValue.IsVerity,
+                IsActive = copyValue.IsActive,
+                IsBoss = copyValue.IsBoss,
+                IsOldCustomer = copyValue.IsOldCustomer,
+                StripeCustomerId = copyValue.StripeCustomerId,
+                AuthValue = copyValue.AuthValue,
+                Favorites = copyValue.Favorites,
+                CartInfos = copyValue.CartInfos,
+                RewardType = copyValue.RewardType,
+                Reward = copyValue.Reward,
+                Created = copyValue.Created,
+                Creater = copyValue.Creater,
+                IsDeleted = copyValue.IsDeleted,
+                ShopId = copyValue.ShopId,
+                SortOrder = copyValue.SortOrder,
+                Updated = copyValue.Updated,
+                Updater = copyValue.Updater,
+                UserRoles = copyValue.UserRoles,
+            };
+
             return source;
         }
 
