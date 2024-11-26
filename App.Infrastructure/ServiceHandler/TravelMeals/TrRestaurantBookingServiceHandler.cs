@@ -1155,7 +1155,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         booking.AllowEdit = false;
                         booking.IntentType = payment.SetupPay ? IntentTypeEnum.SetupIntent : IntentTypeEnum.PaymentIntent;
                     }
-
+                    booking.isOldCustomer = user.IsOldCustomer;
                     await _bookingRepository.UpsertAsync(booking);
                 }
                 await SendEmail(bookings, user);
