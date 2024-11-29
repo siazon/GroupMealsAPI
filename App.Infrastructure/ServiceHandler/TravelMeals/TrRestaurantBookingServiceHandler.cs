@@ -676,8 +676,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             Guard.NotNull(newBooking);
             Guard.AreEqual(newBooking.ShopId.Value, shopId);
-            if (newBooking.Charged)
-                return new ResponseModel { msg = "订单已扣款，不可再修改", code = 501, data = null };
+            //if (newBooking.Charged)
+            //    return new ResponseModel { msg = "订单已扣款，不可再修改", code = 501, data = null };
             var dbBooking = await _bookingRepository.GetOneAsync(r => !r.IsDeleted && r.Id == newBooking.Id);
             if (dbBooking == null) return new ResponseModel { msg = "booking not found", code = 501, data = null };
             newBooking.BillInfo = dbBooking.BillInfo;
@@ -705,10 +705,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 var res = UpdateField(operationInfo, dbBooking, newBooking, "SelectDateTime");
                 if (res)
                 {
-                    if (dbBooking.IntentType == IntentTypeEnum.PaymentIntent)
-                    {
-                        return new ResponseModel { msg = "订单已支付，如需修改请联系客服人员", code = 501, data = null };
-                    }
+                    //if (dbBooking.IntentType == IntentTypeEnum.PaymentIntent)
+                    //{
+                    //    return new ResponseModel { msg = "订单已支付，如需修改请联系客服人员", code = 501, data = null };
+                    //}
                     isChange++;
                 }
                 res = UpdateField(operationInfo, dbBooking, newBooking, "Memo");
