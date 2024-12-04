@@ -183,7 +183,8 @@ namespace KingfoodIO.Controllers.Common
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogInfo("ChargeSucceeded&PaymentIntentSucceeded.Error:" + ex.Message);
+                            _logger.LogInfo("ChargeSucceeded.Error:" + ex.Message);
+                            return BadRequest("ChargeSucceeded.Error:" + ex.Message);
                         }
                         break;
                     case Events.PaymentIntentSucceeded:
@@ -208,7 +209,8 @@ namespace KingfoodIO.Controllers.Common
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogInfo("ChargeSucceeded&PaymentIntentSucceeded.Error:" + ex.Message);
+                            _logger.LogInfo("PaymentIntentSucceeded.Error:" + ex.Message);
+                            return BadRequest("PaymentIntentSucceeded.Error:" + ex.Message);
                         }
                         break;
                     //case Events.CheckoutSessionCompleted:
@@ -224,12 +226,22 @@ namespace KingfoodIO.Controllers.Common
                         _logger.LogInfo("ChargeRefunded:" + stripeEvent.Type);
                         var charge = stripeEvent.Data.Object as Stripe.Charge;
 
-                        var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == "");
+                        var paymentInfo = await _paymentRepository.GetOneAsync(a => a.StripeIntentId == charge.PaymentIntentId);
                         if (paymentInfo != null)
                         {
                             paymentInfo.RefundAmount = charge.AmountRefunded / 100;
                         }
-                        await _paymentRepository.UpsertAsync(paymentInfo);
+                        else
+                            return BadRequest("paymentInfo is null");
+                        try
+                        {
+                            await _paymentRepository.UpsertAsync(paymentInfo);
+                        }
+                        catch (Exception ex)
+                        {
+                            return BadRequest(" _paymentRepository.UpsertAsync.erroro");
+                        }
+                     
                         break;
                     case Events.CustomerCreated:
                         var customer = stripeEvent.Data.Object as Customer;
@@ -279,7 +291,7 @@ namespace KingfoodIO.Controllers.Common
             {
                 _logger.LogInfo("StripeException.Error" + e.Message);
                 _logger.LogInfo("StripeException.Error" + e);
-                return BadRequest();
+                return BadRequest("webhook.error"+ e.Message);
             }
         }
         /// <summary>
