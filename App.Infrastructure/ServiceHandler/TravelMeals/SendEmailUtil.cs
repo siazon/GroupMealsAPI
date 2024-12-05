@@ -89,7 +89,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string Detail = "";
             foreach (var item in bookings)
             {
-                decimal paidAmount = item.AmountInfos.Sum(x => x.PaidAmount+x.Reward);
+                decimal paidAmount = item.AmountInfos.Sum(x => x.PaidAmount);
                 decimal amount = item.AmountInfos.Sum(x => x.Amount);
                 decimal reward = item.AmountInfos.Sum(x => x.Reward);
                 paidAmount = Math.Round(paidAmount, 2);
@@ -119,7 +119,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 //_twilioUtil.sendSMS(item.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
                 Detail += $"<br> Amount(金额)：<b>{itemCurrencyStr}{item.AmountInfos.Sum(x => x.Amount)}</b>, <br>";
                 if (item.ShowPaid)
-                    Detail += $" Paid(已付/预付)：<b>{itemCurrencyStr}{paidAmount}</b>,<br>";
+                    Detail += $" Paid(已付/预付)：<b>{itemCurrencyStr}{paidAmount+reward}</b>,<br>";
                 if (amount - paidAmount > 0)
                     Detail += $"<b style=\"color: red;\"> Unpaid(到店待支付)：{itemCurrencyStr}{amount - reward - paidAmount}</b>";
                 senderParams.BookingRef = item.BookingRef;

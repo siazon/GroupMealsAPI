@@ -1317,7 +1317,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             try
             {
-                DbBooking booking = await _bookingRepository.GetOneAsync(r => r.Id == bookingId);
+                DbBooking booking = await _bookingRepository.GetOneAsync(r => r.BookingRef == bookingId);
                 if (booking != null)
                 {
                     _logger.LogInfo("ResendEmail.BookingRef:" + booking.BookingRef);
@@ -1666,7 +1666,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 content = content.ToLower().Trim();
                 Predicate<DbBooking> predicate =
                     d => d.RestaurantName.ToLower().Contains(content) || d.RestaurantAddress.ToLower().Contains(content) || d.ContactName.ToLower().Contains(content) || d.GroupRef.ToLower().Contains(content);
-                Bookings = await _bookingRepository.GetManyAsync(a => ((a.Status != OrderStatusEnum.None) &&
+                Bookings = await _bookingRepository.GetManyAsync(a => ((a.Status != OrderStatusEnum.None) &&!a.IsDeleted&&
                 (a.BookingRef.ToLower().Contains(content) || a.RestaurantName.ToLower().Contains(content) || a.RestaurantAddress.ToLower().Contains(content) ||
                 a.ContactName.ToLower().Contains(content) || a.GroupRef.ToLower().Contains(content))), pageSize, continuationToken);
 
