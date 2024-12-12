@@ -2003,9 +2003,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             foreach (var item in data)
             {
 
-                var amount = _amountCalculaterV1.getItemAmount(item.ConvertToAmount());
-                var reward = item.AmountInfos.Sum(a => a.Reward);
-                var paid = item.AmountInfos.Sum(a => a.Amount);
                 var menu = "";
                 var qty = 0;
                 var price = 0m;
@@ -2015,18 +2012,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     qty += a.Qty;
                     price = a.Price;
                 });
-                ItemPayInfo amountInfo = new ItemPayInfo();
                 bool isNewCustomer = false;
                 var user = users.FirstOrDefault(a => a.Id == item.Creater);
                 if (user != null)
                 {
                     isNewCustomer = !user.IsOldCustomer;
-                    amountInfo = _amountCalculaterV1.getItemPayAmount(item.ConvertToAmount(), user, 0.125);
-                }
-                var payment = payments.FirstOrDefault(a => a.Id == item.PaymentId);
-                if (payment != null)
-                {
-                    paid = payment.PaidAmount;
                 }
                 BookingExportModel model = new BookingExportModel()
                 {
@@ -2049,16 +2039,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     CreateTime = item.Created.Value.ToString("HH:mm"),
                     CreaterName = user?.UserName,
                     CreaterEmail = user?.Email,
-                    IsNewCustomer=isNewCustomer,
+                    IsNewCustomer = isNewCustomer,
                     PayCurrency = item.PayCurrency ?? item.Currency,
-                    Amount = amount,
-                    Unpaid = amount - paid,
+                    Amount = item.AmountInfos.Sum(a => a.Amount),
+                    Unpaid = item.AmountInfos.Sum(a => a.Unpaid),
                     MenuStr = menu,
                     StatusStr = GetEnumDescription(item.Status),
                     Qty = qty.ToString(),
                     Price = price.ToString(),
-                    Commission = amountInfo?.Commission ?? 0,
-                    Reward = amountInfo.Reward,
+                    Reward = item.AmountInfos.Sum(a => a.Reward),
                     Memo = item.Memo,
                     Remark = item.Remark
                 };
