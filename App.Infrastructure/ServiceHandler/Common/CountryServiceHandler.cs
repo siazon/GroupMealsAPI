@@ -1,4 +1,5 @@
 ﻿using App.Domain.Common.Shop;
+using App.Domain.TravelMeals;
 using App.Domain.TravelMeals.Restaurant;
 using App.Infrastructure.Exceptions;
 using App.Infrastructure.Repository;
@@ -23,17 +24,21 @@ namespace App.Infrastructure.ServiceHandler.Common
         Task<DbCountry> GetCountry(string id);
         Task<DbCountry> UpsertCountry(DbCountry country);
         Task<bool> DeleteCountry(int shopId, string Id);
+        Task<DbStripeEntity> UpsertStripe(DbStripeEntity stripe);
+        Task<List<DbStripeEntity>> GetStripes();
     }
 
     public class CountryServiceHandler : ICountryServiceHandler
     {
         private readonly IDbCommonRepository<DbCountry> _countryRepository;
+        private readonly IDbCommonRepository<DbStripeEntity> _stripeRepository;
         IMemoryCache _memoryCache;
 
-        public CountryServiceHandler(IDbCommonRepository<DbCountry> countryRepository, IMemoryCache memoryCache)
+        public CountryServiceHandler(IDbCommonRepository<DbCountry> countryRepository, IDbCommonRepository<DbStripeEntity> stripeRepository, IMemoryCache memoryCache)
         {
             _memoryCache = memoryCache;
             _countryRepository = countryRepository;
+            _stripeRepository = stripeRepository;
         }
         public async Task<DbCountry> GetCountry(string id) { 
         return await _countryRepository.GetOneAsync(a => a.Id==id);
@@ -66,5 +71,27 @@ namespace App.Infrastructure.ServiceHandler.Common
             var temp = await _countryRepository.DeleteAsync(country);
              return true;
         }
+
+        public async Task<DbStripeEntity> UpsertStripe(DbStripeEntity stripe)
+        {
+            var cacheKey = string.Format("motionmedia-{0}",   typeof(DbStripeEntity).Name);
+            _memoryCache.Set<List<DbStripeEntity>>(cacheKey, null);
+            var temp = await _stripeRepository.UpsertAsync(stripe);
+            return temp;
+        }
+        public async Task<List<DbStripeEntity>> GetStripes()
+        {
+            var cacheKey = string.Format("motionmedia-{0}",  typeof(DbStripeEntity).Name);
+            var cacheResult = _memoryCache.Get<List<DbStripeEntity>>(cacheKey);
+            if (cacheResult != null)
+            {
+                return cacheResult;
+            }
+            var countryInfo = await _stripeRepository.GetManyAsync(a => a.IsActive == true  );
+            var contries = countryInfo.ToList();
+            _memoryCache.Set(cacheKey, contries);
+            return contries;
+        }
+
     }
 }

@@ -42,7 +42,7 @@ namespace App.Infrastructure.Utility.Common
                     return false;
 
                 var apiKey = settings.GetEmailSettingsAPIKey();
-                var client = new SendGridClient(apiKey);
+                  var client = new SendGridClient(apiKey);
 
                 var msg = new SendGridMessage()
                 {

@@ -43,7 +43,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         private readonly IEmailUtil _emailUtil;
         ILogManager _logger;
-        IHostingEnvironment _environment;
+        IWebHostEnvironment _environment;
         IContentBuilder _contentBuilder;
         ICountryServiceHandler _coutryHandler;
         private readonly IDateTimeUtil _dateTimeUtil;
@@ -53,7 +53,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private readonly ICountryServiceHandler _countryHandler;
         private readonly IDbCommonRepository<DbPaymentInfo> _paymentRepository;
 
-        public SendEmailUtil(IEmailUtil emailUtil, IAmountCalculaterUtil amountCalculaterUtil, ILogManager logger, IDateTimeUtil dateTimeUtil, ICountryServiceHandler coutryHandler, IHostingEnvironment environment,
+        public SendEmailUtil(IEmailUtil emailUtil, IAmountCalculaterUtil amountCalculaterUtil, ILogManager logger, IDateTimeUtil dateTimeUtil, ICountryServiceHandler coutryHandler, IWebHostEnvironment environment,
      ICountryServiceHandler countryHandler, IDbCommonRepository<DbPaymentInfo> paymentRepository, IMsgPusherServiceHandler msgPusherServiceHandler, IOperationServiceHandler operationServiceHandler, IContentBuilder contentBuilder)
         {
             _emailUtil = emailUtil;
@@ -147,11 +147,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 senderParams.CustomerInfo = customerInfo;
                 senderParams.Details = Detail;
                 senderParams.ShopSettings = shopInfo.ShopSettings;
-                await Send(senderParams);
+                await Send(senderParams,item.RestaurantEmail);
             }
             return true;
         }
-        private async Task<bool> Send(EmailSenderParams senderParams)
+        private async Task<bool> Send(EmailSenderParams senderParams,string receiverEmail)
         {
             //Task.Run(async () =>
             //{
@@ -172,7 +172,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             try
             {
-                await _emailUtil.SendEmail(senderParams.ShopSettings, senderParams.SenderEmail, senderParams.ReceiverEmail, senderParams.Subject, emailHtml, senderParams.CCEmail.ToArray());
+                await _emailUtil.SendEmail(senderParams.ShopSettings, senderParams.SenderEmail, receiverEmail, senderParams.Subject, emailHtml, senderParams.CCEmail.ToArray());
 
             }
             catch (Exception ex)
@@ -217,6 +217,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             string Detail = "";
             var country = await _countryHandler.GetCountries(11);
+            var dbstripes = await _countryHandler.GetStripes();
             foreach (var item in bookings)
             {
                 if (item.Status == OrderStatusEnum.Canceled) continue;
@@ -251,7 +252,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
                 Detail += "<br>";
             }
-            var AmountInfo = _amountCalculaterUtil.GetOrderPaidInfo(bookings, bookings[0].PayCurrency, bookings[0].ShopId ?? 11, user, country);
+            var AmountInfo = _amountCalculaterUtil.GetOrderPaidInfo(bookings, bookings[0].PayCurrency, bookings[0].ShopId ?? 11, user, country, dbstripes);
             string PaidAmountStr = "0.00";
             if (!string.IsNullOrWhiteSpace(bookings[0].PaymentId))
             {
@@ -270,8 +271,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             senderParams.Amount = AmountStr;
             senderParams.Details = Detail;
             senderParams.ShopSettings = shopInfo.ShopSettings;
-
-            await Send(senderParams);
+            await Send(senderParams,user.Email);
             //SendToTalCustomer(shopInfo, user, senderParams.Subject, wwwPath, senderParams.TemplateName, AmountStr, PaidAmountStr, UnpaidAmountStr, detailstr);
             return true;
         }

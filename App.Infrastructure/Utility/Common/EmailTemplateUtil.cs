@@ -21,5 +21,18 @@ namespace App.Infrastructure.Utility.Common
 
             return template;
         }
+        public static string ReadJson(string path, string fileName)
+        {
+            string template = "";
+
+            path += $"/js/{fileName}.json";
+            if (File.Exists(path))
+            {
+                template = File.ReadAllText(path);
+            }
+
+
+            return template;
+        }
     }
 }

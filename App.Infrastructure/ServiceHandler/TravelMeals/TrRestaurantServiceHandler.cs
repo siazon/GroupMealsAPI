@@ -577,13 +577,19 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var savedRestaurant = await _restaurantRepository.UpsertAsync(restaurant);
 
 
-            _memoryCache.Set(cacheKey, cityRes);
+            ClearCache(shopId,citycacheKey,cacheKey,cityRes);
 
+
+
+            return savedRestaurant;
+        }
+        private void ClearCache(int shopId,string citycacheKey,string cacheKey, KeyValuePair<string, IEnumerable<TrDbRestaurant>> cityRes) {
+
+            _memoryCache.Set(cacheKey, cityRes);
+            _memoryCache.Set<DbStripeEntity>(string.Format("motionmedia-{0}", typeof(DbStripeEntity).Name), null); 
             _memoryCache.Set<DbShop>(string.Format("motionmedia-{1}-{0}", shopId, typeof(DbShop).Name), null);
             _memoryCache.Set<string>(citycacheKey, null);
             _memoryCache.Set<DbCountry>(string.Format("motionmedia-{1}-{0}", shopId, typeof(DbCountry).Name), null);
-
-            return savedRestaurant;
         }
 
         public async Task<ResponseModel> DeleteRestaurant(string id, string email, string pwd, int shopId)

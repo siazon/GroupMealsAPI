@@ -21,13 +21,16 @@ using Microsoft.Azure.Cosmos.Linq;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Stripe;
 using Stripe.FinancialConnections;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using static Pipelines.Sockets.Unofficial.SocketConnection;
 
 namespace KingfoodIO.Controllers.Common
 {
@@ -47,10 +50,9 @@ namespace KingfoodIO.Controllers.Common
         private readonly IShopServiceHandler _shopServiceHandler;
         IAmountCalculaterUtil _amountCalculaterV1;
         ICustomerServiceHandler _customerServiceHandler;
-
+        ICountryServiceHandler _countryServiceHandler;
         private readonly IDbCommonRepository<DbPaymentInfo> _paymentRepository;
         IMemoryCache _memoryCache;
-        private string secret = "";
 
         /// <summary>
         /// 
@@ -68,7 +70,7 @@ namespace KingfoodIO.Controllers.Common
         /// <param name="shopServiceHandler"></param>
         /// <param name="restaurantBookingServiceHandler"></param>
         /// <param name="logger"></param>
-        public StripeCheckoutController(
+        public StripeCheckoutController(ICountryServiceHandler countryServiceHandler,
           IOptions<CacheSettingConfig> cachesettingConfig, IOptions<AppSettingConfig> appsettingConfig, IMemoryCache memoryCache, IRedisCache redisCache, IStripeUtil stripeUtil,
           IDbCommonRepository<DbPaymentInfo> paymentRepository,
         ICustomerServiceHandler customerServiceHandler,
@@ -82,10 +84,10 @@ namespace KingfoodIO.Controllers.Common
             _tourBookingServiceHandler = tourBookingServiceHandler;
             _customerServiceHandler = customerServiceHandler;
             _paymentRepository = paymentRepository;
+            _countryServiceHandler = countryServiceHandler;
             _logger = logger;
             _shopServiceHandler = shopServiceHandler;
             _appsettingConfig = appsettingConfig.Value;
-            secret = _appsettingConfig.StripeWebhookKey;
             _stripeUtil = stripeUtil; _memoryCache = memoryCache;
             _amountCalculaterV1 = amountCalculaterV1;
         }
@@ -137,11 +139,30 @@ namespace KingfoodIO.Controllers.Common
         /// </summary>
         /// <returns></returns>
         [HttpGet]
-        public async Task<IActionResult> GetWebhook()
+        public  IActionResult GetWebhook()
         {
-            return Ok();
+            return Ok("Connected");
         }
-
+        [HttpGet]
+        public async Task<IActionResult> GetCurrencies()
+        {
+            string json = _stripeServiceHandler.GetCurrenciesDB();
+            JObject currencyJson = JObject.Parse(json);
+            var res = await _countryServiceHandler.GetStripes();
+            List<CurrencyInfo> currencyInfos = new List<CurrencyInfo>();
+            foreach (var item in res)
+            {
+                var curr = currencyJson[item.Currency];
+                var symbol = curr["symbol"];
+                currencyInfos.Add(new CurrencyInfo()
+                {
+                    Currency = item.Currency,
+                    CurrencySymbol = symbol.ToString(),
+                    CurrencyName = currencyJson[item.Currency]["name_cn"].ToString()
+                });
+            }
+            return Ok(currencyInfos);
+        }
         /// <summary>
         /// 
         /// </summary>
@@ -149,7 +170,20 @@ namespace KingfoodIO.Controllers.Common
         [HttpPost]
         public async Task<IActionResult> Webhook()
         {
+            List<DbStripeEntity> stripes = new List<DbStripeEntity>();
+            try
+            {
+                stripes = await _countryServiceHandler.GetStripes();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest("dbstripes is null");
+            }
+
+
             var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
+
+
             _logger.LogInfo("webhook:" + json.ToString());
             Console.WriteLine("CXS WebHook:" + json);
             string billId = "";
@@ -157,14 +191,36 @@ namespace KingfoodIO.Controllers.Common
             string bookingIds = "";
             try
             {
-                var stripeEvent = EventUtility.ConstructEvent(json, Request.Headers["Stripe-Signature"], secret);
+                Event stripeEvent = null;
+                List<string> webhookKeys = new List<string>();
+                foreach (var item in stripes)
+                {
+                    foreach (var key in item.WebhookKeys)
+                    {
+                        webhookKeys.Add(key);
+                    }
+                }
+                foreach (var item in webhookKeys)
+                {
+                    try
+                    {
+                        stripeEvent = EventUtility.ConstructEvent(json, Request.Headers["Stripe-Signature"], item);
+                        break;
+                    }
+                    catch
+                    { }
+                }
+                if (stripeEvent == null)
+                {
 
+                    return BadRequest("stripeEvent is null");
+                }
                 _logger.LogInfo("webhook:stripeEvent.Type:" + stripeEvent.Type);
+
 
                 switch (stripeEvent.Type)
                 {
                     case Events.ChargeSucceeded://支付成功
-
                         try
                         {
                             _logger.LogInfo("ChargeSucceeded:" + stripeEvent.Type);
@@ -177,8 +233,6 @@ namespace KingfoodIO.Controllers.Common
 
                             _trRestaurantBookingServiceHandler.BookingCharged(billId, bookingIds, paymentIntent.Id, paymentIntent.ReceiptUrl);
                             _trRestaurantBookingServiceHandler.BookingChargedOld(bookingIds, paymentIntent.Id, paymentIntent.ReceiptUrl);
-
-
 
                         }
                         catch (Exception ex)
@@ -196,11 +250,11 @@ namespace KingfoodIO.Controllers.Common
                             paymentIntent.Metadata.TryGetValue("userId", out userId);
                             bookingIds = paymentIntent.Metadata["bookingIds"];
 
-                           var _dbpayment = await _paymentRepository.GetOneAsync(a => a.Id == billId);
+                            var _dbpayment = await _paymentRepository.GetOneAsync(a => a.Id == billId);
                             if (_dbpayment != null)
                             {
-                               var _dbUser = await _customerServiceHandler.GetCustomer(userId, _dbpayment.ShopId ?? 11);
-                                List<DbBooking> bookings = _dbUser.CartInfos.FindAll(a =>  bookingIds.Contains(a.Id));
+                                var _dbUser = await _customerServiceHandler.GetCustomer(userId, _dbpayment.ShopId ?? 11);
+                                List<DbBooking> bookings = _dbUser.CartInfos.FindAll(a => bookingIds.Contains(a.Id));
                                 _dbUser.StripeCustomerId = paymentIntent.CustomerId;
                                 await _customerServiceHandler.UpdateAccount(_dbUser, _dbpayment.ShopId ?? 11);
                                 await _trRestaurantBookingServiceHandler.PlaceBooking(bookings, _dbpayment.ShopId ?? 11, _dbUser, IntentTypeEnum.PaymentIntent);
@@ -213,15 +267,6 @@ namespace KingfoodIO.Controllers.Common
                             return BadRequest("PaymentIntentSucceeded.Error:" + ex.Message);
                         }
                         break;
-                    //case Events.CheckoutSessionCompleted:
-                    //    {
-                    //        _logger.LogInfo("CheckoutSessionCompleted:" + stripeEvent.Type);
-                    //        _logger.LogInfo("webhook:CheckoutSessionCompleted");
-                    //        var session = stripeEvent.Data.Object as Stripe.Checkout.Session;
-                    //        _logger.LogInfo("webhook:CheckoutSessionCompleted" + session.Id);
-
-                    //    }
-                    //    break;
                     case Events.ChargeRefunded:
                         _logger.LogInfo("ChargeRefunded:" + stripeEvent.Type);
                         var charge = stripeEvent.Data.Object as Stripe.Charge;
@@ -252,31 +297,26 @@ namespace KingfoodIO.Controllers.Common
                         await _customerServiceHandler.UpdateAccount(dbUser, 11);
                         break;
                     case Events.SetupIntentSucceeded://下单成功
-
                         _logger.LogInfo("SetupIntentSucceeded:" + stripeEvent.Type);
                         var setupIntent = stripeEvent.Data.Object as SetupIntent;
                         billId = setupIntent.Metadata["billId"];
                         userId = setupIntent.Metadata["userId"];
                         bookingIds = setupIntent.Metadata["bookingIds"];
-
                         paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == billId);
                         if (paymentInfo != null)
                         {
                             paymentInfo.StripePaymentMethodId = setupIntent.PaymentMethodId;
                             paymentInfo.CheckoutTime = DateTime.UtcNow;
                         }
-                        var  dbpayment = await _paymentRepository.UpsertAsync(paymentInfo);
+                        var dbpayment = await _paymentRepository.UpsertAsync(paymentInfo);
                         if (dbpayment != null)
                         {
                             dbUser = await _customerServiceHandler.GetCustomer(userId, paymentInfo.ShopId ?? 11);
                             List<DbBooking> bookings = dbUser.CartInfos.FindAll(a => a.PaymentId == dbpayment.Id && bookingIds.Contains(a.Id));
                             dbUser.StripeCustomerId = setupIntent.CustomerId;
                             await _customerServiceHandler.UpdateAccount(dbUser, paymentInfo.ShopId ?? 11);
-                            await _trRestaurantBookingServiceHandler.PlaceBooking(bookings, paymentInfo.ShopId ?? 11, dbUser,IntentTypeEnum.SetupIntent);
-
-
+                            await _trRestaurantBookingServiceHandler.PlaceBooking(bookings, paymentInfo.ShopId ?? 11, dbUser, IntentTypeEnum.SetupIntent);
                         }
-
                         break;
                     default:
                         {
@@ -301,14 +341,16 @@ namespace KingfoodIO.Controllers.Common
         /// <returns></returns>
         [HttpPost]
         [ServiceFilter(typeof(AuthActionFilter))]
-        public ActionResult CreateSetupIntent([FromBody] PayIntentParam bill)
+        public async Task<IActionResult> CreateSetupIntent([FromBody] PayIntentParam bill)
         {
             Guard.NotNull(bill.CustomerId);
             try
             {
                 var authHeader = Request.Headers["Wauthtoken"];
                 var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
-                SetupIntent setupIntent = _stripeServiceHandler.CreateSetupPayIntent(bill, "", user);
+                var stripeKeys = await _countryServiceHandler.GetStripes();
+                var stripe = stripeKeys.FirstOrDefault(a => a.Currency == bill.Currency);
+                SetupIntent setupIntent = _stripeServiceHandler.CreateSetupPayIntent(bill, "", user, stripe.StripeKey);
                 return Json(new { clientSecret = setupIntent.ClientSecret });
             }
             catch (Exception ex)
@@ -346,15 +388,16 @@ namespace KingfoodIO.Controllers.Common
 
             try
             {
-                TrDbRestaurantBooking gpBooking =  await _trRestaurantBookingServiceHandler.GetBookingOld(bill.BillId);
+                TrDbRestaurantBooking gpBooking = await _trRestaurantBookingServiceHandler.GetBookingOld(bill.BillId);
                 if (gpBooking == null)
                 {
                     return BadRequest("Can't find the booking by Id");
                 }
 
                 var paymentinfo = await _paymentRepository.GetOneAsync(a => a.Id == gpBooking.Details[0].PaymentId);
-
-                PaymentIntent paymentIntent =  _stripeServiceHandler.CreatePayIntent(paymentinfo,bill.BillId, paymentinfo.Creater);
+                var stripeKeys = await _countryServiceHandler.GetStripes();
+                var stripe = stripeKeys.FirstOrDefault(a => a.Currency == bill.Currency);
+                PaymentIntent paymentIntent = _stripeServiceHandler.CreatePayIntent(paymentinfo, bill.BillId, paymentinfo.Creater, stripe.StripeKey);
 
                 paymentinfo.StripeIntentId = paymentIntent.Id;
                 paymentinfo.StripeClientSecretKey = paymentIntent.ClientSecret;
@@ -376,18 +419,6 @@ namespace KingfoodIO.Controllers.Common
             }
 
         }
-        private PaymentIntent UpdatePaymentIntent(string paymentId, long Amount, Dictionary<string, string> meta)
-        {
-            var options = new PaymentIntentUpdateOptions
-            {
-                Amount = Amount,
-                Currency = "eur",
-                Metadata = meta
-            };
-            var service = new PaymentIntentService();
-            var payment = service.Update(paymentId, options);
-            return payment;
-        }
 
         /// <summary>
         /// 
@@ -395,30 +426,9 @@ namespace KingfoodIO.Controllers.Common
         /// <param name="bill"></param>
         /// <returns></returns>
         [HttpPost]
-        public ActionResult RefundPay([FromBody] PayIntentParam bill)
+        public async Task<IActionResult> RefundPay([FromBody] PayIntentParam bill)
         {
-
-            try
-            {
-                Dictionary<string, string> meta = new Dictionary<string, string>
-                {
-                    { "billId", bill.BillId}
-                };
-                string chargeId = "ch_3Pr72sAwWylbYgqy2FyCO45V";
-                var options = new RefundCreateOptions
-                {
-                    Charge = chargeId,
-                    Amount = 100
-                };
-                var service = new RefundService();
-                var temp = service.Create(options);
-                return Json(new { msg = "OK", billId = temp.ChargeId });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogInfo("StripeException.Error" + ex.Message);
-                return BadRequest(ex.Message);
-            }
+            return await ExecuteAsync(11, false, async () => await _stripeServiceHandler.Refund(bill));
         }
 
 

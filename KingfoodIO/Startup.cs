@@ -234,7 +234,7 @@ namespace KingfoodIO
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             var settings = Configuration.GetSection("AppSetting").Get<AppSettingConfig>();
-            StripeConfiguration.ApiKey = settings.StripeKey;//"sk_test_51MsNeuEOhoHb4C89kuTDIQd4WTiRiWGXSrFMnJMxsk0ufrGw7VMTsilTZKmVYbYn9zHyW98De7hXcrOwfrbGJXcY00DE8tswlW";
+            //StripeConfiguration.ApiKey = settings.StripeKey;//"sk_test_51MsNeuEOhoHb4C89kuTDIQd4WTiRiWGXSrFMnJMxsk0ufrGw7VMTsilTZKmVYbYn9zHyW98De7hXcrOwfrbGJXcY00DE8tswlW";
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();

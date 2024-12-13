@@ -14,13 +14,14 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace App.Infrastructure.Utility.Common
 {
     public interface IExchangeUtil
     {
-        Task<ExchangeModel> getGBPExchangeRate();
+        Task<ExchangeModel> getGBPExchangeRate(string baseCode);
         void UpdateExchangeRateToDB();
     }
     public class ExchangeUtil : IExchangeUtil
@@ -34,11 +35,11 @@ namespace App.Infrastructure.Utility.Common
             _countryServiceHandler = countryRepository;
         }
 
-        public async Task<ExchangeModel> getGBPExchangeRate()
+        public async Task<ExchangeModel> getGBPExchangeRate(string baseCode)
         {
             var httpClient = _httpClientFactory.CreateClient();
             var httpResponseMessage = await httpClient.GetAsync(
-                "https://v6.exchangerate-api.com/v6/945925974267e80c40e247cd/latest/EUR");
+                "https://v6.exchangerate-api.com/v6/945925974267e80c40e247cd/latest/" + baseCode);
             if (httpResponseMessage.IsSuccessStatusCode)
             {
                 var jsonResponse = await httpResponseMessage.Content.ReadAsStringAsync();
@@ -57,37 +58,29 @@ namespace App.Infrastructure.Utility.Common
         }
         public async void UpdateExchangeRateToDB()
         {
-            var existRate = await _countryServiceHandler.GetCountries(11);
+            var existRate = await _countryServiceHandler.GetStripes();
             if (existRate != null)
             {
-                var contries = existRate.ToList();
-                if ((DateTime.UtcNow - contries[0].Updated.Value).TotalHours < 23)
-                    return;
-                ExchangeModel exchange = await getGBPExchangeRate();
-                if (exchange == null) return;
-                foreach (var item in contries)
+                var Rates = existRate.ToList();
+                if (Rates[0].Updated == null)
                 {
-                    string sValue = "0";
-                    double rate = 1;
-                    switch (item.Currency)
-                    {
-                        case "UK":
-                            sValue = exchange.conversion_rates["GBP"];
-                            double.TryParse(sValue, out rate);
-                            item.ExchangeRate = rate + item.ExchangeRateExtra;
-                            break;
-                        case "EU":
-                            item.ExchangeRate = rate + item.ExchangeRateExtra;
-                            break;
-                        default:
-                            sValue = exchange.conversion_rates[item.Currency];
-                            double.TryParse(sValue, out rate);
-                            item.ExchangeRate = rate + item.ExchangeRateExtra;
-                            break;
-                    }
-                    item.Updated = DateTime.UtcNow;
-                    _countryServiceHandler.UpsertCountry(item);
+                    Rates[0].Updated = DateTime.UtcNow;
+                    await _countryServiceHandler.UpsertStripe(Rates[0]);
                 }
+                if ((DateTime.UtcNow - Rates[0].Updated.Value).TotalHours < 72)
+                    return;
+                await Task.Run(async () =>
+                   {
+                       foreach (var item in existRate)
+                       {
+                           ExchangeModel exchange = await getGBPExchangeRate(item.Currency);
+                           if (exchange == null) return;
+                           item.ExchangeRate = exchange;
+                           item.Updated = DateTime.UtcNow;
+                           await _countryServiceHandler.UpsertStripe(item);
+                           Thread.Sleep(60000);
+                       }
+                   });
 
 
             }

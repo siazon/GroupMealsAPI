@@ -19,11 +19,11 @@ namespace App.Infrastructure.Utility.Common
 {
     public interface IAmountCalculaterUtil
     {
-        PaymentAmountInfo GetOrderPaidInfo(List<DbBooking> details, string payCurrency, int shopId, DbCustomer customer, List<DbCountry> country);
-        decimal CalculateOrderPaidAmount(List<DbBooking> details, string PayCurrency, DbCustomer customer, List<DbCountry> countries);
+        PaymentAmountInfo GetOrderPaidInfo(List<DbBooking> details, string payCurrency, int shopId, DbCustomer customer, List<DbCountry> country, List<DbStripeEntity> dbStripes);
+        decimal CalculateOrderPaidAmount(List<DbBooking> details, string PayCurrency, DbCustomer customer, List<DbCountry> countries, List<DbStripeEntity> dbStripes);
         decimal getItemAmount(BookingCalculateVO bookingDetail);
         ItemPayInfo getItemPayAmount(BookingCalculateVO bookingDetail, DbCustomer customer, double VAT);
-        decimal CalculatePayAmountByRate(decimal amount, string currency, string payCurrency, int shopId, List<DbCountry> country);
+        decimal CalculatePayAmountByRate(decimal amount, string currency, string payCurrency, int shopId, List<DbCountry> countries, List<DbStripeEntity> dbStripes);
     }
 
     public class AmountCalculaterV1Util : IAmountCalculaterUtil
@@ -33,8 +33,43 @@ namespace App.Infrastructure.Utility.Common
         {
             _countryServiceHandler = countryServiceHandler;
         }
-
-        public PaymentAmountInfo GetOrderPaidInfo(List<DbBooking> details, string currency, int shopId, DbCustomer customer, List<DbCountry> countries)
+        private Dictionary<string, Dictionary<string, decimal>> getExchangeRate(List<DbCountry> countries, List<DbStripeEntity> dbStripes)
+        {
+            Dictionary<string, Dictionary<string, decimal>> Rates = new Dictionary<string, Dictionary<string, decimal>>();
+            Dictionary<string, decimal> rates = new Dictionary<string, decimal>();
+            foreach (DbCountry country in countries)
+            {
+                rates = new Dictionary<string, decimal>();
+                var _rates = dbStripes.FirstOrDefault(a => a.Currency == country.Currency);
+                string currencies = "";
+                dbStripes.ForEach(a => currencies += a.Currency + ",");
+                foreach (var item in _rates.ExchangeRate.conversion_rates)
+                {
+                    if (!currencies.Contains(item.Key))
+                        continue;
+                    if (rates.ContainsKey(item.Key))
+                    {
+                        if (item.Key == country.Currency)
+                            rates[item.Key] = 1;
+                        else
+                            rates[item.Key] = decimal.Parse(item.Value) + (decimal)country.ExchangeRateExtra;
+                    }
+                    else
+                    {
+                        if (item.Key == country.Currency)
+                            rates[item.Key] = 1;
+                        else
+                            rates.Add(item.Key, decimal.Parse(item.Value) + (decimal)country.ExchangeRateExtra);
+                    }
+                }
+                if (Rates.ContainsKey(country.Currency))
+                    Rates[country.Currency] = rates;
+                else
+                    Rates.Add(country.Currency, rates);
+            }
+            return Rates;
+        }
+        public PaymentAmountInfo GetOrderPaidInfo(List<DbBooking> details, string currency, int shopId, DbCustomer customer, List<DbCountry> countries, List<DbStripeEntity> dbStripes)
         {
             PaymentAmountInfo paymentAmountInfo = new PaymentAmountInfo();
             Dictionary<string, decimal> dicAmount = new Dictionary<string, decimal>();
@@ -43,14 +78,18 @@ namespace App.Infrastructure.Utility.Common
             Dictionary<string, DicModel> dicInfo = new Dictionary<string, DicModel>();
             bool hasFullpay = false;
 
+            var Rates = getExchangeRate(countries, dbStripes);
+
             foreach (var item in details)
             {
                 var amount = getItemAmount(item.ConvertToAmount());//总金额
                 var country = countries.FirstOrDefault(a => a.Code == item.RestaurantCountry);
                 var payAmount = getItemPayAmount(item.ConvertToAmount(), customer, country.VAT);//线上支付金额
                 var reward = payAmount.Reward;
-                paymentAmountInfo.TotalPayAmount += CalculatePayAmountByRate(payAmount.PayAmount, item.Currency, currency, shopId, countries);
-
+                paymentAmountInfo.TotalPayAmount += CalculatePayAmountByRate(payAmount.PayAmount, item.Currency, currency, shopId, countries, dbStripes);
+                paymentAmountInfo.Amount += CalculateByRateByInOut(amount, Rates[item.Currency][currency]);
+                paymentAmountInfo.UnPaidAmount += CalculateByRateByInOut(amount - payAmount.PayAmount - reward, Rates[item.Currency][currency] );
+                paymentAmountInfo.Reward += CalculateByRateByInOut(reward, Rates[item.Currency][currency]);
                 if (paymentAmountInfo.TotalPayAmount > 0 && !item.BillInfo.IsOldCustomer)
                 {
 
@@ -67,7 +106,7 @@ namespace App.Infrastructure.Utility.Common
                 if (item.RestaurantIncluedVAT)
                     dicInfo[item.Currency].UnPaidAmount = Math.Round(amount - payAmount.PayAmount - reward, 2);
                 else
-                    dicInfo[item.Currency].UnPaidAmount = Math.Round(amount - payAmount.PayAmount - reward , 2);
+                    dicInfo[item.Currency].UnPaidAmount = Math.Round(amount - payAmount.PayAmount - reward, 2);
                 if (reward > 0)
                     dicInfo[item.Currency].Reward = Math.Round(reward, 2);
 
@@ -95,6 +134,8 @@ namespace App.Infrastructure.Utility.Common
             else
                 paymentAmountInfo.IntentType = new List<IntentTypeEnum> { IntentTypeEnum.SetupIntent };
 
+            paymentAmountInfo.Currencys = new List<string>() { "EUR", "GBP", "USD" };
+
             paymentAmountInfo.AmountText = JionDictionary(dicInfo, countries, "amount");
             paymentAmountInfo.UnPaidAmountText = JionDictionary(dicInfo, countries, "unpaid");
             string rewardText = JionDictionary(dicInfo, countries, "reward");
@@ -104,7 +145,7 @@ namespace App.Infrastructure.Utility.Common
             return paymentAmountInfo;
 
         }
-        public decimal CalculateOrderPaidAmount(List<DbBooking> details, string PayCurrency, DbCustomer customer, List<DbCountry> countries)
+        public decimal CalculateOrderPaidAmount(List<DbBooking> details, string PayCurrency, DbCustomer customer, List<DbCountry> countries, List<DbStripeEntity> dbStripes)
         {
             decimal amount = 0;
             foreach (var item in details)
@@ -113,7 +154,7 @@ namespace App.Infrastructure.Utility.Common
                 var payAmount = getItemPayAmount(item.ConvertToAmount(), customer, country.VAT);//线上支付金额
                 var _amount = getItemAmount(item.ConvertToAmount());//总金额
                 var reward = payAmount.Reward;
-                var amountByRate = CalculatePayAmountByRate(payAmount.PayAmount, item.Currency, PayCurrency, customer.ShopId ?? 11, countries);
+                var amountByRate = CalculatePayAmountByRate(payAmount.PayAmount, item.Currency, PayCurrency, customer.ShopId ?? 11, countries, dbStripes);
                 amount += amountByRate;
             }
             return amount;
@@ -147,32 +188,47 @@ namespace App.Infrastructure.Utility.Common
         #region 按汇率计算
 
 
-        public decimal CalculatePayAmountByRate(decimal oAmount, string currency, string payCurrency, int shopId, List<DbCountry> country)
+        public decimal CalculatePayAmountByRate(decimal oAmount, string currency, string payCurrency, int shopId, List<DbCountry> countries, List<DbStripeEntity> dbStripes)
         {
+
             decimal amount = 0;
-            amount = CalculateByRate(oAmount, currency, payCurrency, country);
+            if (payCurrency == null)
+                return 0;
+            //Dictionary<string, decimal> ExchangeRates = new Dictionary<string, decimal>();
+            //foreach (var item in country)
+            //{
+            //    if (ExchangeRates.ContainsKey(item.Currency))
+            //        ExchangeRates[item.Currency] = (decimal)item.ExchangeRate;
+            //    else
+            //        ExchangeRates.Add(item.Currency, (decimal)item.ExchangeRate);
+            //}
+            var Rates = getExchangeRate(countries, dbStripes);
+            amount = CalculateByRateByInOut(oAmount, Rates[currency][payCurrency]);
             return amount;
         }
-
-        private decimal CalculateByRate(decimal oAmount, string Currency, string payCurrency, List<DbCountry> country)
+        private decimal CalculateByRateByInOut(decimal oAmount, decimal ExchangeRate)
         {
-            decimal amount = 0;
-            var exRate = country.FirstOrDefault(a => a.Currency == Currency)?.ExchangeRate ?? 1;
-            var UKRate = country.FirstOrDefault(a => a.Currency == "UK" || a.Currency == "GBP")?.ExchangeRate ?? 1;
-            if (Currency == payCurrency)
+            return oAmount * ExchangeRate;
+        }
+
+        private decimal CalculateByRate(decimal oAmount, string Currency, string payCurrency, Dictionary<string, decimal> ExchangeRates)
+        {
+            if (payCurrency == null)
+                return 0;
+            if (!ExchangeRates.ContainsKey(Currency))
             {
-                amount = oAmount;
+                throw new ArgumentException($"Source currency '{Currency}' is not supported.");
             }
-            else
+            if (!ExchangeRates.ContainsKey(payCurrency))
             {
-                if (payCurrency == "UK" || payCurrency == "GBP")
-                {
-                    amount = oAmount * (decimal)UKRate / (decimal)exRate;
-                }
-                else
-                    amount = oAmount / (decimal)exRate;
+                throw new ArgumentException($"Target currency '{payCurrency}' is not supported.");
             }
-            return amount;
+
+            decimal amountInEuro = oAmount / ExchangeRates[Currency];
+
+            decimal convertedAmount = amountInEuro * ExchangeRates[payCurrency];
+
+            return convertedAmount;
         }
         private decimal GetReward(decimal _amount, PaymentTypeEnum rewardType, double reward, DbCustomer user, bool RestaurantIncluedVAT, decimal vat)
         {
@@ -234,10 +290,10 @@ namespace App.Infrastructure.Utility.Common
             decimal Commission = GetDue(bookingDetail, amount);//应付
             var vat = GetVATAmount(Commission, VAT);
             var reward = GetReward(amount, bookingDetail.BillInfo.RewardType, bookingDetail.BillInfo.Reward, customer, bookingDetail.RestaurantIncluedVAT, vat);//
-           var dueAmout = Commission+ vat;
+            var dueAmout = Commission + vat;
             if (bookingDetail.RestaurantIncluedVAT)
-                _amount = dueAmout - reward ;
-            else if(reward>0)
+                _amount = dueAmout - reward;
+            else if (reward > 0)
                 _amount = dueAmout - reward;
             else
                 _amount = dueAmout - reward - vat;

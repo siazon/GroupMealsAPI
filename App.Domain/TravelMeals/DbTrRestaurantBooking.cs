@@ -1,3 +1,4 @@
+using App.Domain.Common;
 using App.Domain.Enum;
 using App.Domain.TravelMeals.Restaurant;
 using App.Domain.TravelMeals.VO;
@@ -23,6 +24,20 @@ namespace App.Domain.TravelMeals
         public List<OperationInfo> Operations { get; set; } = new List<OperationInfo>();
         public List<PaymentInfo> PaymentInfos { get; set; } = new List<PaymentInfo>();
 
+    }
+    public class DbStripeEntity : DbEntity
+    {
+        public string Currency { get; set; }
+        public string StripeKey { get; set; }
+        public List<string> WebhookKeys { get; set; } = new List<string>();
+        public string ClientKey { get; set; }
+        public ExchangeModel ExchangeRate { get; set; }
+    }
+    public class CurrencyInfo
+    {
+        public string Currency { get; set; }
+        public string CurrencyName { get; set; }
+        public string CurrencySymbol { get; set; }
     }
     public class DbPaymentInfo : PaymentInfo
     {
@@ -59,9 +74,11 @@ namespace App.Domain.TravelMeals
 
         public decimal Unpaid
         {
-            get {
+            get
+            {
                 _unpaid = Amount - PaidAmount - Reward;
-                return _unpaid; }
+                return _unpaid;
+            }
             set { _unpaid = value; }
         }
 
@@ -185,7 +202,8 @@ namespace App.Domain.TravelMeals
         public MenuCalculateTypeEnum MenuCalculateType { get; set; }
     }
 
-    public class BookingExportModel : DbBooking {
+    public class BookingExportModel : DbBooking
+    {
         public string MealDate { get; set; }
         public string MealTimeStr { get; set; }
         public string CreaterName { get; set; }
@@ -197,7 +215,7 @@ namespace App.Domain.TravelMeals
         public decimal Commission { get; set; }
         public decimal Reward { get; set; }
         public string StatusStr { get; set; }
-        public string  MenuStr { get; set; }
+        public string MenuStr { get; set; }
         public string Qty { get; set; }
         public string Price { get; set; }
         public bool IsNewCustomer { get; set; }
@@ -216,8 +234,8 @@ namespace App.Domain.TravelMeals
                 Courses = new List<MenuInfo>(),
                 Currency = booking.Currency,
                 RestaurantIncluedVAT = booking.RestaurantIncluedVAT,
-                
-                
+
+
             };
             foreach (var item in booking.Courses)
             {

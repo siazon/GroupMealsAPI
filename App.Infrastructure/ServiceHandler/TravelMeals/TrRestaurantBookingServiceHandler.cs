@@ -253,14 +253,20 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             _twilioUtil.sendSMS("+353874858555", $"你有订单: {booking.BookingRef}被取消。 请登录groupmeal.com查看更多");
             var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealCancelled];
-            emailParams.ReceiverEmail = booking.RestaurantEmail;
             emailParams.isShortInfo = 1;
             await _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParams);
             booking.Status = OrderStatusEnum.Canceled;
             booking.Updated = DateTime.UtcNow;
             booking.Updater = userEmail;
-            DbOpearationInfo operationInfo = new DbOpearationInfo() {Id=Guid.NewGuid().ToString(),ModifyType = 3, 
-                ReferenceId = booking.Id, Operater = userEmail, UpdateTime = DateTime.UtcNow, Operation = "订单取消" };
+            DbOpearationInfo operationInfo = new DbOpearationInfo()
+            {
+                Id = Guid.NewGuid().ToString(),
+                ModifyType = 3,
+                ReferenceId = booking.Id,
+                Operater = userEmail,
+                UpdateTime = DateTime.UtcNow,
+                Operation = "订单取消"
+            };
             await _opearationRepository.UpsertAsync(operationInfo);
 
             var savedRestaurant = await _bookingRepository.UpsertAsync(booking);
@@ -565,12 +571,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     {
                         //   var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealAccepted];
                         //   var userInfo = await _customerRepository.GetOneAsync(r => r.Id == booking.Creater);
-                        //   emailParams.ReceiverEmail = userInfo.Email;
                         //   emailParams.isShortInfo = 0;
                         //await   _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParams);
 
                         var emailParamsRest = EmailConfigs.Instance.Emails[EmailTypeEnum.MealAcceptedRestaurant];
-                        emailParamsRest.ReceiverEmail = booking.RestaurantEmail;
                         emailParamsRest.isShortInfo = 1;
                         await _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParamsRest);
 
@@ -579,7 +583,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     {
                         // var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealDeclined];
                         // var userInfo = await _customerRepository.GetOneAsync(r => r.Id == booking.Creater);
-                        // emailParams.ReceiverEmail = userInfo.Email;
                         // emailParams.isShortInfo = 0;
                         //await _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParams);
                     }
@@ -682,9 +685,16 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (dbBooking == null) return new ResponseModel { msg = "booking not found", code = 501, data = null };
             newBooking.BillInfo = dbBooking.BillInfo;
             newBooking.RestaurantIncluedVAT = dbBooking.RestaurantIncluedVAT;
-            
-            DbOpearationInfo operationInfo = new DbOpearationInfo() { Id = Guid.NewGuid().ToString(), ReferenceId = newBooking.Id, ModifyType = 4,
-                Operater = email, UpdateTime = DateTime.UtcNow, Operation = "订单修改" };
+
+            DbOpearationInfo operationInfo = new DbOpearationInfo()
+            {
+                Id = Guid.NewGuid().ToString(),
+                ReferenceId = newBooking.Id,
+                ModifyType = 4,
+                Operater = email,
+                UpdateTime = DateTime.UtcNow,
+                Operation = "订单修改"
+            };
             int isChange = 0; int isDtlChanged = 0;
 
             if (newBooking != null)
@@ -965,19 +975,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             else
             {
-                string currency = "EUR";
-                string payCurrency = payCurrencyVO.PayCurrency.Trim().ToUpper();
-                switch (payCurrency)
-                {
-                    case "eu":
-                        currency = "EUR";
-                        break;
-                    case "uk":
-                        currency = "GBP";
-                        break;
-                    default:
-                        break;
-                }
                 List<DbBooking> bookings = new List<DbBooking>();
                 List<string> bookingIdList = new List<string>();
                 string paymentId = "";
@@ -1002,8 +999,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 }
 
                 var countries = await _countryHandler.GetCountries(userInfo.ShopId ?? 11);
-                dbPaymentInfo.Amount = _amountCalculaterV1.CalculateOrderPaidAmount(bookings, payCurrencyVO.PayCurrency, userInfo, countries);
-                dbPaymentInfo.Currency = currency;
+                var dbStripes = await _countryHandler.GetStripes();
+                dbPaymentInfo.Amount = _amountCalculaterV1.CalculateOrderPaidAmount(bookings, payCurrencyVO.PayCurrency, userInfo, countries, dbStripes);
+                dbPaymentInfo.Currency = payCurrencyVO.PayCurrency.ToUpper().Trim();
 
 
                 if (dbPaymentInfo.Amount == 0)
@@ -1014,16 +1012,17 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     return new ResponseModel { msg = "ok", code = 200, data = null };
                 }
                 string bookingIds = string.Join(',', bookingIdList);
-
+                var stripeKeys = await _countryHandler.GetStripes();
+                var stripe = stripeKeys.FirstOrDefault(a => a.Currency == payCurrencyVO.PayCurrency);
                 string clientSecret = "";
                 if (payCurrencyVO.IntentType == IntentTypeEnum.PaymentIntent)
-                    clientSecret = CreateIntent(dbPaymentInfo, userInfo, user, bookingIds).ClientSecret;
+                    clientSecret = CreateIntent(dbPaymentInfo, userInfo, user, bookingIds, stripe.StripeKey).ClientSecret;
                 else
-                    clientSecret = CreateSetupIntent(dbPaymentInfo, userInfo, user, bookingIds).ClientSecret;
+                    clientSecret = CreateSetupIntent(dbPaymentInfo, userInfo, user, bookingIds, stripe.StripeKey).ClientSecret;
                 foreach (var item in bookings)
                 {
                     item.PaymentId = dbPaymentInfo.Id;
-                    item.PayCurrency = payCurrency;
+                    item.PayCurrency = dbPaymentInfo.Currency;
                 }
 
                 var payment = await _paymentRepository.UpsertAsync(dbPaymentInfo);
@@ -1031,26 +1030,26 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     var temo = await _customerServiceHandler.UpdateCartInfo(bookings, userInfo);
                 }
-                return new ResponseModel { msg = "ok", code = 200, data = new { IntentType = payCurrencyVO.IntentType, clientSecret } };
+                return new ResponseModel { msg = "ok", code = 200, data = new { IntentType = payCurrencyVO.IntentType, clientSecret,clientKey=stripe.ClientKey } };
             }
         }
-        private SetupIntent CreateSetupIntent(DbPaymentInfo dbPaymentInfo, DbCustomer userInfo, DbToken user, string bookingIds)
+        private SetupIntent CreateSetupIntent(DbPaymentInfo dbPaymentInfo, DbCustomer userInfo, DbToken user, string bookingIds, string stripeKey)
         {
             SetupIntent setupIntent = _stripeServiceHandler.CreateSetupPayIntent(new PayIntentParam()
             {
                 BillId = dbPaymentInfo.Id,
                 PaymentIntentId = dbPaymentInfo.StripeIntentId,
                 CustomerId = userInfo.StripeCustomerId
-            }, bookingIds, user);
+            }, bookingIds, user, stripeKey);
             dbPaymentInfo.StripeIntentId = setupIntent.Id;
             dbPaymentInfo.SetupPay = true;
             userInfo.StripeCustomerId = dbPaymentInfo.StripeCustomerId = setupIntent.CustomerId;
             dbPaymentInfo.StripeClientSecretKey = setupIntent.ClientSecret;
             return setupIntent;
         }
-        private PaymentIntent CreateIntent(DbPaymentInfo dbPaymentInfo, DbCustomer userInfo, DbToken user, string bookingIds)
+        private PaymentIntent CreateIntent(DbPaymentInfo dbPaymentInfo, DbCustomer userInfo, DbToken user, string bookingIds, string stripeKey)
         {
-            PaymentIntent paymentIntent = _stripeServiceHandler.CreatePayIntent(dbPaymentInfo, bookingIds, user.UserId);
+            PaymentIntent paymentIntent = _stripeServiceHandler.CreatePayIntent(dbPaymentInfo, bookingIds, user.UserId, stripeKey);
             dbPaymentInfo.StripeIntentId = paymentIntent.Id;
             dbPaymentInfo.SetupPay = false;
             userInfo.StripeCustomerId = dbPaymentInfo.StripeCustomerId = paymentIntent.CustomerId;
@@ -1086,8 +1085,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var bookings = await _bookingRepository.GetManyAsync(a => a.PaymentId == billId);
             var bookingList = bookings.ToList();
             var countries = await _countryHandler.GetCountries(user.ShopId ?? 11);
-            paymentInfo.Amount = _amountCalculaterV1.CalculateOrderPaidAmount(bookingList, paymentInfo.Currency, user, countries);
-            _stripeServiceHandler.SetupPaymentAction(paymentInfo, userId);
+            var dbStripes = await _countryHandler.GetStripes();
+            paymentInfo.Amount = _amountCalculaterV1.CalculateOrderPaidAmount(bookingList, paymentInfo.Currency, user, countries, dbStripes);
+
+            var stripeKeys = await _countryHandler.GetStripes();
+            var stripe = stripeKeys.FirstOrDefault(a => a.Currency == paymentInfo.Currency);
+            _stripeServiceHandler.SetupPaymentAction(paymentInfo, userId, stripe.StripeKey);
         }
         public async void BookingChargedOld(string billId, string ChargeId, string ReceiptUrl)
         {
@@ -1261,12 +1264,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
             }
             var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealCustomer];
-            emailParams.ReceiverEmail = user.Email;
             emailParams.isShortInfo = 0;
             await _sendEmailUtil.EmailGroup(bookings, shopInfo, emailParams, user);
 
             emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealRestaurant];
-            emailParams.ReceiverEmail = bookings[0].RestaurantEmail;
             emailParams.isShortInfo = 1;
             await _sendEmailUtil.EmailEach(bookings, shopInfo, emailParams);
             //EmailUtils.EmailSupport(booking, shopInfo, "new_meals_support", this._environment.WebRootPath, "New Booking", _twilioUtil, _contentBuilder,  _logger);
@@ -1287,13 +1288,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
             }
             var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealModified];
-            emailParams.ReceiverEmail = booking.RestaurantEmail;
             emailParams.isShortInfo = 1;
             await _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParams);
 
             var userInfo = await _customerRepository.GetOneAsync(r => r.Id == booking.Creater);
             var emailParamsUser = EmailConfigs.Instance.Emails[EmailTypeEnum.MealModified];
-            emailParamsUser.ReceiverEmail = userInfo.Email;
             emailParamsUser.isShortInfo = 0;
             await _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParamsUser);
 
@@ -1330,7 +1329,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     }
                     var user = await _customerRepository.GetOneAsync(a => a.Id == booking.Creater);
                     var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealCustomer];
-                    emailParams.ReceiverEmail = user.Email;
                     emailParams.isShortInfo = 0;
                     await _sendEmailUtil.EmailEach(new() { booking }, shopInfo, emailParams);
                     //await _sendEmailUtil.EmailGroup(new List<DbBooking>() { booking }, shopInfo, emailParams, user);
@@ -1388,7 +1386,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<ResponseModel> SearchBookings(int shopId, DbToken user, string content, int pageSize = -1, string continuationToken = null)
         {
-            var listres =await SearchBookingsV1(shopId, user.UserId, content, pageSize, continuationToken);
+            var listres = await SearchBookingsV1(shopId, user.UserId, content, pageSize, continuationToken);
             List<DbBooking> dbBookings = listres.data as List<DbBooking>;
             var aaa = getBooking(dbBookings);
             listres.data = aaa;
@@ -1433,7 +1431,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     item.BillInfo.PaymentType = PaymentTypeEnum.Fixed;
                 }
-                else {
+                else
+                {
                     item.BillInfo.PaymentType = PaymentTypeEnum.Full;
                 }
                 TrDbRestaurantBooking booking = new TrDbRestaurantBooking()
@@ -1737,7 +1736,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             var countries = await _countryHandler.GetCountries(user.ShopId ?? 11);
 
-            var amountInfo = _amountCalculaterV1.GetOrderPaidInfo(details, currency, user.ShopId ?? 11, user, countries);
+            var dbStripes = await _countryHandler.GetStripes();
+            var amountInfo = _amountCalculaterV1.GetOrderPaidInfo(details, currency, user.ShopId ?? 11, user, countries, dbStripes);
 
             Console.WriteLine("Total: " + (DateTime.UtcNow - sdate).TotalMilliseconds);
             return new ResponseModel { msg = "ok", code = 200, data = amountInfo };
@@ -1772,7 +1772,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var user = await _customerRepository.GetOneAsync(a => a.Id == userId);
             user = await _customerServiceHandler.RefreshCartInfo(user);
             var countries = await _countryHandler.GetCountries(user.ShopId ?? 11);
-            var amountInfo = _amountCalculaterV1.GetOrderPaidInfo(details, currency, user.ShopId ?? 11, user, countries);
+            var dbStripes = await _countryHandler.GetStripes();
+            var amountInfo = _amountCalculaterV1.GetOrderPaidInfo(details, currency, user.ShopId ?? 11, user, countries, dbStripes);
             return amountInfo;
         }
         public async Task<ResponseModel> GetBookingAmount(bool isBookingModify, string currency, string userId, List<string> Ids)
@@ -1812,7 +1813,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     var user = await _customerRepository.GetOneAsync(a => a.Id == userId);
                     user = await _customerServiceHandler.RefreshCartInfo(user);
                     var countries = await _countryHandler.GetCountries(user.ShopId ?? 11);
-                    var amountInfo = _amountCalculaterV1.GetOrderPaidInfo(details, currency, user.ShopId ?? 11, user, countries);
+                    var dbStripes = await _countryHandler.GetStripes();
+                    var amountInfo = _amountCalculaterV1.GetOrderPaidInfo(details, currency, user.ShopId ?? 11, user, countries, dbStripes);
                     totalPayAmount = amountInfo.TotalPayAmount;
 
                     UKAmount = 0;
@@ -1835,8 +1837,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 List<DbBooking> details = new List<DbBooking>();
                 foreach (var bo in items)
                 {
-
-
                     DbBooking booking = new DbBooking()
                     {
                         BillInfo = bo.BillInfo,
@@ -1852,7 +1852,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     details.Add(bo);
                 }
                 user = await _customerServiceHandler.RefreshCartInfo(user);
-                var amountInfo = _amountCalculaterV1.GetOrderPaidInfo(details, currency, user.ShopId ?? 11, user, countries);
+                var dbStripes = await _countryHandler.GetStripes();
+                var amountInfo = _amountCalculaterV1.GetOrderPaidInfo(details, currency, user.ShopId ?? 11, user, countries, dbStripes);
                 totalPayAmount = amountInfo.TotalPayAmount;
                 List<string> amountStr = amountInfo.AmountText.Split(" + ").ToList();
                 foreach (var item in amountStr)
@@ -1922,8 +1923,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             List<PDFModel> pdfData = new List<PDFModel>();
             var test = await _bookingRepository.GetManyAsync(a => 1 == 1);
-
-
             var Bookings = await _bookingRepository.GetManyAsync(a => a.Status != OrderStatusEnum.None &&
         !a.IsDeleted && a.Status != OrderStatusEnum.Canceled && a.Status != OrderStatusEnum.Settled && a.Creater == userId.UserId);
             foreach (var Booking in Bookings)
@@ -1978,7 +1977,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string token = "";
             while (token != null)
             {
-                var temo = await _bookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None&&!a.IsDeleted), 500, token);
+                var temo = await _bookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted), 500, token);
                 var list = temo.Value.ToList();
                 Bookings.AddRange(list);
                 token = temo.Key;
@@ -2107,21 +2106,22 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<bool> OrderCheck()
         {
 
-            updateRest();
-            return true;
+            //autoPayment();
+            //return true;
 
-            return true;
-            asyncBooking();
-            return true;
+            ////updateRest();
+            //return true;
 
-            ExportBooking();
-            return true;
-            asyncCustomer();
-            return true;
-            autoPayment();
-            return true;
-            asyncCities();
-            return true;
+            //return true;
+            //asyncBooking();
+            //return true;
+
+            //ExportBooking();
+            //return true;
+            //asyncCustomer();
+            //return true;
+            //asyncCities();
+            //return true;
             var today = DateTime.UtcNow;
 
             if (today.Hour == 4 && today.Minute < 15)
@@ -2149,7 +2149,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             try
             {
-                var paymentInfos = await _paymentRepository.GetManyAsync(a => a.Paid == false);
+                var paymentInfos = await _paymentRepository.GetManyAsync(a => a.Paid == false );
                 foreach (var item in paymentInfos)
                 {
                     if (string.IsNullOrWhiteSpace(item.StripePaymentMethodId))
@@ -2209,7 +2209,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 token = temo.Key;
             }
 
-            var rests = await _restaurantRepository.GetManyAsync(a => a.BillInfo.SupportedPaymentTypes.Count==0);
+            var rests = await _restaurantRepository.GetManyAsync(a => a.BillInfo.SupportedPaymentTypes.Count == 0);
 
             foreach (var item in rests)
             {
@@ -2218,7 +2218,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     item.BillInfo.SupportedPaymentTypes = new List<PaymentTypeEnum>() { PaymentTypeEnum.Full };
                 }
                 else
-                    item.BillInfo.SupportedPaymentTypes = new List<PaymentTypeEnum>() { PaymentTypeEnum.Fixed};
+                    item.BillInfo.SupportedPaymentTypes = new List<PaymentTypeEnum>() { PaymentTypeEnum.Fixed };
             }
 
 
@@ -2334,16 +2334,17 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var rests = await _restaurantRepository.GetManyAsync(a => a.ShopId == 11);
             var countrys = await _countryHandler.GetCountries(11);
             foreach (var item in rests)
-            { 
+            {
                 var count = countrys.FirstOrDefault(a => a.Code == item.Country);
                 if (count == null)
                 {
                     continue;
                 }
-                var city = count.Cities.FirstOrDefault(a =>  item.City.Contains(a.Name));
+                var city = count.Cities.FirstOrDefault(a => item.City.Contains(a.Name));
                 if (city == null)
-                { 
-                    continue; }
+                {
+                    continue;
+                }
                 item.City = city.Name;
                 item.TimeZone = city.TimeZone;
                 item.Currency = count.Currency;

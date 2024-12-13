@@ -130,6 +130,9 @@ namespace App.Domain.TravelMeals.Restaurant
     public class PaymentAmountInfo
     { 
         public decimal TotalPayAmount { get; set; }
+        public decimal Amount { get; set; }
+        public decimal Reward { get; set; }
+        public decimal UnPaidAmount { get; set; }
         public string AmountText { get; set; }
         public string RewardText {  get; set; }
         public string UnPaidAmountText { get; set; }
@@ -137,6 +140,7 @@ namespace App.Domain.TravelMeals.Restaurant
         public Dictionary<string, decimal> UnPaidAmountList { get; set; } = new Dictionary<string, decimal>();
 
         public List<IntentTypeEnum> IntentType { get; set; } = new List<IntentTypeEnum>();
+        public List<string> Currencys { get; set; }
 
     }
     public class ItemPayInfo {

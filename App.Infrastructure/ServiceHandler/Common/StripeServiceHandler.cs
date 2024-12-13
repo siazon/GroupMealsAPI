@@ -1,12 +1,15 @@
 ﻿using App.Domain;
+using App.Domain.Common;
 using App.Domain.Common.Auth;
 using App.Domain.Common.Shop;
 using App.Domain.Common.Stripe;
 using App.Domain.Holiday;
 using App.Domain.TravelMeals;
+using App.Domain.TravelMeals.Restaurant;
 using App.Infrastructure.Repository;
 using App.Infrastructure.Utility.Common;
 using App.Infrastructure.Validation;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Options;
 using Stripe;
@@ -22,21 +25,25 @@ namespace App.Infrastructure.ServiceHandler.Common
     public interface IStripeServiceHandler
     {
         Task<StripeBase> GetBooking(string id);
-        SetupIntent CreateSetupPayIntent(PayIntentParam bill, string bookingIds, DbToken user);
-        PaymentIntent CreatePayIntent(DbPaymentInfo dbPaymentInfo, string bookingIds, string userId);
-        void SetupPaymentAction(DbPaymentInfo paymentInfo, string userId);
+        SetupIntent CreateSetupPayIntent(PayIntentParam bill, string bookingIds, DbToken user, string stripeKey);
+        PaymentIntent CreatePayIntent(DbPaymentInfo dbPaymentInfo, string bookingIds, string userId, string stripeKey);
+        void SetupPaymentAction(DbPaymentInfo paymentInfo, string userId, string stripeKey);
+        Task<ResponseModel> Refund(PayIntentParam bill);
+        string GetCurrenciesDB();
     }
     public class StripeServiceHandler : IStripeServiceHandler
     {
 
         private readonly IDbCommonRepository<StripeBase> _stripeBaseRepository;
         private readonly IDbCommonRepository<DbPaymentInfo> _dbPaymentInfoRepository;
+        IWebHostEnvironment _environment;
         ILogManager _logger;
-        public StripeServiceHandler(IDbCommonRepository<StripeBase> stripeBaseRepository, IDbCommonRepository<DbPaymentInfo> dbPaymentInfoRepository, ILogManager logger)
+        public StripeServiceHandler(IDbCommonRepository<StripeBase> stripeBaseRepository, IDbCommonRepository<DbPaymentInfo> dbPaymentInfoRepository, IWebHostEnvironment webHostEnvironment, ILogManager logger)
         {
             _stripeBaseRepository = stripeBaseRepository;
             _dbPaymentInfoRepository = dbPaymentInfoRepository;
             _logger = logger;
+            _environment = webHostEnvironment;
         }
         public async Task<StripeBase> GetBooking(string id)
         {
@@ -44,8 +51,9 @@ namespace App.Infrastructure.ServiceHandler.Common
             return Booking;
         }
 
-        public PaymentIntent CreatePayIntent(DbPaymentInfo dbPaymentInfo, string bookingIds, string userId)
+        public PaymentIntent CreatePayIntent(DbPaymentInfo dbPaymentInfo, string bookingIds, string userId, string stripeKey)
         {
+            StripeConfiguration.ApiKey = stripeKey;
             Dictionary<string, string> meta = new Dictionary<string, string>
                 {
                     { "billId", dbPaymentInfo.Id}
@@ -60,18 +68,26 @@ namespace App.Infrastructure.ServiceHandler.Common
                 try
                 {
                     paymentIntent = paymentIntentService.Get(dbPaymentInfo.StripeIntentId);
-                    PaymentIntentUpdateOptions options = new PaymentIntentUpdateOptions
+                    if (paymentIntent.Status == "succeeded") {
+                        paymentIntent = null;
+                    }
+                    else
                     {
-                        Amount = Convert.ToInt64(dbPaymentInfo.Amount * 100),
-                        Currency = dbPaymentInfo.Currency,
-                        Metadata = meta
-                    };
-                    paymentIntent= paymentIntentService.Update(paymentIntent.Id, options);
+                        PaymentIntentUpdateOptions options = new PaymentIntentUpdateOptions
+                        {
+                            Amount = Convert.ToInt64(dbPaymentInfo.Amount * 100),
+                            Currency = dbPaymentInfo.Currency,
+                            Metadata = meta
+                        };
+                        paymentIntent = paymentIntentService.Update(paymentIntent.Id, options);
+                        return paymentIntent;
+                    }
+                    
 
                 }
                 catch (Exception ex)
                 { }
-                return paymentIntent;
+             
             }
             if (paymentIntent == null || paymentIntent.Status == "succeeded" || string.IsNullOrWhiteSpace(paymentIntent?.CustomerId))
             {
@@ -93,16 +109,16 @@ namespace App.Infrastructure.ServiceHandler.Common
                 }
                 catch (Exception ex)
                 {
-                     
+
                 }
-              
+
             }
             return paymentIntent;
-        } 
+        }
 
-        public SetupIntent CreateSetupPayIntent(PayIntentParam bill, string bookingIds, DbToken user)
+        public SetupIntent CreateSetupPayIntent(PayIntentParam bill, string bookingIds, DbToken user, string stripeKey)
         {
-
+            StripeConfiguration.ApiKey = stripeKey;
             Dictionary<string, string> meta = new Dictionary<string, string>();
             meta["billId"] = bill.BillId;
             meta["bookingIds"] = bookingIds;
@@ -167,9 +183,9 @@ namespace App.Infrastructure.ServiceHandler.Common
             }
             return customer;
         }
-        public void SetupPaymentAction(DbPaymentInfo paymentInfo, string userId)
+        public void SetupPaymentAction(DbPaymentInfo paymentInfo, string userId, string stripeKey)
         {
-
+            StripeConfiguration.ApiKey = stripeKey;
             try
             {
                 Dictionary<string, string> meta = new Dictionary<string, string>
@@ -214,6 +230,35 @@ namespace App.Infrastructure.ServiceHandler.Common
                         break;
                 }
             }
+        }
+        public async Task<ResponseModel> Refund(PayIntentParam bill)
+        {
+            try
+            {
+                Dictionary<string, string> meta = new Dictionary<string, string>
+                {
+                    { "billId", bill.BillId}
+                };
+                string chargeId = "ch_3Pr72sAwWylbYgqy2FyCO45V";
+                var options = new RefundCreateOptions
+                {
+                    Charge = chargeId,
+                    Amount = 100
+                };
+                var service = new RefundService();
+                var temp = service.Create(options);
+                return new ResponseModel { code = 200, msg = "ok" };// Json(new { msg = "OK", billId = temp.ChargeId });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInfo("StripeException.Error" + ex.Message);
+                return new ResponseModel { code = 501, msg = ex.Message };// BadRequest(ex.Message);
+            }
+        }
+        public string GetCurrenciesDB() {
+            string currecyJson = EmailTemplateUtil.ReadJson(this._environment.WebRootPath, "currencydb");
+            return currecyJson;
+
         }
     }
 }
