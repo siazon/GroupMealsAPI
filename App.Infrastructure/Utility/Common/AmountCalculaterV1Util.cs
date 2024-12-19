@@ -86,6 +86,7 @@ namespace App.Infrastructure.Utility.Common
                 var country = countries.FirstOrDefault(a => a.Code == item.RestaurantCountry);
                 var payAmount = getItemPayAmount(item.ConvertToAmount(), customer, country.VAT);//线上支付金额
                 var reward = payAmount.Reward;
+                if (currency == null) currency = item.Currency;
                 paymentAmountInfo.TotalPayAmount += CalculatePayAmountByRate(payAmount.PayAmount, item.Currency, currency, shopId, countries, dbStripes);
                 paymentAmountInfo.Amount += CalculateByRateByInOut(amount, Rates[item.Currency][currency]);
                 paymentAmountInfo.UnPaidAmount += CalculateByRateByInOut(amount - payAmount.PayAmount - reward, Rates[item.Currency][currency] );

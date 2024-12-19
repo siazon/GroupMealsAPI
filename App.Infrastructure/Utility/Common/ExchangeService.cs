@@ -29,7 +29,7 @@ namespace App.Infrastructure.Utility.Common
         public async Task StartAsync(CancellationToken cancellationToken)
         {
 #if RELEASE
-            RecurringJob.AddOrUpdate("Daily_Update_ExChangeRate_TASK_JOB", () => DoTask(), Cron.Daily);
+            //RecurringJob.AddOrUpdate("Daily_Update_ExChangeRate_TASK_JOB", () => DoTask(), Cron.Daily);
             //RecurringJob.AddOrUpdate("TO_DO_ANOTHER_TASK_JOB_Minutely", () => DoTaskMinutely(), Cron.Daily);
 #endif
         }
@@ -60,7 +60,7 @@ namespace App.Infrastructure.Utility.Common
                 // 获取需要的服务实例
                 var myService = scope.ServiceProvider.GetRequiredService<IExchangeUtil>();
                 // 在这里执行后台任务
-                myService.getGBPExchangeRate();
+                //myService.getGBPExchangeRate();
 
 
             }

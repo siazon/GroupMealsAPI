@@ -125,48 +125,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 s.Attractions.Any(b => b.ToLower().Contains(lowContent))), pageSize, continuationToke);
             return currentPage;
         }
-        public async Task<ResponseModel> GetRestaurantsByAdmin(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null)
-        {
-            _logger.LogInfo($"GetRestaurantsByAdmin");
-            List<TrDbRestaurant> data = new List<TrDbRestaurant>();
-            try
-            {
-                bool IsAdmin = userInfo.RoleLevel.AuthVerify(8);
-                bool isAllCountry = country.Trim() == "All" || country.Trim() == "ȫ��";
-                bool isAllCity = city.Trim() == "All" || city.Trim() == "ȫ��";
-                bool isContentEmpty = string.IsNullOrWhiteSpace(content);
-                KeyValuePair<string, IEnumerable<TrDbRestaurant>> currentPage;
-
-                List<Predicate<TrDbRestaurant>> Predicates = new List<Predicate<TrDbRestaurant>>();
-                Predicates.Add(s => s.ShopId == shopId);
-
-                if (isAllCountry)
-                {
-                    currentPage = await QeuryByContent(shopId, content ?? "", pageSize, continuationToke);
-
-                }
-                else
-                {
-                    currentPage = await _restaurantRepository.GetManyAsync(a => a.ShopId == shopId && a.Country == country && a.City == city, pageSize, continuationToke);
-
-                }
-                if (!IsAdmin)
-                {
-                    Predicates.Add(a => a.IsActive == true);
-                }
-                var resdata = currentPage.Value.ToList();
-                data = resdata.FindAll(Predicates).ClearForOutPut().OrderByDescending(a => a.Created).OrderBy(a => a.SortOrder).ToList();
-                continuationToke = currentPage.Key;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogInfo($"GetRestaurants" + ex.Message);
-                _logger.LogError(ex.Message);
-                Console.WriteLine(ex.Message);
-            }
-            return new ResponseModel { msg = "ok", code = 200, token = continuationToke, data = data };
-        }
-        public async Task<ResponseModel> GetRestaurants(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null)
+        public async Task<ResponseModel> GetRestaurantsByAdmin(int shopId, string country, string city, string content, DbToken userInfo,
+            int pageSize = -1, string continuationToke = null)
         {
             _logger.LogInfo($"GetRestaurants");
             IList<TrDbRestaurant> resdata = new List<TrDbRestaurant>();
@@ -200,7 +160,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         if (isAllCity)
                             currentPage = await _restaurantRepository.GetManyAsync(a => a.Country == country, pageSize, continuationToke);
                         else
-                            currentPage = await _restaurantRepository.GetManyAsync(a => a.Country == country && a.City.Contains(city), pageSize, continuationToke);
+                            currentPage = await _restaurantRepository.GetManyAsync(a => a.Country == country && a.City == (city), pageSize, continuationToke);
 
                     }
                     else
@@ -221,6 +181,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             return new ResponseModel { msg = "ok", code = 200, token = continuationToke, data = resdata };
         }
+        public async Task<ResponseModel> GetRestaurants(int shopId, string country, string city, string content, DbToken userInfo,
+            int pageSize = -1, string continuationToke = null)
+        {
+            ResponseModel response= await GetRestaurantsByAdmin(shopId, country, city, content, userInfo, pageSize, continuationToke);
+            IList<TrDbRestaurant> resdata = response.data as IList<TrDbRestaurant>;
+            var res= resdata.Where(a=>a.IsActive == true).ToList();
+            response.data = res;
+            return response;
+        }
 
         public async Task<ResponseModel> GetRestaurantsOld(int shopId, string country, string city, string content, DbToken userInfo, int pageSize = -1, string continuationToke = null)
         {
@@ -232,8 +201,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
 
                 bool IsAdmin = userInfo.RoleLevel.AuthVerify(7);
-                bool isAllCountry = country.Trim() == "All" || country.Trim() == "ȫ��";
-                bool isAllCity = city.Trim() == "All" || city.Trim() == "ȫ��";
+                bool isAllCountry = country.Trim() == "All" || country.Trim() == "全部";
+                bool isAllCity = city.Trim() == "All" || city.Trim() == "全部";
                 bool isContentEmpty = string.IsNullOrWhiteSpace(content);
                 Expression expr = null;
                 ParameterExpression parameterExp = Expression.Parameter(typeof(TrDbRestaurant));
@@ -361,7 +330,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<ResponseModel> GetRestaurant(string Id)
         {
             var existingRestaurant =
-               await _restaurantRepository.GetOneAsync(r => r.Id == Id);
+               await _restaurantRepository.GetOneAsync(r => r.Id == Id && r.IsActive == true);
 
 
             if (existingRestaurant != null)
@@ -381,7 +350,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (isChanged)
                 return new ResponseModel { msg = "城市名称不可修改，请删除后新增", code = 501, data = null };
             var deleteDisable = await IsDeleteCity(country, Dbcountry);
-            if(deleteDisable)
+            if (deleteDisable)
                 return new ResponseModel { msg = "此城市不能删除，请先删除与本城市关联的餐厅", code = 501, data = null };
             var cacheKeycitys = string.Format("motionmedia-{1}-{0}", shopId, "citys");
             _memoryCache.Set<DbCountry>(cacheKey, null);
@@ -432,7 +401,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     if (city == null)
                     {
                         var res = await _restaurantRepository.GetManyAsync(a => a.City == item.Name);
-                        if (res != null&&res.Count()>0)
+                        if (res != null && res.Count() > 0)
                         {
                             return true;
                         }
@@ -440,7 +409,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                             return false;
                     }
                 }
-               
+
             }
             return false;
         }
@@ -577,16 +546,17 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var savedRestaurant = await _restaurantRepository.UpsertAsync(restaurant);
 
 
-            ClearCache(shopId,citycacheKey,cacheKey,cityRes);
+            ClearCache(shopId, citycacheKey, cacheKey, cityRes);
 
 
 
             return savedRestaurant;
         }
-        private void ClearCache(int shopId,string citycacheKey,string cacheKey, KeyValuePair<string, IEnumerable<TrDbRestaurant>> cityRes) {
+        private void ClearCache(int shopId, string citycacheKey, string cacheKey, KeyValuePair<string, IEnumerable<TrDbRestaurant>> cityRes)
+        {
 
             _memoryCache.Set(cacheKey, cityRes);
-            _memoryCache.Set<DbStripeEntity>(string.Format("motionmedia-{0}", typeof(DbStripeEntity).Name), null); 
+            _memoryCache.Set<DbStripeEntity>(string.Format("motionmedia-{0}", typeof(DbStripeEntity).Name), null);
             _memoryCache.Set<DbShop>(string.Format("motionmedia-{1}-{0}", shopId, typeof(DbShop).Name), null);
             _memoryCache.Set<string>(citycacheKey, null);
             _memoryCache.Set<DbCountry>(string.Format("motionmedia-{1}-{0}", shopId, typeof(DbCountry).Name), null);

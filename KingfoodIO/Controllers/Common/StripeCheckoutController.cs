@@ -152,6 +152,7 @@ namespace KingfoodIO.Controllers.Common
             List<CurrencyInfo> currencyInfos = new List<CurrencyInfo>();
             foreach (var item in res)
             {
+                if (item.Currency == "CHF") continue;
                 var curr = currencyJson[item.Currency];
                 var symbol = curr["symbol"];
                 currencyInfos.Add(new CurrencyInfo()

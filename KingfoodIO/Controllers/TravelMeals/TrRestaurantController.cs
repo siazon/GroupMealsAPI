@@ -90,7 +90,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpPost]
         //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> GetRestaurants([FromBody] string pageToken, int shopId, string country = "All", string city = "All", string content = "", int pageSize = -1, bool cache = true)
+        public async Task<IActionResult> GetRestaurants([FromBody] string pageToken, int shopId, string country = "All", string city = "All", string content = "", int pageSize = -1, bool cache = false)
         {
             //return await ExecuteAsync(shopId, cache,
             //    async () => await _restaurantServiceHandler.GetRestaurantInfo(shopId));
@@ -116,7 +116,7 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpPost]
         //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> GetRestaurantsByAdmin([FromBody] string pageToken, int shopId, string country = "All", string city = "All", string content = "", int pageSize = -1, bool cache = true)
+        public async Task<IActionResult> GetRestaurantsByAdmin([FromBody] string pageToken, int shopId, string country = "All", string city = "All", string content = "", int pageSize = -1, bool cache = false)
         {
             //return await ExecuteAsync(shopId, cache,
             //    async () => await _restaurantServiceHandler.GetRestaurantInfo(shopId));
