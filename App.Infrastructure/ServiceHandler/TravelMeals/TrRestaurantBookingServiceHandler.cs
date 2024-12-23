@@ -1502,7 +1502,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == dbBooking.PaymentId);
             if (paymentInfo != null && !paymentInfo.SetupPay)
             {
-                dbBooking.AllowCancel = false;
+                //dbBooking.AllowCancel = false;
                 //dbBooking.AllowEdit = false;
                 dbBooking.IntentType = paymentInfo.SetupPay ? IntentTypeEnum.SetupIntent : IntentTypeEnum.PaymentIntent;
             }

@@ -420,10 +420,9 @@ namespace KingfoodIO.Controllers.TravelMeals
         [ProducesResponseType(typeof(ResponseModel), (int)HttpStatusCode.OK)]
         public  async Task<IActionResult> CalculateBookingItemAmountV1([FromBody] BookingCalculateVO bookingCalculateVO, PaymentTypeEnum rewardType, double reward, bool isOldCustomer,double vat)
         {
-            var authHeader = Request.Headers["Wauthtoken"];
-            var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
-            var customer = await _customerServiceHandler.GetCustomer(user.UserId, 11);
-            return Ok(_restaurantBookingServiceHandler.GetBookingItemAmountV1(bookingCalculateVO, customer.RewardType, customer.Reward, isOldCustomer,vat));
+            //var authHeader = Request.Headers["Wauthtoken"];
+            //var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            return Ok(_restaurantBookingServiceHandler.GetBookingItemAmountV1(bookingCalculateVO, bookingCalculateVO.BillInfo.RewardType, bookingCalculateVO.BillInfo.Reward, isOldCustomer,vat));
         }
         [HttpPost]
         [ServiceFilter(typeof(AuthActionFilter))]

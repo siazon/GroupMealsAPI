@@ -11,6 +11,7 @@ using KingfoodIO.Application.Filter;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 
 namespace KingfoodIO.Controllers.Common
 {
@@ -36,11 +37,13 @@ namespace KingfoodIO.Controllers.Common
         /// <returns></returns>
         [HttpGet]
         [ProducesResponseType(typeof(List<PushMsgModel>), (int)HttpStatusCode.OK)]
-        [ServiceFilter(typeof(AuthActionFilter))]
+        //[ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> ListMsgs(int shopId)
         {
             var authHeader = Request.Headers["Wauthtoken"];
-            var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            DbToken user = new DbToken() { UserId=null};
+            if (!StringValues.IsNullOrEmpty(authHeader))
+                user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, false,
                 async () => await _msgPusherServiceHandler.ListMsgs(shopId, user));
         }
