@@ -1030,7 +1030,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     var temo = await _customerServiceHandler.UpdateCartInfo(bookings, userInfo);
                 }
-                return new ResponseModel { msg = "ok", code = 200, data = new { IntentType = payCurrencyVO.IntentType, clientSecret,clientKey=stripe.ClientKey } };
+                return new ResponseModel { msg = "ok", code = 200, data = new { IntentType = payCurrencyVO.IntentType, clientSecret, clientKey = stripe.ClientKey } };
             }
         }
         private SetupIntent CreateSetupIntent(DbPaymentInfo dbPaymentInfo, DbCustomer userInfo, DbToken user, string bookingIds, string stripeKey)
@@ -1081,7 +1081,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async void SetupPaymentAction(string billId, string userId)
         {
             var user = await _customerRepository.GetOneAsync(a => a.Id == userId);
-            var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == billId);
+            var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == billId && a.Paid && !a.IsDeleted);
             var bookings = await _bookingRepository.GetManyAsync(a => a.PaymentId == billId);
             var bookingList = bookings.ToList();
             var countries = await _countryHandler.GetCountries(user.ShopId ?? 11);
@@ -1665,7 +1665,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 content = content.ToLower().Trim();
                 Predicate<DbBooking> predicate =
                     d => d.RestaurantName.ToLower().Contains(content) || d.RestaurantAddress.ToLower().Contains(content) || d.ContactName.ToLower().Contains(content) || d.GroupRef.ToLower().Contains(content);
-                Bookings = await _bookingRepository.GetManyAsync(a => ((a.Status != OrderStatusEnum.None) &&!a.IsDeleted&&
+                Bookings = await _bookingRepository.GetManyAsync(a => ((a.Status != OrderStatusEnum.None) && !a.IsDeleted &&
                 (a.BookingRef.ToLower().Contains(content) || a.RestaurantName.ToLower().Contains(content) || a.RestaurantAddress.ToLower().Contains(content) ||
                 a.ContactName.ToLower().Contains(content) || a.GroupRef.ToLower().Contains(content))), pageSize, continuationToken);
 
@@ -2149,7 +2149,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             try
             {
-                var paymentInfos = await _paymentRepository.GetManyAsync(a => a.Paid == false );
+                var paymentInfos = await _paymentRepository.GetManyAsync(a => a.Paid == false);
                 foreach (var item in paymentInfos)
                 {
                     if (string.IsNullOrWhiteSpace(item.StripePaymentMethodId))
