@@ -187,6 +187,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             ResponseModel response= await GetRestaurantsByAdmin(shopId, country, city, content, userInfo, pageSize, continuationToke);
             IList<TrDbRestaurant> resdata = response.data as IList<TrDbRestaurant>;
             var res= resdata.Where(a=>a.IsActive == true).ToList();
+            //foreach (var item in res)
+            //{
+            //    if(!item.Images.Contains(item.Image))
+            //    item.Images.Add(item.Image);
+            //}
             response.data = res;
             return response;
         }
@@ -332,7 +337,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var existingRestaurant =
                await _restaurantRepository.GetOneAsync(r => r.Id == Id && r.IsActive == true);
 
-
+            //existingRestaurant.Images.Add(existingRestaurant.Image);
             if (existingRestaurant != null)
                 return new ResponseModel { msg = "ok", code = 200, data = existingRestaurant };
             else

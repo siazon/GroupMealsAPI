@@ -172,6 +172,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             try
             {
+                _logger.LogDebug($"sendEmail: {receiverEmail},{senderParams.ToString()}");
                 await _emailUtil.SendEmail(senderParams.ShopSettings, senderParams.SenderEmail, receiverEmail, senderParams.Subject, emailHtml, senderParams.CCEmail.ToArray());
 
             }

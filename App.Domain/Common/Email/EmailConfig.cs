@@ -56,7 +56,10 @@ namespace App.Domain.Common.Email
         public string Memo { get; set; }
         public string ReceiverEmail { get; set; }
 
-
+        public override string ToString()
+        {
+            return $"{TemplateName},{Subject},{ReceiverEmail}, {BookingRef},{Details}";
+        }
     }
 
     public enum EmailTypeEnum

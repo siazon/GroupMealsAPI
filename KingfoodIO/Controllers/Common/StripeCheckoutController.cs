@@ -230,10 +230,10 @@ namespace KingfoodIO.Controllers.Common
 
                             paymentIntent.Metadata.TryGetValue("billId", out billId);
                             paymentIntent.Metadata.TryGetValue("userId", out userId);
-                            bookingIds = paymentIntent.Metadata["bookingIds"];
+                           paymentIntent.Metadata.TryGetValue("bookingIds",out bookingIds);
 
                             _trRestaurantBookingServiceHandler.BookingCharged(billId, bookingIds, paymentIntent.Id, paymentIntent.ReceiptUrl);
-                            _trRestaurantBookingServiceHandler.BookingChargedOld(bookingIds, paymentIntent.Id, paymentIntent.ReceiptUrl);
+                            //_trRestaurantBookingServiceHandler.BookingChargedOld(bookingIds, paymentIntent.Id, paymentIntent.ReceiptUrl);
 
                         }
                         catch (Exception ex)
