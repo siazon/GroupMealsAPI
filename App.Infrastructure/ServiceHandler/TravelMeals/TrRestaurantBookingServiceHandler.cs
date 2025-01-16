@@ -1218,7 +1218,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 if (user != null)
                 {
                     item.ContactEmail = user.Email;
-                    item.ContactName = user.UserName;
+                    item.ContactName = "GroupMeals " + user.UserName;
                     item.ContactPhone = user.Phone;
                     item.ContactWechat = user.WeChat;
                 }
@@ -1484,7 +1484,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             res.OrderByDescending(d => d.SelectDateTime);
             foreach (var booking in res)
             {
-              
+
                 await UpdateForOutput(booking);
             }
             return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = res };
@@ -2163,9 +2163,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<bool> OrderCheck()
         {
-            var rest = await _restaurantRepository.GetManyAsync(a => a.Email == "6462330@qq.com");
-
-
+         
 
 
             autoPayment();
@@ -2213,14 +2211,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
 
 
-                var bookings =  await _bookingRepository.GetManyAsync(a => a.IntentType == IntentTypeEnum.SetupIntent&&a.Status==OrderStatusEnum.Settled&&a.Charged==false);
+                var bookings = await _bookingRepository.GetManyAsync(a => a.IntentType == IntentTypeEnum.SetupIntent && a.Status == OrderStatusEnum.Settled && a.Charged == false);
                 foreach (var booking in bookings)
                 {
-                    var paymentInfo = await _paymentRepository.GetOneAsync(a => !a.Paid  && a.Id == booking.PaymentId);
-                    if (paymentInfo==null||string.IsNullOrWhiteSpace(paymentInfo.StripePaymentMethodId))
+                    var paymentInfo = await _paymentRepository.GetOneAsync(a => !a.Paid && a.Id == booking.PaymentId);
+                    if (paymentInfo == null || string.IsNullOrWhiteSpace(paymentInfo.StripePaymentMethodId))
                         continue;
 
-                    PayAction(paymentInfo,booking);
+                    PayAction(paymentInfo, booking);
                     //Thread.Sleep(500000);
                 }
             }
