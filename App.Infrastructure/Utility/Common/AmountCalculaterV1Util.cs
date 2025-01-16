@@ -85,11 +85,11 @@ namespace App.Infrastructure.Utility.Common
                 var amount = getItemAmount(item.ConvertToAmount());//总金额
                 var country = countries.FirstOrDefault(a => a.Code == item.RestaurantCountry);
                 var payAmount = getItemPayAmount(item.ConvertToAmount(), customer, country.VAT);//线上支付金额
-                var reward = payAmount.Reward;
+                var reward = Math.Round(payAmount.Reward, 2, MidpointRounding.ToNegativeInfinity);
                 if (currency == null) currency = item.Currency;
                 paymentAmountInfo.TotalPayAmount += CalculatePayAmountByRate(payAmount.PayAmount, item.Currency, currency, shopId, countries, dbStripes);
                 paymentAmountInfo.Amount += CalculateByRateByInOut(amount, Rates[item.Currency][currency]);
-                paymentAmountInfo.UnPaidAmount += CalculateByRateByInOut(amount - payAmount.PayAmount - reward, Rates[item.Currency][currency] );
+                paymentAmountInfo.UnPaidAmount += CalculateByRateByInOut(amount - payAmount.PayAmount - reward, Rates[item.Currency][currency]);
                 paymentAmountInfo.Reward += CalculateByRateByInOut(reward, Rates[item.Currency][currency]);
                 if (paymentAmountInfo.TotalPayAmount > 0 && !item.BillInfo.IsOldCustomer)
                 {
@@ -129,7 +129,13 @@ namespace App.Infrastructure.Utility.Common
                 //}
             }
             if (paymentAmountInfo.TotalPayAmount < 0.5m)
-                paymentAmountInfo.TotalPayAmount = 0;
+                paymentAmountInfo.TotalPayAmount = 0;//不收0.5以下的钱
+
+            paymentAmountInfo.TotalPayAmount = Math.Round(paymentAmountInfo.TotalPayAmount, 2, MidpointRounding.ToPositiveInfinity);
+            paymentAmountInfo.UnPaidAmount = Math.Round(paymentAmountInfo.UnPaidAmount, 2, MidpointRounding.ToNegativeInfinity);
+            paymentAmountInfo.Reward = Math.Round(paymentAmountInfo.Reward, 2, MidpointRounding.ToNegativeInfinity);
+
+
             if (hasFullpay || customer.IsOldCustomer)
                 paymentAmountInfo.IntentType = new List<IntentTypeEnum> { IntentTypeEnum.PaymentIntent };
             else
@@ -262,7 +268,7 @@ namespace App.Infrastructure.Utility.Common
             }
             else if (rewardType == PaymentTypeEnum.Fixed)
             {
-                reward = (decimal)rate;
+                reward = (decimal)rate * 100;
             }
             return reward;
         }
@@ -291,7 +297,8 @@ namespace App.Infrastructure.Utility.Common
             decimal Commission = GetDue(bookingDetail, amount);//应付
             var vat = GetVATAmount(Commission, VAT);
             var reward = GetReward(amount, bookingDetail.BillInfo.RewardType, bookingDetail.BillInfo.Reward, customer, bookingDetail.RestaurantIncluedVAT, vat);//
-            var dueAmout = Commission + vat;
+            reward = Math.Round(reward, 2, MidpointRounding.ToNegativeInfinity);//有乘法之后去小数点
+            var dueAmout = Math.Round(Commission + vat, 2, MidpointRounding.ToPositiveInfinity);//有乘法之后去小数点
             if (bookingDetail.RestaurantIncluedVAT)
                 _amount = dueAmout - reward;
             else if (reward > 0)
@@ -301,7 +308,7 @@ namespace App.Infrastructure.Utility.Common
 
             ItemPayInfo itemPayInfo = new ItemPayInfo()
             {
-                PayAmount = _amount,
+                PayAmount = Math.Round(_amount, 2, MidpointRounding.ToPositiveInfinity),//VAT,有乘法之后去小数点
                 Reward = reward,
                 Vat = vat,
                 Commission = Commission
@@ -328,7 +335,7 @@ namespace App.Infrastructure.Utility.Common
                     amount = amount * (decimal)bookingDetail.BillInfo.PayRate;
                     break;
                 case PaymentTypeEnum.Fixed:
-                    amount = (decimal)bookingDetail.BillInfo.PayRate;
+                    amount = (decimal)bookingDetail.BillInfo.PayRate * 100;
                     break;
                 default:
                     break;
