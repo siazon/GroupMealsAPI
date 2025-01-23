@@ -131,6 +131,7 @@ namespace App.Infrastructure.Utility.Common
             if (paymentAmountInfo.TotalPayAmount < 0.5m)
                 paymentAmountInfo.TotalPayAmount = 0;//不收0.5以下的钱
 
+            paymentAmountInfo.Amount = Math.Round(paymentAmountInfo.Amount, 2, MidpointRounding.ToPositiveInfinity);
             paymentAmountInfo.TotalPayAmount = Math.Round(paymentAmountInfo.TotalPayAmount, 2, MidpointRounding.ToPositiveInfinity);
             paymentAmountInfo.UnPaidAmount = Math.Round(paymentAmountInfo.UnPaidAmount, 2, MidpointRounding.ToNegativeInfinity);
             paymentAmountInfo.Reward = Math.Round(paymentAmountInfo.Reward, 2, MidpointRounding.ToNegativeInfinity);
@@ -298,7 +299,7 @@ namespace App.Infrastructure.Utility.Common
             var vat = GetVATAmount(Commission, VAT);
             var reward = GetReward(amount, bookingDetail.BillInfo.RewardType, bookingDetail.BillInfo.Reward, customer, bookingDetail.RestaurantIncluedVAT, vat);//
             reward = Math.Round(reward, 2, MidpointRounding.ToNegativeInfinity);//有乘法之后去小数点
-            var dueAmout = Math.Round(Commission + vat, 2, MidpointRounding.ToPositiveInfinity);//有乘法之后去小数点
+            var dueAmout = Commission + vat;//有乘法之后去小数点
             if (bookingDetail.RestaurantIncluedVAT)
                 _amount = dueAmout - reward;
             else if (reward > 0)

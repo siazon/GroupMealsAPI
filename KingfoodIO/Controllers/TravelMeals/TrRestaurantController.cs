@@ -166,9 +166,9 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpGet]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> DeleteCountry(int shopId,string Id, bool cache = false)
+        public async Task<IActionResult> DeleteCountry(int shopId, string Id, bool cache = false)
         {
-            return await ExecuteAsync(shopId, cache, async () => await _countryRepository.DeleteCountry(shopId,Id));
+            return await ExecuteAsync(shopId, cache, async () => await _countryRepository.DeleteCountry(shopId, Id));
         }
 
         [HttpGet]
@@ -219,6 +219,10 @@ namespace KingfoodIO.Controllers.TravelMeals
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> UpdateRestaurant([FromBody] TrDbRestaurant restaurant, int shopId)
         {
+            var authHeader = Request.Headers["Wauthtoken"];
+            var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            string rawRequestBody = await Request.GetRawBodyAsync();
+            _logger.LogDebug($"UpdateRestaurant:{user.UserEmail}_{rawRequestBody} ");
             return await ExecuteAsync(shopId, false,
                 async () => await _restaurantServiceHandler.UpdateRestaurant(restaurant, shopId));
         }

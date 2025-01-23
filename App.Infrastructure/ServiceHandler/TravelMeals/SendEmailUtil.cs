@@ -113,7 +113,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 foreach (var course in item.Courses)
                 {
                     int qty = course.Qty + course.ChildrenQty;
-                    Detail += $"{course.MenuItemName}({course.Price}) * {qty} 人 <sub>{course.Ingredieent}</sub>";
+                    Detail += $"{course.MenuItemName}({course.Price}) * {qty} 人 <br>{course.Ingredieent} <br> {course.MenuItemDescription}";
                 }
                 string itemCurrencyStr = country.FirstOrDefault(a => a.Currency == item.Currency).CurrencySymbol;
                 //_twilioUtil.sendSMS(item.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
@@ -239,7 +239,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 foreach (var course in item.Courses)
                 {
                     int qty = course.Qty + course.ChildrenQty;
-                    Detail += $"{course.MenuItemName}({itemCurrencyStr} {course.Price}) * {qty} 人 <sub>{course.Ingredieent}</sub>";
+                    Detail += $"{course.MenuItemName}({itemCurrencyStr} {course.Price}) * {qty} 人 <br>{course.Ingredieent}<br> {course.MenuItemDescription}";
                 }
                 Detail += $"<br> Amount(金额)：{itemCurrencyStr}{Math.Round(amount, 2)}，    Paid(已付){itemCurrencyStr}" +
                     $"{Math.Round(paidAmount, 2)} ";
@@ -508,7 +508,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             detailStr += "团号: " + oldValue.ToDelFormat() + booking.GroupRef + " <br> ";
             string oldName = await ModifyOldValue(booking, "ContactName");
             string oldPhone = await ModifyOldValue(booking, "ContactPhone");
-            detailStr += "联系人: " + oldName.ToDelFormat() + booking.ContactName + " " + oldPhone.ToDelFormat() + booking.ContactPhone + " <br> ";
+            detailStr += "联系人: GroupMeals_" + oldName.ToDelFormat() + booking.ContactName + " " + oldPhone.ToDelFormat() + booking.ContactPhone + " <br> ";
             if (isShortInfo == 1)
                 return detailStr;
             oldValue = await ModifyOldValue(booking, "ContactWechat");
