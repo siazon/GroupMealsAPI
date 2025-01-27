@@ -1,9 +1,12 @@
+using System.Collections.Generic;
+
 namespace App.Domain.Common.Setting
 {
     public class DbSetting : DbEntity
     {
         public string SettingKey { get; set; }
         public string SettingValue { get; set; }
+        public List<string> SettingValues { get; set; }
 
         public bool? IsServer { get; set; }
     }

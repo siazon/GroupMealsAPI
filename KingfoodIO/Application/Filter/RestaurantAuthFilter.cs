@@ -17,13 +17,13 @@ using Microsoft.Extensions.Primitives;
 
 namespace KingfoodIO.Application.Filter
 {
-    public class AdminAuthFilter : Attribute, IActionFilter
+    public class RestaurantAuthFilter : Attribute, IActionFilter
     {
         private readonly IDbCommonRepository<DbShop> _shopRepository;
         private readonly AppSettingConfig _appsettingConfig;
         private IMemoryCache _memoryCache;
 
-        public AdminAuthFilter(IDbCommonRepository<DbShop> shopRepository, IOptions<AppSettingConfig> appsettingConfig, IMemoryCache memoryCache)
+        public RestaurantAuthFilter(IDbCommonRepository<DbShop> shopRepository, IOptions<AppSettingConfig> appsettingConfig, IMemoryCache memoryCache)
         {
             _shopRepository = shopRepository;
             _appsettingConfig = appsettingConfig.Value;
@@ -54,7 +54,7 @@ namespace KingfoodIO.Application.Filter
             var masterToken = _appsettingConfig.ShopAuthKey;
             if (masterToken != accesstoken.ServerKey)
                 return false;
-            bool IsAdmin = accesstoken.RoleLevel.AuthVerify((ulong)AuthEnum.Admin);
+            bool IsAdmin = accesstoken.RoleLevel.AuthVerify((ulong)AuthEnum.Restaurant);
             return IsAdmin;
 
             //Check if shop id = shop key

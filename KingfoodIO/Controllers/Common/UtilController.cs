@@ -22,6 +22,11 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Webp;
 using SixLabors.ImageSharp.Processing;
 using App.Infrastructure.ServiceHandler.TravelMeals;
+using App.Domain.TravelMeals.VO;
+using FirebaseAdmin.Messaging;
+using App.Domain.Common;
+using Twilio.TwiML.Messaging;
+using Newtonsoft.Json;
 
 namespace KingfoodIO.Controllers.Common
 {
@@ -30,18 +35,19 @@ namespace KingfoodIO.Controllers.Common
     public class UtilController : BaseController
     {
 
-
+        private readonly GMWebSocketManager _webSocketManager;
         IMemoryCache _memoryCache;
         private readonly AzureStorageConfig storageConfig;
         IUtilServiceHandler _utilServiceHandler;
         ILogManager logger;
-        public UtilController(IOptions<CacheSettingConfig> cachesettingConfig, IMemoryCache memoryCache, IRedisCache redisCache,
-           IUtilServiceHandler utilServiceHandler, IOptions<AzureStorageConfig> _storageConfig, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
+        public UtilController(IOptions<CacheSettingConfig> cachesettingConfig, IMemoryCache memoryCache, IRedisCache redisCache, GMWebSocketManager webSocketManager,
+        IUtilServiceHandler utilServiceHandler, IOptions<AzureStorageConfig> _storageConfig, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
         {
             this.logger = logger;
             _memoryCache = memoryCache;
             storageConfig = _storageConfig.Value;
             _utilServiceHandler = utilServiceHandler;
+            _webSocketManager= webSocketManager;
         }
 
         /// <summary>
@@ -133,6 +139,21 @@ namespace KingfoodIO.Controllers.Common
         }
 
 
+        [HttpPost]
+        [ProducesResponseType(typeof(PushMsgModel), (int)HttpStatusCode.OK)]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> FCMMessageSender([FromBody] FCMMessage FCMParams, int shopId)
+        {
+            var res = await FCMSender.SendMsg(FCMParams);
+            if (string.IsNullOrWhiteSpace(res))
+            {
+                return Json(new { msg = "ok", code = 200 });
+            }
+            else
+            {
+                return Json(new { msg = res, code = 501 });
+            }
+        }
         private async Task<Stream> WebpConverter(Stream inStream)
         {
 
@@ -178,9 +199,24 @@ namespace KingfoodIO.Controllers.Common
         /// <returns></returns>
         [HttpGet]
         [ProducesResponseType(typeof(string), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> CheckAppVersion(int shopId )
+        public async Task<IActionResult> CheckAppVersion(int shopId)
         {
             return await ExecuteAsync(shopId, false, async () => await _utilServiceHandler.CheckAppVersion(shopId));
+        }
+        [HttpGet]
+        [ProducesResponseType(typeof(string), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> CheckBossAppVersion(int shopId)
+        {
+            return await ExecuteAsync(shopId, false, async () => await _utilServiceHandler.CheckAppVersion(shopId));
+        }
+
+        [HttpGet]
+        [ProducesResponseType(typeof(string), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> WSSendMessage(string email,string message)
+        {
+            WSMessage wSMessage = new WSMessage() { MsgType= message };
+            await _webSocketManager.SendMessageAsync(email, JsonConvert.SerializeObject(wSMessage));
+            return Ok();
         }
     }
 }

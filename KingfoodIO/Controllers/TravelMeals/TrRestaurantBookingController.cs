@@ -111,6 +111,8 @@ namespace KingfoodIO.Controllers.TravelMeals
             return await ExecuteAsync(shopId, cache, async () => await _restaurantBookingServiceHandler.GetBooking(Id));
         }
         [HttpGet]
+        //[ServiceFilter(typeof(RestaurantAuthFilter))]
+        //[ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> OrderCheck(bool cache = false)
         {
@@ -131,7 +133,23 @@ namespace KingfoodIO.Controllers.TravelMeals
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, cache, async () => await _restaurantBookingServiceHandler.UpdateStatusByAdmin(Id, status, user));
         }
-
+        [HttpGet]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> BookingAccepted(string Id, bool cache = false)
+        {
+            var authHeader = Request.Headers["Wauthtoken"];
+            var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            return await ExecuteAsync(11, cache, async () => await _restaurantBookingServiceHandler.BookingAccepted(Id,user.UserEmail));
+        }
+        [HttpGet]
+        [ProducesResponseType(typeof(List<TrDbRestaurant>), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> BookingDeclined(string Id,string Reason, bool cache = false)
+        {
+            var authHeader = Request.Headers["Wauthtoken"];
+            var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            return await ExecuteAsync(11, cache, async () => await _restaurantBookingServiceHandler.BookingDeclined(Id,Reason,user.UserEmail));
+        }
         /// <summary>
         /// 
         /// </summary>
@@ -188,7 +206,7 @@ namespace KingfoodIO.Controllers.TravelMeals
 
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
-            bool IsAdmin = user.RoleLevel.AuthVerify(8);
+            bool IsAdmin = user.RoleLevel.AuthVerify((ulong)AuthEnum.Admin);
             return await ExecuteAsync(shopId, cache,
                 async () => await _restaurantBookingServiceHandler.CancelBooking(bookingId, detailId, user.UserEmail, IsAdmin));
         }
@@ -314,43 +332,41 @@ namespace KingfoodIO.Controllers.TravelMeals
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="pageToken"></param>
+        /// <param name="queryParams">filterTime 0:CreateTime,1:selectedTime</param>
         /// <param name="shopId"></param>
-        /// <param name="email">≤ÕÃ¸µƒ” œ‰</param>
-        /// <param name="content"></param>
-        /// <param name="pageSize"></param>
         /// <param name="cache"></param>
         /// <returns></returns>
         [HttpPost]
+        [ServiceFilter(typeof(RestaurantAuthFilter))]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<DbBooking>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> SearchBookingsByRestaurant([FromBody] string pageToken, int shopId, string content, int pageSize = -1, bool cache = true)
+        public async Task<IActionResult> SearchBookingsByRestaurant([FromBody] BookingQueryRestaurantVO queryParams, int shopId, bool cache = false)
         {
             var authHeader = Request.Headers["Wauthtoken"];
             var userInfo = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             string email = userInfo.UserEmail;
             return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantBookingServiceHandler.SearchBookingsByRestaurant(shopId, email, content, pageSize, pageToken));
+                async () => await _restaurantBookingServiceHandler.SearchBookingsByRestaurant(shopId, email, queryParams.content, queryParams.filterTime, queryParams.stime, queryParams.etime, queryParams.status, queryParams.pageSize, queryParams.continuationToken));
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="pageToken"></param>
-        /// <param name="shopId"></param>
-        /// <param name="content"></param>
-        /// <param name="stime"></param>
-        /// <param name="etime"></param>
-        /// <param name="status"></param>
-        /// <param name="isDelete"></param>
-        /// <param name="pageSize"></param>
-        /// <param name="cache"></param>
-        /// <returns></returns>
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="pageToken"></param>
+    /// <param name="shopId"></param>
+    /// <param name="content"></param>
+    /// <param name="filterTime">0:CreateTime,1:selectedTime</param>
+    /// <param name="stime"></param>
+    /// <param name="etime"></param>
+    /// <param name="status"></param>
+    /// <param name="pageSize"></param>
+    /// <param name="cache"></param>
+    /// <returns></returns>
 
         [HttpPost]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<DbBooking>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> SearchBookingsByAdmin([FromBody] string pageToken, int shopId, string content, int filterTime, DateTime stime, DateTime etime, int status, int pageSize = -1, bool cache = true)
+        public async Task<IActionResult> SearchBookingsByAdmin([FromBody] string pageToken, int shopId, string content, int filterTime, DateTime stime, DateTime etime, int status, int pageSize = -1, bool cache = false)
         {
 
             return await ExecuteAsync(shopId, cache,

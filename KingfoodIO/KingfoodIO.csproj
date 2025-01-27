@@ -17,6 +17,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Common\ExtensionMethods.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Remove="wwwroot\html\new_meals_customer_v2.html" />
   </ItemGroup>
 
@@ -44,6 +48,12 @@
 
   <ItemGroup>
     <Folder Include="Properties\PublishProfiles\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="GoogleService-Info.plist">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

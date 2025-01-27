@@ -49,7 +49,7 @@ namespace KingfoodIO.Controllers.Common
         }
         /// <summary>
         /// Status 0:新消息，1:已读消息
-        /// MsgType: 0-6 Text, Order, Restaurant, User, OrderHistory, Country, Pement,先只处理0和1
+        /// MsgType: 0-7 Text, Order, Restaurant, User, OrderHistory, Country, Peyment,UnAcceptOrder,AcceptOrder,先只处理0和1
         /// </summary>
         /// <param name="msg"></param>
         /// <param name="shopId"></param>

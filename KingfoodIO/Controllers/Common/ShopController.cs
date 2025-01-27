@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using Stripe;
+using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
 
@@ -58,7 +59,24 @@ namespace KingfoodIO.Controllers.Common
     
             return shopInfo;
         }
-
+        [HttpPost]
+        [ProducesResponseType(typeof(DbShop), (int)HttpStatusCode.OK)]
+        [ServiceFilter(typeof(AdminAuthFilter))]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> UpdateDeclineReasons([FromBody] List<string> reasons, int shopId)
+        {
+            return await ExecuteAsync(shopId, false,
+                async () => await _shopServiceHandler.UpdateDeclineReasons( shopId, reasons));
+        }
+        [HttpGet]
+        [ProducesResponseType(typeof(List<string>), (int)HttpStatusCode.OK)]
+        //[ServiceFilter(typeof(AdminAuthFilter))]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> GetDeclineReasons( int shopId)
+        {
+            return await ExecuteAsync(shopId, false,
+                async () => await _shopServiceHandler.GetDeclineReasons( shopId));
+        }
         /// <summary>
         /// 暂弃用，永远返回固定值
         /// </summary>

@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Net;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using App.Domain.Common;
 using App.Domain.Common.Auth;
 using App.Domain.Common.Customer;
 using App.Domain.Config;
 using App.Domain.TravelMeals;
+using App.Domain.TravelMeals.VO;
 using App.Infrastructure.Exceptions;
 using App.Infrastructure.ServiceHandler.Common;
 using App.Infrastructure.Utility.Common;
@@ -59,10 +61,28 @@ namespace KingfoodIO.Controllers.Common
         [HttpGet]
         [ProducesResponseType(typeof(List<DbCustomer>), (int)HttpStatusCode.OK)]
         //[ServiceFilter(typeof(AuthActionFilter))]
-        public async Task<IActionResult> ListCustomers(int shopId)
+        public async Task<IActionResult> ListCustomers(int shopId,string context)
         {
             return await ExecuteAsync(shopId, false,
-                async () => await _customerServiceHandler.List(shopId));
+                async () => await _customerServiceHandler.List(shopId,context));
+        }
+        [HttpGet]
+        [ProducesResponseType(typeof(List<DbCustomer>), (int)HttpStatusCode.OK)]
+        //[ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> ListBossUsers(int shopId, string context)
+        {
+            return await ExecuteAsync(shopId, false,
+                async () => await _customerServiceHandler.ListBossUsers(shopId, context));
+        }
+        [HttpPost]
+        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
+        public async Task<IActionResult> AsyncToken([FromBody] DeviceTokenVO token,int shopId) {
+            var authHeader = Request.Headers["Wauthtoken"];
+            string email = "";
+            if(!string.IsNullOrWhiteSpace(authHeader))
+                email = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader).UserEmail;
+            return await ExecuteAsync(shopId, false,
+                  async () => await _customerServiceHandler.AsyncToken(email, token.DeviceToken));
         }
         /// <summary>
         /// AuthValue:0.HomePage, 1.OrdersPage, 2.ContactPage, 3.CartPage, 4.ProfilePage, 5.RestaurantMagPage, 6.authPage, 
@@ -128,7 +148,7 @@ namespace KingfoodIO.Controllers.Common
                 return new { msg = "User name or Password is incorrect!(用户名密码错误)", data = customer, token };
 
             }
-            return new { msg = "ok", data = customer, token };
+            return new {code=200, msg = "ok", data = customer, token };
         }
         [HttpGet]
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
@@ -172,6 +192,16 @@ namespace KingfoodIO.Controllers.Common
         {
             return await ExecuteAsync(shopId, false,
                 async () => await _customerServiceHandler.ResetPassword(email, resetCode, password, shopId));
+        }
+
+
+        [HttpGet]
+        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
+        //[ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> ResetPasswordRestaurant(string email,  int shopId)
+        {
+            return await ExecuteAsync(shopId, false,
+                async () => await _customerServiceHandler.ResetPasswordRestaurant(email,  shopId));
         }
 
         /// <summary>
@@ -222,6 +252,18 @@ namespace KingfoodIO.Controllers.Common
             return await ExecuteAsync(shopId, false,
                 async () => await _customerServiceHandler.VerityEmail(email, customerId, shopId));
         }
+
+        [HttpGet]
+        [ProducesResponseType(typeof(object), (int)HttpStatusCode.OK)]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> Logout( int shopId)
+        {
+            var authHeader = Request.Headers["Wauthtoken"];
+            var userInfo = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            return await ExecuteAsync(shopId, false,
+                async () => await _customerServiceHandler.Logout(userInfo.UserEmail));
+        }
+
         /// <summary>
         /// 
         /// </summary>
@@ -236,6 +278,17 @@ namespace KingfoodIO.Controllers.Common
             return await ExecuteAsync(shopId, false,
                 async () => await _customerServiceHandler.RegisterAccount(customer, shopId));
         }
+
+        [HttpGet]
+        [ProducesResponseType(typeof(object), (int)HttpStatusCode.OK)]
+        //[ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> CreateAccount( string email,string username, int shopId)
+        {
+            var DbCustomer=new DbCustomer() { Email=email,UserName=username,ShopId=shopId};
+            return await ExecuteAsync(shopId, false,
+                async () => await _customerServiceHandler.CreateAccount(DbCustomer, shopId));
+        }
+
         /// <summary>
         /// 
         /// </summary>

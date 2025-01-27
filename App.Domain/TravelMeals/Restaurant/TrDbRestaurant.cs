@@ -56,6 +56,7 @@ namespace App.Domain.TravelMeals.Restaurant
         public List<string> Comments { get; set; }
         public List<string> Tags { get; set; }
         public List<string> Attractions { get; set; }
+        public List<string> Users { get; set; }
         public int? BookingHourLength { get; set; }
         public int MinGuest { get; set; }
         public int MaxGuest { get; set; }
@@ -145,10 +146,12 @@ namespace App.Domain.TravelMeals.Restaurant
 
     }
     public class ItemPayInfo {
-        public decimal PayAmount { get; set; }
-        public decimal Reward { get; set; }
-        public decimal Vat { get; set; }
-        public decimal Commission { get; set; }
+        public decimal Amount { get; set; }//总金额
+        public decimal Commission { get; set; }//应付
+        public decimal Vat { get; set; }//VAT
+        public decimal Reward { get; set; }//返现
+        public decimal PayAmount { get; set; }//实付
+        public decimal UnpaidAmount { get; set; }
     }
     public class MapPosition
     {

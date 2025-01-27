@@ -49,7 +49,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         public async Task<List<PushMsgModel>> ListMsgs(int shopId, DbToken user)
         {
             Guard.GreaterThanZero(shopId);
-            var customers = await _msgRepository.GetManyAsync(r => r.ShopId == shopId&&(r.Receiver==""||r.Receiver==user.UserId));
+            var customers = await _msgRepository.GetManyAsync(r => r.ShopId == shopId&&(r.Receiver==""||r.Receiver==user.UserId||r.Receiver==user.UserEmail));
 
             var returnCustomers = customers.OrderByDescending(r => r.SendTime).Take(200);
 

@@ -244,9 +244,9 @@ namespace App.Infrastructure.Utility.Common
                 return 0;
             decimal amount = 0;
             var restaurantReward = FindValueByType(_amount, rewardType, reward);
-            if (user.Reward == 0)
-            { amount = restaurantReward; }
-            else
+            if (user.Reward == 0)//餐厅返现为0时
+                amount = restaurantReward;
+            else//餐厅返现不为0时 返现取用户返现和餐厅返现多的那个
             {
                 var userReward = FindValueByType(_amount, user.RewardType, user.Reward);
                 amount = restaurantReward > userReward ? restaurantReward : userReward;
@@ -285,9 +285,13 @@ namespace App.Infrastructure.Utility.Common
         /// <param name="bookingDetail"></param>
         /// <returns></returns>
         public ItemPayInfo getItemPayAmount(BookingCalculateVO bookingDetail, DbCustomer customer, double VAT)
-        {
+        {//总金额=单价*数量，
+         //应付=总金额*支付规则，
+         //VAT=应付*VAT Rate,
+         //返现=总金额*返现比例/返现-VAT
+         //实付=应付+VAT-返现/返现>0?应付+VAT-返现:应付+VAT-返现-VAT
             decimal _amount = 0;
-            decimal amount = getItemAmount(bookingDetail);//总金额额
+            decimal amount = getItemAmount(bookingDetail);//总金额
             if (customer.IsOldCustomer)
             {
                 if (bookingDetail.BillInfo.PaymentType == PaymentTypeEnum.Full)
@@ -296,23 +300,28 @@ namespace App.Infrastructure.Utility.Common
                     return new ItemPayInfo();
             }
             decimal Commission = GetDue(bookingDetail, amount);//应付
-            var vat = GetVATAmount(Commission, VAT);
-            var reward = GetReward(amount, bookingDetail.BillInfo.RewardType, bookingDetail.BillInfo.Reward, customer, bookingDetail.RestaurantIncluedVAT, vat);//
+            var vat = GetVATAmount(Commission, VAT);//VAT
+            var reward = GetReward(amount, bookingDetail.BillInfo.RewardType, bookingDetail.BillInfo.Reward, customer, bookingDetail.RestaurantIncluedVAT, vat);//返现
             reward = Math.Round(reward, 2, MidpointRounding.ToNegativeInfinity);//有乘法之后去小数点
-            var dueAmout = Commission + vat;//有乘法之后去小数点
-            if (bookingDetail.RestaurantIncluedVAT)
+            var dueAmout = Commission + vat;
+            if (bookingDetail.RestaurantIncluedVAT)//交VAT
                 _amount = dueAmout - reward;
-            else if (reward > 0)
-                _amount = dueAmout - reward;
-            else
-                _amount = dueAmout - reward - vat;
-
+            else//不交VAT
+            {
+                if (reward > 0)//有返现
+                    _amount = dueAmout - reward;
+                else//无返现
+                    _amount = dueAmout - reward - vat;
+            }
+            var _payAmount = Math.Round(_amount, 2, MidpointRounding.ToPositiveInfinity);//VAT,有乘法之后去小数点
             ItemPayInfo itemPayInfo = new ItemPayInfo()
             {
-                PayAmount = Math.Round(_amount, 2, MidpointRounding.ToPositiveInfinity),//VAT,有乘法之后去小数点
+                Amount= amount,
+                PayAmount = _payAmount,
                 Reward = reward,
                 Vat = vat,
-                Commission = Commission
+                Commission = Commission,
+                UnpaidAmount=amount- _payAmount
             };
             return itemPayInfo;
         }

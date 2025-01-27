@@ -9,8 +9,8 @@ namespace App.Domain.Enum
 {
     public enum OrderStatusEnum
     {
-        [Description("默认")]
-        None = 0,//支付失败
+        [Description("支付失败")]
+        None = 0,
         [Description("待接收")]
         UnAccepted =1,
         [Description("已接收")]

@@ -25,7 +25,9 @@ namespace App.Domain.Common
         User,
         OrderHistory,
         Country,
-        Pement
+        Payment,
+        UnAcceptOrder,
+        AcceptOrder
     }
     public enum MSGEnum
     {

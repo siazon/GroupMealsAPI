@@ -46,7 +46,7 @@ namespace App.Domain.Common.Email
         public string BookingRef { get; set; }
         public string BookingId { get; set; }
         public object PaidAmount { get; set; }
-        public string UnPaidAmount { get; set; }
+        public string UnpaidAmount { get; set; }
         public string Amount { get; set; }
         public object RestaurantInfo { get; set; }
         public int isShortInfo { get; set; }

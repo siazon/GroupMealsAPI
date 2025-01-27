@@ -18,6 +18,7 @@ namespace App.Infrastructure.ServiceHandler.Common
     public interface IUtilServiceHandler
     {
         Task<ResponseModel> CheckAppVersion(int shopId);
+        Task<ResponseModel> CheckBossAppVersion(int shopId);
     }
 
     public class UtilServiceHandler : IUtilServiceHandler
@@ -46,6 +47,19 @@ namespace App.Infrastructure.ServiceHandler.Common
             }
             return new ResponseModel { msg = "error",code=501, data = null };
         }
-
+        public async Task<ResponseModel> CheckBossAppVersion(int shopId)
+        {
+            var shop = await _shopServiceHandler.GetBasicShopInfo(shopId);
+            if (shop != null)
+            {
+                var version = shop.ShopSettings.FirstOrDefault(a => a.SettingKey == "boss.app.version")?.SettingValue;
+                var minVersion = shop.ShopSettings.FirstOrDefault(a => a.SettingKey == "boss.app.minVersion")?.SettingValue;
+                var appUrl = shop.ShopSettings.FirstOrDefault(a => a.SettingKey == "boss.app.url")?.SettingValue;
+                var appMsg = shop.ShopSettings.FirstOrDefault(a => a.SettingKey == "boss.app.msg")?.SettingValue;
+                if (!string.IsNullOrWhiteSpace(version) && !string.IsNullOrWhiteSpace(appUrl))
+                    return new ResponseModel { msg = "ok", code = 200, data = new { version, appUrl, minVersion, msg = appMsg } };
+            }
+            return new ResponseModel { msg = "error", code = 501, data = null };
+        }
     }
 }

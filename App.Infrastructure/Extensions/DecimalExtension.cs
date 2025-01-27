@@ -26,5 +26,21 @@ namespace App.Infrastructure.Extensions
                 Math.Truncate(source.Value).ToString(CultureInfo.InvariantCulture) :
                 string.Empty;
         }
+        public static ulong SetBit(this ulong value, int bitIndex)
+        {
+            if (bitIndex < 0 || bitIndex >= sizeof(ulong) * 8)
+            {
+                throw new ArgumentOutOfRangeException(nameof(bitIndex), "Bit index must be within the valid range.");
+            }
+            return value | (1UL << bitIndex);
+        }
+        public static bool IsBitSet(this ulong value, int bitIndex)
+        {
+            if (bitIndex < 0 || bitIndex >= sizeof(ulong) * 8)
+            {
+                throw new ArgumentOutOfRangeException(nameof(bitIndex), "Bit index must be within the valid range.");
+            }
+            return (value & (1UL << bitIndex)) != 0;
+        }
     }
 }

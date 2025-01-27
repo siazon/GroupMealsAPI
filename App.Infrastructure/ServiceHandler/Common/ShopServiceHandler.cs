@@ -9,6 +9,7 @@ using Microsoft.Extensions.Caching.Memory;
 using SendGrid.Helpers.Mail;
 using Stripe;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace App.Infrastructure.ServiceHandler.Common
@@ -19,6 +20,8 @@ namespace App.Infrastructure.ServiceHandler.Common
         Task<DbShop> GetBasicShopInfo(int shopId);
         Task<DbExchangeRate> UpdateExchangeRateExtra(double exRateExtra, int shopId);
         Task<DbExchangeRate> GetExchangeRate(int shopId);
+        Task<DbShop> UpdateDeclineReasons(int shopId, List<string> Reasons);
+        Task<List<string>> GetDeclineReasons(int shopId);
     }
 
     public class ShopServiceHandler : IShopServiceHandler
@@ -54,15 +57,44 @@ namespace App.Infrastructure.ServiceHandler.Common
             _memoryCache.Set(cacheKey, shopInfo);
             return shopInfo;
         }
-        
+        const string DeclineReasons = "decline.reasons";
+        public async Task<DbShop> UpdateDeclineReasons(int shopId, List<string> Reasons)
+        {
+            Guard.GreaterThanZero(shopId);
+            var shop = await GetBasicShopInfo(shopId);
+            foreach (var item in shop.ShopSettings)
+            {
+                if (item.SettingKey == DeclineReasons)
+                {
+                    item.SettingValues = Reasons;
+                }
+            }
+            shop = await _shopRepository.UpsertAsync(shop);
+            var cacheKey = string.Format("motionmedia-{1}-{0}", shopId, typeof(DbShop).Name);
+            _memoryCache.Set(cacheKey, shop);
+            return shop;
+        }
+        public async Task<List<string>> GetDeclineReasons(int shopId)
+        {
+            Guard.GreaterThanZero(shopId);
+            var shop = await GetBasicShopInfo(shopId);
+            foreach (var item in shop.ShopSettings)
+            {
+                if (item.SettingKey == DeclineReasons)
+                {
+                   return item.SettingValues;
+                }
+            }
+            return null;
+        }
         public async Task<DbExchangeRate> UpdateExchangeRateExtra(double exRateExtra, int shopId)
         {
-            
+
             return null;
         }
         public async Task<DbExchangeRate> GetExchangeRate(int shopId)
         {
-           
+
             return null;
         }
 

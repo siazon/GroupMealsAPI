@@ -40,6 +40,8 @@ using System.Threading;
 using Microsoft.Azure.Cosmos.Linq;
 using QuestPDF.Helpers;
 using App.Infrastructure.ServiceHandler.Common;
+using Microsoft.AspNetCore.Http.Metadata;
+using App.Infrastructure.Extensions;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -58,6 +60,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<ResponseModel> ExportRestaurants();
         Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId);
         Task<ResponseModel> DeleteRestaurant(string id, string email, string pwd, int shopId);
+        Task<ResponseModel> GetBossInfoInRestaurant(int shopId);
 
     }
 
@@ -125,14 +128,21 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 s.Attractions.Any(b => b.ToLower().Contains(lowContent))), pageSize, continuationToke);
             return currentPage;
         }
+
+
+
         public async Task<ResponseModel> GetRestaurantsByAdmin(int shopId, string country, string city, string content, DbToken userInfo,
             int pageSize = -1, string continuationToke = null)
         {
             _logger.LogInfo($"GetRestaurants");
+
+
+            //this.UserInit();
+
             IList<TrDbRestaurant> resdata = new List<TrDbRestaurant>();
             try
             {
-                bool IsAdmin = userInfo.RoleLevel.AuthVerify(8);
+                bool IsAdmin = userInfo.RoleLevel.AuthVerify((ulong)AuthEnum.Admin);
                 bool isAllCountry = country.Trim() == "All" || country.Trim() == "全部";
                 bool isAllCity = city.Trim() == "All" || city.Trim() == "全部";
                 bool isContentEmpty = string.IsNullOrWhiteSpace(content);
@@ -184,9 +194,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<ResponseModel> GetRestaurants(int shopId, string country, string city, string content, DbToken userInfo,
             int pageSize = -1, string continuationToke = null)
         {
-            ResponseModel response= await GetRestaurantsByAdmin(shopId, country, city, content, userInfo, pageSize, continuationToke);
+            ResponseModel response = await GetRestaurantsByAdmin(shopId, country, city, content, userInfo, pageSize, continuationToke);
             IList<TrDbRestaurant> resdata = response.data as IList<TrDbRestaurant>;
-            var res= resdata.Where(a=>a.IsActive == true).ToList();
+            var res = resdata.Where(a => a.IsActive == true).ToList();
             //foreach (var item in res)
             //{
             //    if(!item.Images.Contains(item.Image))
@@ -205,7 +215,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
 
 
-                bool IsAdmin = userInfo.RoleLevel.AuthVerify(7);
+                bool IsAdmin = userInfo.RoleLevel.AuthVerify((ulong)AuthEnum.Admin);
                 bool isAllCountry = country.Trim() == "All" || country.Trim() == "全部";
                 bool isAllCity = city.Trim() == "All" || city.Trim() == "全部";
                 bool isContentEmpty = string.IsNullOrWhiteSpace(content);
@@ -595,5 +605,56 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _memoryCache.Set<DbShop>(string.Format("motionmedia-{1}-{0}", shopId, typeof(DbShop).Name), null);
             return new ResponseModel { msg = "ok", code = 200 };
         }
+
+        public async Task<ResponseModel> GetBossInfoInRestaurant(int shopId)
+        {
+            var rests = await _restaurantRepository.GetManyAsync(a => 1 == 1);
+
+            return new ResponseModel { msg = "ok", code = 200 };
+        }
+        public async void UserInit()
+        {
+            var rests = await _restaurantRepository.GetManyAsync(a => 1 == 1);
+            var users = await _customerRepository.GetManyAsync(a => 1 == 1);
+            foreach (var item in rests)
+            {
+                var user = users.FirstOrDefault(a => a.Email == item.Email);
+                if (user == null)
+                {
+                    DbCustomer customer = new DbCustomer() { Email = item.Email };
+                    customer.Email = customer.Email.ToLower().Trim();
+                    customer.Id = Guid.NewGuid().ToString();
+                    customer.ShopId = 11;
+                    customer.Created = DateTime.UtcNow;
+                    customer.Updated = DateTime.UtcNow;
+                    customer.IsActive = true;
+                    customer.IsVerity = true;
+                    customer.AuthValue = 2;
+                    customer.InitPassword = GuidHashUtil.Get6DigitNumber();
+                    var passwordEncode = _encryptionHelper.EncryptString(customer.InitPassword.CreateMD5().ToLower());
+                    customer.Password = passwordEncode;
+                    customer.ResetCode = null;
+                    await _customerRepository.UpsertAsync(customer);
+                }
+                else
+                {
+                    var res = user.AuthValue.IsBitSet(1);
+                    if (!res)
+                    {
+                        user.AuthValue = user.AuthValue.SetBit(1);
+                        await _customerRepository.UpsertAsync(user);
+                    }
+                }
+                if (item.Users == null)
+                    item.Users = new List<string>();
+                if (!item.Users.Contains(item.Email))
+                {
+                    item.Users.Add(item.Email);
+                    await _restaurantRepository.UpsertAsync(item);
+                }
+            }
+
+        }
+      
     }
 }

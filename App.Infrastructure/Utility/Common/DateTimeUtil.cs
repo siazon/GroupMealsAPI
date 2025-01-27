@@ -100,41 +100,5 @@ namespace App.Infrastructure.Utility.Common
             return timeToCompare.Value.Ticks >= fromTime.Value.Ticks && timeToCompare.Value.Ticks <= toTime.Value.Ticks;
         }
     }
-
-
-    public static class ExtensionMethods
-    {
-
-        public static DateTime GetLocaTimeByIANACode(this DateTime dateTime, string IANACode)
-        {
-            var time = DateTime.UtcNow;
-            try
-            {
-
-                time = TimeZoneInfo.ConvertTimeFromUtc(dateTime,
-                 TZConvert.GetTimeZoneInfo(IANACode));
-            }
-            catch (Exception ex)
-            {
-
-                throw;
-            }
-            return time;
-        }
-        public static DateTime GetTimeZoneByIANACode(this DateTime dateTime, string IANACode)
-        {
-            var time = DateTime.UtcNow;
-            try
-            {
-
-                time = TimeZoneInfo.ConvertTimeToUtc(dateTime, TZConvert.GetTimeZoneInfo(IANACode));
-            }
-            catch (Exception ex)
-            {
-
-                throw;
-            }
-            return time;
-        }
-    }
+     
 }

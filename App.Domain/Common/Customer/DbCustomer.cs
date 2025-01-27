@@ -28,16 +28,20 @@ namespace App.Domain.Common.Customer
         [Column(TypeName = "decimal(18, 2)")] 
         public decimal? DeliveryCharge { get; set; }
         public string PinCode { get; set; }
+        public string  InitPassword { get; set; }
         public virtual ICollection<string> UserRoles { get; set; }
         public bool IsVerity { get; set; }
         public bool IsBoss { get; set; }
         public bool IsOldCustomer { get; set; }
         public string StripeCustomerId { get; set; }
+        public string Restaurants { get; set; }
         public ulong AuthValue { get; set; }
+        public int BookingQty { get; set; }
         public List<CommonParam> Favorites { get; set; }
         public List<DbBooking> CartInfos { get; set; }=new List<DbBooking>();
         public PaymentTypeEnum RewardType { get; set; } = PaymentTypeEnum.Percentage;
         public double Reward { get; set; }
+        public string DeviceToken { get; set; }
     }
 
 
@@ -113,18 +117,21 @@ namespace App.Domain.Common.Customer
                 Updated = copyValue.Updated,
                 Updater = copyValue.Updater,
                 UserRoles = copyValue.UserRoles,
+                DeviceToken = copyValue.DeviceToken,
             };
 
             return source;
         }
 
 
-        public static DbCustomer ClearForOutPut(this DbCustomer source)
+        public static DbCustomer ClearForOutPut(this DbCustomer item)
         {
-            source.Password = "";
-            source.ResetCode = "";
-            source.PinCode = "";
-            return source;
+            item.Password = "";
+            item.ResetCode = "";
+            item.PinCode = "";
+            item.DeviceToken = "";
+            //source.InitPassword = "";
+            return item;
         }
 
         public static List<DbCustomer> ClearForOutPut(this List<DbCustomer> source)
@@ -134,6 +141,8 @@ namespace App.Domain.Common.Customer
                 item.Password = "";
                 item.ResetCode = "";
                 item.PinCode = "";
+                item.DeviceToken = "";
+                //item.InitPassword = "";
             }
             return source;
         }

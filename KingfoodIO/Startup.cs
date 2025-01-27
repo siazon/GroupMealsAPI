@@ -38,6 +38,8 @@ using Microsoft.Azure.Cosmos;
 using Microsoft.AspNetCore.Http;
 using KingfoodIO.Filters;
 using QuestPDF.Infrastructure;
+using FirebaseAdmin;
+using Google.Apis.Auth.OAuth2;
 
 namespace KingfoodIO
 {
@@ -207,7 +209,20 @@ namespace KingfoodIO
 
             services.AddScoped<AuthActionFilter>();
             services.AddScoped<AdminAuthFilter>();
+            services.AddScoped<RestaurantAuthFilter>();
             services.AddScoped<IdempotentAttributeFilter>();
+            services.AddSingleton<GMWebSocketManager>();
+
+            //FirebaseApp.Create(new AppOptions()
+            //{
+            //    Credential = GoogleCredential.GetApplicationDefault(),
+            //});
+
+            FirebaseApp.Create(new AppOptions()
+            {
+                Credential = GoogleCredential.FromFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "groupmealsbusiness-dc314-firebase-adminsdk-sy9bk-086a430883.json")),
+            });
+
 
             //Nlog Context
 
