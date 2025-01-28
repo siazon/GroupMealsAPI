@@ -1162,7 +1162,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     booking.isOldCustomer = user.IsOldCustomer;
                     await _bookingRepository.UpsertAsync(booking);
                 }
-                await SendEmail(bookings, user);
+                if (bookings[0].IntentType != IntentTypeEnum.SetupIntent)
+                    await SendEmail(bookings, user);
             }
         }
         private async Task<bool> InitBooking(TrDbRestaurantBooking booking, string userId, bool noPay)
