@@ -141,7 +141,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         public TrRestaurantBookingServiceHandler(ITwilioUtil twilioUtil, IDbCommonRepository<TrDbRestaurant> restaurantRepository, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository,
             IDbCommonRepository<DbCustomer> customerRepository, GMWebSocketManager webSocketManager, IMsgPusherServiceHandler msgPusherServiceHandler,
-            IDbCommonRepository<DbShop> shopRepository, ICustomerServiceHandler customerServiceHandler,   IStripeUtil stripeUtil, IMemoryCache memoryCache,
+            IDbCommonRepository<DbShop> shopRepository, ICustomerServiceHandler customerServiceHandler, IStripeUtil stripeUtil, IMemoryCache memoryCache,
             IShopServiceHandler shopServiceHandler, IStripeServiceHandler stripeServiceHandler,
         ICountryServiceHandler countryHandler, IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, IDateTimeUtil dateTimeUtil, IAmountCalculaterUtil amountCalculaterV1,
         ISendEmailUtil sendEmailUtil, IExchangeUtil exchangeUtil, Microsoft.Extensions.Options.IOptions<AzureStorageConfig> _storageConfig,
@@ -771,9 +771,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     {
                         amountInfo.PaidAmount = payAmount.PaidAmount - oldPayAmount.PaidAmount;
                         amountInfo.Reward = payAmount.Reward - oldPayAmount.Reward;
-                        amountInfo.Vat= payAmount.Vat-oldPayAmount.Vat;
+                        amountInfo.Vat = payAmount.Vat - oldPayAmount.Vat;
                         amountInfo.PaidAmount = payAmount.PaidAmount - oldPayAmount.PaidAmount;
-                        amountInfo.Unpaid=payAmount.Unpaid -oldPayAmount.Unpaid;
+                        amountInfo.Unpaid = payAmount.Unpaid - oldPayAmount.Unpaid;
                     }
                     dbBooking.AmountInfos.Add(amountInfo);
                 }
@@ -1163,8 +1163,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     booking.isOldCustomer = user.IsOldCustomer;
                     await _bookingRepository.UpsertAsync(booking);
                 }
-
-                await SendEmail(bookings, user);
+                if (bookings[0].IntentType != IntentTypeEnum.SetupIntent)
+                    await SendEmail(bookings, user);
             }
         }
         private async Task<bool> InitBooking(TrDbRestaurantBooking booking, string userId, bool noPay)
@@ -1237,7 +1237,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     user = await _customerRepository.GetOneAsync(a => a.Id == userId);
                 var amount = _amountCalculaterV1.getItemAmount(item.ConvertToAmount());
                 var itemPayInfo = _amountCalculaterV1.getItemPayAmount(item.ConvertToAmount(), user, rest.Vat);
-                itemPayInfo.Id = Guid.NewGuid().ToString(); 
+                itemPayInfo.Id = Guid.NewGuid().ToString();
                 item.AmountInfos.Add(itemPayInfo);
             }
 
