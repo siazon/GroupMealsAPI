@@ -125,7 +125,7 @@ namespace App.Domain.TravelMeals
         public bool Charged { get; set; }
         public string AcceptReason { get; set; }
         public RestaurantBillInfo BillInfo { get; set; } = new RestaurantBillInfo();
-        public List<AmountInfo> AmountInfos { get; set; } = new List<AmountInfo>();
+        public List<ItemPayInfo> AmountInfos { get; set; } = new List<ItemPayInfo>();
     }
     public class BookingDetail : DbEntity
     {

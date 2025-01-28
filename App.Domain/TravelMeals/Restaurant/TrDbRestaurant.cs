@@ -117,12 +117,17 @@ namespace App.Domain.TravelMeals.Restaurant
     }
     public enum PaymentTypeEnum
     {
-        Full, Percentage, Fixed
+        /// <summary>
+        /// 全额支付，
+        /// </summary>
+        Full,//全额支付，
+        Percentage, //预支付：百分比，
+        Fixed//预支付：固定金额
     }
     public class RestaurantBillInfo
     {
         public List<PaymentTypeEnum> SupportedPaymentTypes { get; set; }//1全额，2全额+到店支付，3全额+到店支付+百分比支付
-        public PaymentTypeEnum PaymentType { get; set; }//支付方式 全额支付，百分百，固定金额
+        public PaymentTypeEnum PaymentType { get; set; }//支付方式 全额支付，预支付：百分比，预支付：固定金额
         public double PayRate { get; set; }//百分比
         public bool IsOldCustomer { get; set; }
         public PaymentTypeEnum RewardType { get; set; } = PaymentTypeEnum.Percentage;//无返现，百分比，固定
@@ -146,12 +151,14 @@ namespace App.Domain.TravelMeals.Restaurant
 
     }
     public class ItemPayInfo {
+        public string Id { get; set; }
         public decimal Amount { get; set; }//总金额
         public decimal Commission { get; set; }//应付
         public decimal Vat { get; set; }//VAT
         public decimal Reward { get; set; }//返现
-        public decimal PayAmount { get; set; }//实付
-        public decimal UnpaidAmount { get; set; }
+        public decimal PaidAmount { get; set; }//实付
+        public decimal Unpaid { get; set; }
+
     }
     public class MapPosition
     {

@@ -174,10 +174,10 @@ namespace App.Infrastructure.ServiceHandler.Common
 
 
             List<TrDbRestaurant> restaurants = new List<TrDbRestaurant>();
-             token = "";
+            token = "";
             while (token != null)
             {
-                var temo = await _restaurantRepository.GetManyAsync(a => (1==1), 500, token);
+                var temo = await _restaurantRepository.GetManyAsync(a => (1 == 1), 500, token);
                 var list = temo.Value.ToList();
                 restaurants.AddRange(list);
                 token = temo.Key;
@@ -193,14 +193,14 @@ namespace App.Infrastructure.ServiceHandler.Common
 
                 item.BookingQty = count;
 
-                var rests = restaurants.FindAll(a=>a.Users.Contains(item.Email));
+                var rests = restaurants.FindAll(a => a.Users.Contains(item.Email));
                 if (rests != null)
                 {
                     List<string> reststrs = new List<string>();
                     foreach (var rest in rests)
                     {
-                        if(!reststrs.Contains(rest.StoreName))
-                        reststrs.Add(rest.StoreName);
+                        if (!reststrs.Contains(rest.StoreName))
+                            reststrs.Add(rest.StoreName);
                     }
                     item.Restaurants = string.Join(",\r\n", reststrs);
                 }
@@ -526,22 +526,18 @@ namespace App.Infrastructure.ServiceHandler.Common
             if (existingCustomer == null)
                 return new ResponseModel { msg = "User not found!(用户不存在)", };
 
-            if (cartInfos != null)
-            {
-                foreach (var item in cartInfos)
-                {
+            //if (cartInfos != null)
+            //{
+            //    foreach (var item in cartInfos)
+            //    {
 
-                    if (string.IsNullOrWhiteSpace(item.Id))
-                        item.Id = Guid.NewGuid().ToString();
-                    if (item.AmountInfos == null)
-                        item.AmountInfos = new List<AmountInfo>();
-                    item.AmountInfos?.Clear();
-                    var itemPayInfo = _amountCalculaterV1.getItemPayAmount(item.ConvertToAmount(), existingCustomer, item.Vat);
-                    AmountInfo amountInfo = new AmountInfo() { Amount = _amountCalculaterV1.getItemAmount(item.ConvertToAmount()), PaidAmount = itemPayInfo.PayAmount };
-                    item.AmountInfos.Add(amountInfo);
-                }
-            }
+            //        if (string.IsNullOrWhiteSpace(item.Id))
+            //            item.Id = Guid.NewGuid().ToString();
 
+            //        var itemPayInfo = _amountCalculaterV1.getItemPayAmount(item.ConvertToAmount(), existingCustomer, item.Vat);
+            //        UpdateAmountInfo(item, itemPayInfo);
+            //    }
+            //}
 
             existingCustomer.CartInfos = cartInfos;
             existingCustomer = await RefreshCartInfo(existingCustomer);
@@ -559,6 +555,14 @@ namespace App.Infrastructure.ServiceHandler.Common
             existingCustomer = await RefreshCartInfo(existingCustomer);
             var savedCustomer = await _customerRepository.UpsertAsync(existingCustomer);
             return new ResponseModel() { msg = "ok", code = 200, data = savedCustomer.ClearForOutPut() };
+        }
+        private void UpdateAmountInfo(DbBooking item, ItemPayInfo itemPayInfo) {
+            if (item.AmountInfos.Count > 0&& !string.IsNullOrWhiteSpace(item.AmountInfos[0].Id))
+                itemPayInfo.Id = item.AmountInfos[0].Id; 
+            else
+                itemPayInfo.Id = Guid.NewGuid().ToString();
+            item.AmountInfos.Clear();
+            item.AmountInfos.Add(itemPayInfo);
         }
         public async Task<DbCustomer> RefreshCartInfo(DbCustomer customer)
         {
@@ -600,14 +604,9 @@ namespace App.Infrastructure.ServiceHandler.Common
                         }
                     }
                 }
-                foreach (var info in item.AmountInfos)
-                {
-                    info.Amount = _amountCalculaterV1.getItemAmount(item.ConvertToAmount());
-                    var itemPayInfo = _amountCalculaterV1.getItemPayAmount(item.ConvertToAmount(), customer, item.Vat);
-                    info.PaidAmount = itemPayInfo.PayAmount;
-                    info.Reward = itemPayInfo.Reward;
+                var itemPayInfo = _amountCalculaterV1.getItemPayAmount(item.ConvertToAmount(), customer, item.Vat);
+                UpdateAmountInfo(item, itemPayInfo);
 
-                }
                 DateTime dateTime = item.SelectDateTime.Value;
                 if (!string.IsNullOrWhiteSpace(item.MealTime))
                 {

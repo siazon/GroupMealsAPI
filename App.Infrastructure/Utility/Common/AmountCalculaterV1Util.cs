@@ -87,9 +87,9 @@ namespace App.Infrastructure.Utility.Common
                 var payAmount = getItemPayAmount(item.ConvertToAmount(), customer, country.VAT);//线上支付金额
                 var reward = Math.Round(payAmount.Reward, 2, MidpointRounding.ToNegativeInfinity);
                 if (currency == null) currency = item.Currency;
-                paymentAmountInfo.TotalPayAmount += CalculatePayAmountByRate(payAmount.PayAmount, item.Currency, currency, shopId, countries, dbStripes);
+                paymentAmountInfo.TotalPayAmount += CalculatePayAmountByRate(payAmount.PaidAmount, item.Currency, currency, shopId, countries, dbStripes);
                 paymentAmountInfo.Amount += CalculateByRateByInOut(amount, Rates[item.Currency][currency]);
-                paymentAmountInfo.UnPaidAmount += CalculateByRateByInOut(amount - payAmount.PayAmount - reward, Rates[item.Currency][currency]);
+                paymentAmountInfo.UnPaidAmount += CalculateByRateByInOut(amount - payAmount.PaidAmount - reward, Rates[item.Currency][currency]);
                 paymentAmountInfo.Reward += CalculateByRateByInOut(reward, Rates[item.Currency][currency]);
                 if (paymentAmountInfo.TotalPayAmount > 0 && !item.BillInfo.IsOldCustomer)
                 {
@@ -105,9 +105,9 @@ namespace App.Infrastructure.Utility.Common
                 }
                 dicInfo[item.Currency].Amount = Math.Round(amount, 2);
                 if (item.RestaurantIncluedVAT)
-                    dicInfo[item.Currency].UnPaidAmount = Math.Round(amount - payAmount.PayAmount - reward, 2);
+                    dicInfo[item.Currency].UnPaidAmount = Math.Round(amount - payAmount.PaidAmount - reward, 2);
                 else
-                    dicInfo[item.Currency].UnPaidAmount = Math.Round(amount - payAmount.PayAmount - reward, 2);
+                    dicInfo[item.Currency].UnPaidAmount = Math.Round(amount - payAmount.PaidAmount - reward, 2);
                 if (reward > 0)
                     dicInfo[item.Currency].Reward = Math.Round(reward, 2);
 
@@ -162,7 +162,7 @@ namespace App.Infrastructure.Utility.Common
                 var payAmount = getItemPayAmount(item.ConvertToAmount(), customer, country.VAT);//线上支付金额
                 var _amount = getItemAmount(item.ConvertToAmount());//总金额
                 var reward = payAmount.Reward;
-                var amountByRate = CalculatePayAmountByRate(payAmount.PayAmount, item.Currency, PayCurrency, customer.ShopId ?? 11, countries, dbStripes);
+                var amountByRate = CalculatePayAmountByRate(payAmount.PaidAmount, item.Currency, PayCurrency, customer.ShopId ?? 11, countries, dbStripes);
                 amount += amountByRate;
             }
             return amount;
@@ -295,12 +295,13 @@ namespace App.Infrastructure.Utility.Common
             if (customer.IsOldCustomer)
             {
                 if (bookingDetail.BillInfo.PaymentType == PaymentTypeEnum.Full)
-                    return new ItemPayInfo() { PayAmount = amount };//  amount;
+                    return new ItemPayInfo() { PaidAmount = amount };//  amount;
                 else
                     return new ItemPayInfo();
             }
             decimal Commission = GetDue(bookingDetail, amount);//应付
             var vat = GetVATAmount(Commission, VAT);//VAT
+            vat = Math.Round(vat, 2, MidpointRounding.ToPositiveInfinity);
             var reward = GetReward(amount, bookingDetail.BillInfo.RewardType, bookingDetail.BillInfo.Reward, customer, bookingDetail.RestaurantIncluedVAT, vat);//返现
             reward = Math.Round(reward, 2, MidpointRounding.ToNegativeInfinity);//有乘法之后去小数点
             var dueAmout = Commission + vat;
@@ -317,11 +318,11 @@ namespace App.Infrastructure.Utility.Common
             ItemPayInfo itemPayInfo = new ItemPayInfo()
             {
                 Amount= amount,
-                PayAmount = _payAmount,
+                PaidAmount = _payAmount,
                 Reward = reward,
                 Vat = vat,
                 Commission = Commission,
-                UnpaidAmount=amount- _payAmount
+                Unpaid=amount-_payAmount-reward
             };
             return itemPayInfo;
         }

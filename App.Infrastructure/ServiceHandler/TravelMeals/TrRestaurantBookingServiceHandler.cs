@@ -765,13 +765,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     UpdateListField(operationInfo, dbBooking, newBooking, "Courses");
                     dbBooking.Courses = newBooking.Courses;
 
-                    AmountInfo amountInfo = new AmountInfo() { Id = Guid.NewGuid().ToString() };
+                    ItemPayInfo amountInfo = new ItemPayInfo() { Id = Guid.NewGuid().ToString() };
                     amountInfo.Amount = amount - Oldamount;//新增差价记录
                     if (!dbBooking.BillInfo.IsOldCustomer)
                     {
-
-                        amountInfo.PaidAmount = payAmount.PayAmount - oldPayAmount.PayAmount;
+                        amountInfo.PaidAmount = payAmount.PaidAmount - oldPayAmount.PaidAmount;
                         amountInfo.Reward = payAmount.Reward - oldPayAmount.Reward;
+                        amountInfo.Vat= payAmount.Vat-oldPayAmount.Vat;
+                        amountInfo.PaidAmount = payAmount.PaidAmount - oldPayAmount.PaidAmount;
+                        amountInfo.Unpaid=payAmount.Unpaid -oldPayAmount.Unpaid;
                     }
                     dbBooking.AmountInfos.Add(amountInfo);
                 }
@@ -1161,6 +1163,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     booking.isOldCustomer = user.IsOldCustomer;
                     await _bookingRepository.UpsertAsync(booking);
                 }
+
                 await SendEmail(bookings, user);
             }
         }
@@ -1234,14 +1237,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     user = await _customerRepository.GetOneAsync(a => a.Id == userId);
                 var amount = _amountCalculaterV1.getItemAmount(item.ConvertToAmount());
                 var itemPayInfo = _amountCalculaterV1.getItemPayAmount(item.ConvertToAmount(), user, rest.Vat);
-                AmountInfo amountInfo = new AmountInfo()
-                {
-                    Id = Guid.NewGuid().ToString(),
-                    Amount = amount,
-                    PaidAmount = itemPayInfo.PayAmount,
-                    Reward = itemPayInfo.Reward
-                };
-                item.AmountInfos.Add(amountInfo);
+                itemPayInfo.Id = Guid.NewGuid().ToString(); 
+                item.AmountInfos.Add(itemPayInfo);
             }
 
             foreach (var amount in item.AmountInfos)
@@ -1731,7 +1728,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             decimal amount = 0, paidAmount = 0;
             if (bookingCalculateVO != null)
             {
-                paidAmount = _amountCalculaterV1.getItemPayAmount(bookingCalculateVO, new DbCustomer() { IsOldCustomer = isOldCustomer, RewardType = rewardType, Reward = reward }, vat).PayAmount;
+                paidAmount = _amountCalculaterV1.getItemPayAmount(bookingCalculateVO, new DbCustomer() { IsOldCustomer = isOldCustomer, RewardType = rewardType, Reward = reward },
+                    vat).PaidAmount;
                 amount = _amountCalculaterV1.getItemAmount(bookingCalculateVO);
             }
             return new ResponseModel { msg = "ok", code = 200, data = new { amount, paidAmount } };
@@ -1762,7 +1760,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             if (paymentType == PaymentTypeEnum.Fixed)
                 paidAmount = 0;
             else
-                paidAmount = _amountCalculaterV1.getItemPayAmount(bookingCalculateVO, new DbCustomer() { IsOldCustomer = true, RewardType = PaymentTypeEnum.Full, Reward = 0 }, 0.125).PayAmount;
+                paidAmount = _amountCalculaterV1.getItemPayAmount(bookingCalculateVO, new DbCustomer() { IsOldCustomer = true, RewardType = PaymentTypeEnum.Full, Reward = 0 }, 0.125).PaidAmount;
             amount = _amountCalculaterV1.getItemAmount(bookingCalculateVO);
             return new ResponseModel { msg = "ok", code = 200, data = new { amount, paidAmount } };
         }
@@ -2480,15 +2478,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
 
 
-        }
-        private async void asyncCustomer()
-        {
-            var customers = await _customerRepository.GetManyAsync(a => a.ShopId == 11);
-            foreach (var item in customers)
-            {
-                item.IsOldCustomer = true;
-                await _customerRepository.UpsertAsync(item);
-            }
         }
 
         private async void asyncCities()
