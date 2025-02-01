@@ -1,4 +1,5 @@
-﻿using System;
+﻿using App.Domain.Enum;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,6 +15,7 @@ namespace App.Domain.Common
         public string Sender { get; set; }
         public string Receiver { get; set; }
         public MsgTypeEnum MsgType { get; set; }
+        public OrderStatusEnum  OrderStauts { get; set; }
         public MSGEnum MsgStatus { get; set; }
         public DateTime SendTime { get; set; }
     }

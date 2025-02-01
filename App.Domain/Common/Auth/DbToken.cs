@@ -12,4 +12,10 @@ namespace App.Domain.Common.Auth
         public string ServerKey { get; set; }
         public string ShopKey { get; set; }
     }
+
+    public class DbDeviceToken : DbEntity {
+
+        public string Token { get; set; }
+        public string UserId { get; set; }
+    }
 }

@@ -238,7 +238,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 decimal amount = item.AmountInfos.Sum(x => x.Amount);
                 decimal paidAmount = item.AmountInfos.Sum(x => x.PaidAmount);
                 decimal reward = item.AmountInfos.Sum(x => x.Reward);
-                SaveMsgPush(item, selectDateTimeStr);
 
                 var itemCurrencyStr = country.FirstOrDefault(a => a.Currency == item.Currency).CurrencySymbol;
                 List<string> names = new List<string>();
@@ -282,35 +281,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //SendToTalCustomer(shopInfo, user, senderParams.Subject, wwwPath, senderParams.TemplateName, AmountStr, PaidAmountStr, UnpaidAmountStr, detailstr);
             return true;
         }
-        private void SaveMsgPush(DbBooking item, string mealTime)
-        {
-            _msgPusherServiceHandler.AddMsg(new Domain.Common.PushMsgModel()
-            {
-                Id = Guid.NewGuid().ToString(),
-                MsgType = MsgTypeEnum.Order,
-                SendTime = DateTime.UtcNow,
-                Created = DateTime.UtcNow,
-                Title = "下单成功通知",
-                Message = $"{item.RestaurantName} {mealTime}",
-                MessageReference = item.BookingRef,
-                Receiver = item.Creater,
-                Sender = "GroupMeals",
-                ShopId = item.ShopId
-            });
-            _msgPusherServiceHandler.AddMsg(new Domain.Common.PushMsgModel()
-            {
-                Id = Guid.NewGuid().ToString(),
-                MsgType = MsgTypeEnum.UnAcceptOrder,
-                SendTime = DateTime.UtcNow,
-                Created = DateTime.UtcNow,
-                Title = "待接单通知",
-                Message = $"{item.RestaurantName} {mealTime}",
-                MessageReference = item.BookingRef,
-                Receiver = item.RestaurantEmail,
-                Sender = "GroupMeals",
-                ShopId = item.ShopId
-            });
-        }
+        
         public async Task EmailSystemMessage(string message, DbShop shopInfo,string toEmail, string tempName,  string subject)
         {
             string htmlTemp = EmailTemplateUtil.ReadTemplate(this._environment.WebRootPath, tempName);

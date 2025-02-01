@@ -78,6 +78,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         private readonly IDbCommonRepository<DbBooking> _bookingRepository;
         private readonly IDbCommonRepository<DbShopContent> _shopContentRepository;
         private readonly IDbCommonRepository<DbSetting> _settingRepository;
+        private readonly IDbCommonRepository<DbDeviceToken> _deviceTokenRepository;
         private readonly IEncryptionHelper _encryptionHelper;
         private readonly IDateTimeUtil _dateTimeUtil;
         private readonly IContentBuilder _contentBuilder;
@@ -88,7 +89,8 @@ namespace App.Infrastructure.ServiceHandler.Common
         IHostingEnvironment _environment;
         IMemoryCache _memoryCache;
 
-        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1, IMemoryCache memoryCache, IDbCommonRepository<DbBooking> bookingRepository,
+        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1, 
+            IMemoryCache memoryCache, IDbCommonRepository<DbBooking> bookingRepository, IDbCommonRepository<DbDeviceToken> deviceTokenRepository,
         ITwilioUtil twilioUtil, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<TrDbRestaurant> restaurantRepository,
         IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, ISendEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
         {
@@ -99,6 +101,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             _shopRepository = shopRepository;
             _shopContentRepository = shopContentRepository;
             _bookingRepository = bookingRepository;
+            _deviceTokenRepository=deviceTokenRepository;
             _contentBuilder = contentBuilder;
             _emailUtil = emailUtil;
             _twilioUtil = twilioUtil;
@@ -233,6 +236,9 @@ namespace App.Infrastructure.ServiceHandler.Common
         }
         public async Task<ResponseModel> AsyncToken(string email, string token)
         {
+            _logger.LogDebug("AsyncToken: "+token);
+            DbDeviceToken deviceToken = new DbDeviceToken() { Id=Guid.NewGuid().ToString(),Token=token };
+            await _deviceTokenRepository.UpsertAsync(deviceToken);
             if (string.IsNullOrWhiteSpace(email))
             {
                 var customer1 = await _customerRepository.GetOneAsync(r => r.Email == "siazonchen@outlook.com");

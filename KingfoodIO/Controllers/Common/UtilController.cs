@@ -141,7 +141,7 @@ namespace KingfoodIO.Controllers.Common
 
         [HttpPost]
         [ProducesResponseType(typeof(PushMsgModel), (int)HttpStatusCode.OK)]
-        [ServiceFilter(typeof(AuthActionFilter))]
+        //[ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> FCMMessageSender([FromBody] FCMMessage FCMParams, int shopId)
         {
             var res = await FCMSender.SendMsg(FCMParams);

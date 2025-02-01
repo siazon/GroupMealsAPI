@@ -96,7 +96,12 @@ namespace App.Domain.TravelMeals
         public string Currency { get; set; }
         public DateTime PayTime { get; set; }
         public DateTime CheckoutTime { get; set; }
-
+        public List<PaymentBookingDtl> BookingDtls { get; set; } = new List<PaymentBookingDtl>();
+        public List<PaymentBookingDtl> RefundBookingDtls { get; set; } = new List<PaymentBookingDtl>();
+    }
+    public class PaymentBookingDtl {
+        public string BookingId { get; set; }
+        public List<ItemPayInfo> AmountInfos { get; set; } = new List<ItemPayInfo>();
     }
     public class DbBooking : BookingDetail
     {

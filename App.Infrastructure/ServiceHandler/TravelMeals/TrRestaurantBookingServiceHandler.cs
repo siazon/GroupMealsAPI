@@ -65,6 +65,7 @@ using Google.Apis.Auth.OAuth2;
 using FirebaseAdmin.Messaging;
 using Microsoft.AspNetCore.Http;
 using Twilio.TwiML.Messaging;
+using FirebaseAdmin.Auth;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -139,14 +140,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private readonly AzureStorageConfig storageConfig;
         IMsgPusherServiceHandler _msgPusherServiceHandler;
 
-        public TrRestaurantBookingServiceHandler(ITwilioUtil twilioUtil, IDbCommonRepository<TrDbRestaurant> restaurantRepository, IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository,
+        public TrRestaurantBookingServiceHandler(ITwilioUtil twilioUtil, IDbCommonRepository<TrDbRestaurant> restaurantRepository,
+            IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository,
             IDbCommonRepository<DbCustomer> customerRepository, GMWebSocketManager webSocketManager, IMsgPusherServiceHandler msgPusherServiceHandler,
             IDbCommonRepository<DbShop> shopRepository, ICustomerServiceHandler customerServiceHandler, IStripeUtil stripeUtil, IMemoryCache memoryCache,
-            IShopServiceHandler shopServiceHandler, IStripeServiceHandler stripeServiceHandler,
-        ICountryServiceHandler countryHandler, IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, IDateTimeUtil dateTimeUtil, IAmountCalculaterUtil amountCalculaterV1,
-        ISendEmailUtil sendEmailUtil, IExchangeUtil exchangeUtil, Microsoft.Extensions.Options.IOptions<AzureStorageConfig> _storageConfig,
-    IDbCommonRepository<DbBooking> bookingRepository, IDbCommonRepository<DbPaymentInfo> paymentRepository, IDbCommonRepository<DbOpearationInfo> opearationRepository,
-        IPDFUtil pDFUtil, ILogManager logger, IContentBuilder contentBuilder)
+            IShopServiceHandler shopServiceHandler, IStripeServiceHandler stripeServiceHandler, ICountryServiceHandler countryHandler,
+            IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, IDateTimeUtil dateTimeUtil, IAmountCalculaterUtil amountCalculaterV1,
+            ISendEmailUtil sendEmailUtil, IExchangeUtil exchangeUtil, Microsoft.Extensions.Options.IOptions<AzureStorageConfig> _storageConfig,
+            IDbCommonRepository<DbBooking> bookingRepository, IDbCommonRepository<DbPaymentInfo> paymentRepository, IDbCommonRepository<DbOpearationInfo> opearationRepository,
+            IPDFUtil pDFUtil, ILogManager logger, IContentBuilder contentBuilder)
         {
             _restaurantRepository = restaurantRepository;
             _restaurantBookingRepository = restaurantBookingRepository;
@@ -254,16 +256,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 booking.AcceptStatus = AcceptStatusEnum.CanceledAfterAccepted;
             else
                 booking.AcceptStatus = AcceptStatusEnum.CanceledBeforeAccepted;
-            var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
-            if (shopInfo == null)
-            {
-                _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
-                throw new ServiceException("Cannot find shop info");
-            }
-            _twilioUtil.sendSMS("+353874858555", $"你有订单: {booking.BookingRef}被取消。 请登录groupmeal.com查看更多");
-            var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealCancelled];
-            emailParams.isShortInfo = 1;
-            await _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParams);
+
+            CancelbookingNotification(booking);
+
             booking.Status = OrderStatusEnum.Canceled;
             booking.Updated = DateTime.UtcNow;
             booking.Updater = userEmail;
@@ -774,8 +769,28 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         amountInfo.Vat = payAmount.Vat - oldPayAmount.Vat;
                         amountInfo.PaidAmount = payAmount.PaidAmount - oldPayAmount.PaidAmount;
                         amountInfo.Unpaid = payAmount.Unpaid - oldPayAmount.Unpaid;
+                        amountInfo.Commission = payAmount.Commission - oldPayAmount.Commission;
                     }
                     dbBooking.AmountInfos.Add(amountInfo);
+                    if (dbBooking.IntentType != IntentTypeEnum.SetupIntent)
+                    {
+                        if (payAmount.PaidAmount > oldPayAmount.PaidAmount)
+                        {
+                            DbPaymentInfo dbPaymentInfo = new DbPaymentInfo()
+                            {
+                                Id = Guid.NewGuid().ToString(),
+                                Creater = user.Id,
+                                Created = DateTime.UtcNow,
+                                Amount = payAmount.PaidAmount,
+                                CheckoutTime = DateTime.UtcNow,
+
+                            };
+                        }
+                        else if (payAmount.PaidAmount < oldPayAmount.PaidAmount)
+                        {
+
+                        }
+                    }
                 }
                 if (dbBooking.Courses.Count != newBooking.Courses.Count)
                 {
@@ -803,7 +818,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 await _opearationRepository.UpsertAsync(operationInfo);
                 var savedBooking = await _bookingRepository.UpsertAsync(dbBooking);
                 if (isNotify)
-                    SendModifyEmail(savedBooking);
+                    ModifybookingNotification(savedBooking);
             }
             return new ResponseModel { msg = "ok", code = 200, data = null };
         }
@@ -960,7 +975,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 var userInfo = await _customerServiceHandler.GetCustomer(user.UserId, shopId);
                 var res = PlaceBooking(booking.Details, shopId, userInfo, IntentTypeEnum.None);
-                await SendEmail(booking.Details, userInfo);
+                await NewBookingNofitication(booking.Details, userInfo);
             }
             return new ResponseModel { msg = "ok", code = 200, data = newItem };
         }
@@ -1014,7 +1029,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 var dbUser = await _customerServiceHandler.UpdateCart(bookings, user.UserId, user.ShopId ?? 11);
                 var booking = PlaceBooking(bookings, shopId, userInfo, IntentTypeEnum.None);
-                await SendEmail(bookings, userInfo);
+                await NewBookingNofitication(bookings, userInfo);
                 return new ResponseModel { msg = "ok", code = 200, data = null };
             }
             string bookingIds = string.Join(',', bookingIdList);
@@ -1029,6 +1044,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 item.PaymentId = dbPaymentInfo.Id;
                 item.PayCurrency = dbPaymentInfo.Currency;
+                dbPaymentInfo.BookingDtls.Add(new PaymentBookingDtl() { BookingId = item.Id, AmountInfos = item.AmountInfos });
             }
 
             var payment = await _paymentRepository.UpsertAsync(dbPaymentInfo);
@@ -1064,7 +1080,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<List<DbBooking>> PlaceBooking(List<DbBooking> cartInfos, int shopId, DbCustomer user, IntentTypeEnum intentType)
         {
-
             foreach (var item in cartInfos)
             {
                 if (string.IsNullOrWhiteSpace(item.Id))
@@ -1081,7 +1096,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             await _customerServiceHandler.UpdateAccount(user, shopId);
             if (intentType == IntentTypeEnum.SetupIntent)
-                await SendEmail(cartInfos, user);
+                await NewBookingNofitication(cartInfos, user);
             return cartInfos;
         }
         public async void SetupPaymentAction(string billId, string userId)
@@ -1164,7 +1179,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     await _bookingRepository.UpsertAsync(booking);
                 }
                 if (bookings[0].IntentType != IntentTypeEnum.SetupIntent)
-                    await SendEmail(bookings, user);
+                    await NewBookingNofitication(bookings, user);
             }
         }
         private async Task<bool> InitBooking(TrDbRestaurantBooking booking, string userId, bool noPay)
@@ -1246,12 +1261,30 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 if (string.IsNullOrWhiteSpace(amount.Id))
                     amount.Id = "A" + SnowflakeId.getSnowId();
             }
-
             return true;
         }
-        private async Task<bool> SendEmail(List<DbBooking> bookings, DbCustomer user)
+
+        private async Task<bool> CancelbookingNotification(DbBooking booking)
+        {
+
+            PushFCMMessage(new List<DbBooking>() { booking }, "Booking Canceled", "You got a canceled booking");
+            _twilioUtil.sendSMS("+353874858555", $"你有订单: {booking.BookingRef}被取消。 请登录groupmeal.com查看更多");
+            var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
+            if (shopInfo == null)
+            {
+                _logger.LogInfo("----------------Cannot find shop info" + booking.Id);
+                throw new ServiceException("Cannot find shop info");
+            }
+            var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.MealCancelled];
+            emailParams.isShortInfo = 1;
+            await _sendEmailUtil.EmailEach(new List<DbBooking>() { booking }, shopInfo, emailParams);
+            return true;
+        }
+        private async Task<bool> NewBookingNofitication(List<DbBooking> bookings, DbCustomer user)
         {
             if (bookings.Count == 0) return false;
+            PushFCMMessage(bookings, "New Booking", "You got a new booking");
+            SaveMsgPush(bookings);
             var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == user.ShopId && r.IsActive.HasValue && r.IsActive.Value);
             if (shopInfo == null)
             {
@@ -1274,8 +1307,81 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //EmailUtils.EmailSupport(booking, shopInfo, "new_meals_support", this._environment.WebRootPath, "New Booking", _twilioUtil, _contentBuilder,  _logger);
             return true;
         }
-        private async void SendModifyEmail(DbBooking booking)
+        private async void PushFCMMessage(List<DbBooking> bookings, string title, string msgBody)
         {
+            foreach (var item in bookings)
+            {
+                string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(item.RestaurantTimeZone).ToString("yyyy-MM-dd HH:mm");
+                var boss = await _customerRepository.GetOneAsync(a => a.Email == item.RestaurantEmail);
+                string token = boss.DeviceToken;
+                string body = $"{msgBody}: {item.RestaurantName} {selectDateTimeStr}";
+                MsgTypeEnum msgTypeEnum = MsgTypeEnum.Text;
+                switch (item.Status)
+                {
+                    case OrderStatusEnum.None:
+                    case OrderStatusEnum.Canceled:
+                    case OrderStatusEnum.UnAccepted:
+                        msgTypeEnum = MsgTypeEnum.UnAcceptOrder;
+                        break;
+                    case OrderStatusEnum.Accepted:
+                    case OrderStatusEnum.OpenOrder:
+                    case OrderStatusEnum.Settled:
+                    default:
+                        msgTypeEnum = MsgTypeEnum.AcceptOrder;
+                        break;
+                }
+                FCMMessage FCMParams = new FCMMessage()
+                {
+                    Title = title,
+                    Body = body,
+                    ReferenceId = item.GroupRef,
+                    OrderStatus=item.Status,
+                    MsgType = msgTypeEnum,
+                    DeviceToken = token
+                };
+                await FCMSender.SendMsg(FCMParams);
+                //保存到消息列表
+                await _msgPusherServiceHandler.AddMsg(new Domain.Common.PushMsgModel()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    MsgType = msgTypeEnum,
+                    SendTime = DateTime.UtcNow,
+                    Created = DateTime.UtcNow,
+                    Title = title,
+                    Message = body,
+                    MessageReference = item.BookingRef,
+                    OrderStauts=item.Status,
+                    Receiver = item.RestaurantEmail,
+                    Sender = "GroupMeals",
+                    ShopId = item.ShopId
+                });
+            }
+
+        }
+        private void SaveMsgPush(List<DbBooking> bookings)
+        {
+            foreach (var item in bookings)
+            {
+                string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(item.RestaurantTimeZone).ToString("yyyy-MM-dd HH:mm");
+                _msgPusherServiceHandler.AddMsg(new Domain.Common.PushMsgModel()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    MsgType = MsgTypeEnum.Order,
+                    SendTime = DateTime.UtcNow,
+                    Created = DateTime.UtcNow,
+                    Title = "下单成功通知",
+                    Message = $"{item.RestaurantName} {selectDateTimeStr}",
+                    MessageReference = item.BookingRef,
+                    Receiver = item.Creater,
+                    Sender = "GroupMeals",
+                    ShopId = item.ShopId
+                });
+            }
+        }
+        private async void ModifybookingNotification(DbBooking booking)
+        {
+            PushFCMMessage(new List<DbBooking>() { booking }, "Booking Modified", "You got a modified booking");
+            return;
             var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
             if (shopInfo == null)
             {
@@ -1549,7 +1655,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 throw;
             }
         }
-
+        #region SearchBooking
         public async Task<ResponseModel> SearchBookingsByRestaurant(int shopId, string email, string content, int filterTime, DateTime stime, DateTime etime, List<int> status, int pageSize = -1, string continuationToken = null)
         {
             List<DbBooking> res = new List<DbBooking>();
@@ -1608,7 +1714,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 UpdateForOutput(booking, null);
             }
-            res = res.OrderByDescending(x => x.SelectDateTime).ToList();
+            res = res.OrderBy(x => x.SelectDateTime).ToList();
 
             return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = res };
         }
@@ -1723,6 +1829,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = res };
         }
+        #endregion
+
+        #region AmountCalculater
+
         public ResponseModel GetBookingItemAmountV1(BookingCalculateVO bookingCalculateVO, PaymentTypeEnum rewardType, double reward, bool isOldCustomer, double vat)
         {
             decimal amount = 0, paidAmount = 0;
@@ -1963,6 +2073,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string amountText = string.Join(" + ", temp);
             return amountText;
         }
+        #endregion
+
         public async Task<ResponseModel> GetSchedulePdf(DbToken userId)
         {
             List<PDFModel> pdfData = new List<PDFModel>();
@@ -2139,7 +2251,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     Amount = item.AmountInfos.Sum(a => a.Amount),
                     Unpaid = item.AmountInfos.Sum(a => a.Unpaid),
                     MenuStr = menu,
-                    StatusStr = GetEnumDescription(item.Status),
+                    StatusStr = item.Status.GetEnumDescription(),
                     Qty = qty.ToString(),
                     Price = price.ToString(),
                     Reward = item.AmountInfos.Sum(a => a.Reward),
@@ -2151,22 +2263,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return bookings;
 
         }
-        public string GetEnumDescription(Enum value)
-        {
-            FieldInfo fi = value.GetType().GetField(value.ToString());
-
-            DescriptionAttribute[] attributes = fi.GetCustomAttributes(typeof(DescriptionAttribute), false) as DescriptionAttribute[];
-
-            if (attributes != null && attributes.Any())
-            {
-                return attributes.First().Description;
-            }
-
-            return value.ToString();
-        }
-
-
-
         public async Task<ResponseModel> GetDashboardData()
         {
 
@@ -2202,6 +2298,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<bool> OrderCheck()
         {
 
+            BookingCharged("e81f9f89-f58d-4820-a79d-1fd406fb4c57", "61e4e59d-6e71-4ef9-9c29-5bc765ff03bc", "ch_3Qn7KUAwWylbYgqy2Sz85WhT", "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xTjNHTGlBd1d5bGJZZ3F5KL2b8LwGMgZ3LRMj0r06LBYEAteOD-uEH2mC35-bMNRt8GqQDxkUIgDysyQEBWq4jnDuDhI8mHP0nsI8");
+            return true;
             autoPayment();
             //return true;
 
@@ -2241,6 +2339,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //}
             return true;
         }
+        #region AutoFunctions
+
         public async void autoPayment()
         {
             try
@@ -2480,183 +2580,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         }
 
-        private async void asyncCities()
-        {
-            string jsonStr = "{\"Countries\":[{\"SortOrder\":0,\"Name\":\"UK\",\"NameCN\":\"英国\",\"TimeZone\":\"Europe/London\",\"Currency\":\"UK\",\"ExchangeRate\":0.8542,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"£\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"London 伦敦\"},{\"SortOrder\":1,\"Name\":\"Cambridge 剑桥\"},{\"SortOrder\":2,\"Name\":\"Manchester 曼彻斯特\"},{\"SortOrder\":3,\"Name\":\"Birmingham 伯明翰\"},{\"SortOrder\":4,\"Name\":\"Oxford 牛津\"},{\"SortOrder\":5,\"Name\":\"Bicester 比斯特\"},{\"SortOrder\":6,\"Name\":\"Windermere 温德米尔湖区\"},{\"SortOrder\":7,\"Name\":\"Glawsgow 格拉斯哥\"},{\"SortOrder\":8,\"Name\":\"Edinburgh 爱丁堡\"},{\"SortOrder\":9,\"Name\":\"Liverpool 利物浦\"},{\"SortOrder\":10,\"Name\":\"普雷斯顿市\"},{\"SortOrder\":11,\"Name\":\"贝尔法斯特及北爱\"},{\"SortOrder\":12,\"Name\":\"York 约克\"},{\"SortOrder\":13,\"Name\":\"Stratford 莎士比亚\"},{\"SortOrder\":14,\"Name\":\"霍利希德\"},{\"SortOrder\":15,\"Name\":\"Bath 巴斯\"},{\"SortOrder\":16,\"Name\":\"Sheffield 谢菲尔德\"},{\"SortOrder\":17,\"Name\":\"Coventry 考文垂\"},{\"SortOrder\":18,\"Name\":\"Cardiff 卡迪夫\"},{\"SortOrder\":19,\"Name\":\"NTT 北安普顿\"},{\"SortOrder\":20,\"Name\":\"Bristol 布鲁斯托\"},{\"SortOrder\":21,\"Name\":\"Newcastle 纽卡斯尔\"},{\"SortOrder\":22,\"Name\":\"Brighton 布莱顿 \"},{\"SortOrder\":23,\"Name\":\"Aberdeen 阿伯丁\"},{\"SortOrder\":24,\"Name\":\"Swabsea 斯旺西\"},{\"SortOrder\":25,\"Name\":\"Leeds 利兹\"},{\"SortOrder\":26,\"Name\":\"多佛坎特伯雷\"},{\"SortOrder\":27,\"Name\":\"苏格兰高地\"},{\"SortOrder\":28,\"Name\":\"诺丁汉沿途\"}]},{\"SortOrder\":1,\"Name\":\"Ireland\",\"NameCN\":\"爱尔兰\",\"TimeZone\":\"Europe/Dublin\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"Dublin 都柏林\"},{\"SortOrder\":1,\"Name\":\"Cork 科克\"},{\"SortOrder\":2,\"Name\":\"Galway 戈尔韦\"},{\"SortOrder\":3,\"Name\":\"Limerick 利莫瑞克\"},{\"SortOrder\":4,\"Name\":\"Killarney 基拉尼\"},{\"SortOrder\":5,\"Name\":\"莫赫悬崖及克莱尔郡\"},{\"SortOrder\":6,\"Name\":\"Athlone 阿斯隆周边\"}]},{\"SortOrder\":2,\"Name\":\"France\",\"NameCN\":\"法国\",\"TimeZone\":\"Europe/Paris\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"Paris 巴黎\"},{\"SortOrder\":1,\"Name\":\"贝桑松\"},{\"SortOrder\":2,\"Name\":\"亚维农\"},{\"SortOrder\":3,\"Name\":\"尼斯\"},{\"SortOrder\":4,\"Name\":\"圣米歇尔山附近\"},{\"SortOrder\":5,\"Name\":\"兰斯\"},{\"SortOrder\":6,\"Name\":\"博纳\"},{\"SortOrder\":7,\"Name\":\"里昂\"},{\"SortOrder\":8,\"Name\":\"比利时-安特卫普\"}]},{\"SortOrder\":3,\"Name\":\"Italy\",\"NameCN\":\"意大利\",\"TimeZone\":\"Europe/Rome\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"罗马\"},{\"SortOrder\":1,\"Name\":\"米兰\"},{\"SortOrder\":2,\"Name\":\"佛罗伦萨\"},{\"SortOrder\":3,\"Name\":\"威尼斯\"},{\"SortOrder\":4,\"Name\":\"那不勒斯\"},{\"SortOrder\":5,\"Name\":\"拉斯佩齐亚\"},{\"SortOrder\":6,\"Name\":\"巴勒莫\"},{\"SortOrder\":7,\"Name\":\"维罗纳\"},{\"SortOrder\":8,\"Name\":\"墨西拿\"},{\"SortOrder\":9,\"Name\":\"卡塔尼亚\"},{\"SortOrder\":10,\"Name\":\"巴里\"}]},{\"SortOrder\":4,\"Name\":\"Switzerland\",\"NameCN\":\"瑞士\",\"TimeZone\":\"Europe/Zurich\",\"Currency\":\"CHF\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"CHF\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"苏黎世\"},{\"SortOrder\":1,\"Name\":\"琉森\"},{\"SortOrder\":2,\"Name\":\"卢塞恩\"},{\"SortOrder\":3,\"Name\":\"日内瓦\"},{\"SortOrder\":4,\"Name\":\"蒙特勒\"},{\"SortOrder\":5,\"Name\":\"洛迦诺\"},{\"SortOrder\":6,\"Name\":\"沙夫豪森\"},{\"SortOrder\":7,\"Name\":\"因特拉肯\"},{\"SortOrder\":8,\"Name\":\"列支敦士登-瓦杜兹\"}]},{\"SortOrder\":5,\"Name\":\"Spain\",\"NameCN\":\"西班牙\",\"TimeZone\":\"Europe/Madrid\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"马德里\"},{\"SortOrder\":1,\"Name\":\"巴塞罗那\"},{\"SortOrder\":2,\"Name\":\"瓦伦西亚\"},{\"SortOrder\":3,\"Name\":\"科尔多瓦\"},{\"SortOrder\":4,\"Name\":\"塞维利亚\"},{\"SortOrder\":5,\"Name\":\"格拉纳达\"},{\"SortOrder\":6,\"Name\":\"托莱多\"},{\"SortOrder\":7,\"Name\":\"萨拉戈萨\"},{\"SortOrder\":8,\"Name\":\"赛哥维亚\"},{\"SortOrder\":9,\"Name\":\"托雷维耶哈\"},{\"SortOrder\":10,\"Name\":\"龙达\"},{\"SortOrder\":11,\"Name\":\"安道尔\"}]},{\"SortOrder\":6,\"Name\":\"Portugal\",\"NameCN\":\"葡萄牙\",\"TimeZone\":\"Europe/Lisbon\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"里斯本\"},{\"SortOrder\":1,\"Name\":\"辛特拉\"},{\"SortOrder\":2,\"Name\":\"卡斯凯什\"}]},{\"SortOrder\":7,\"Name\":\"Germany\",\"NameCN\":\"德国\",\"TimeZone\":\"Europe/Lisbon\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"卡塞尔\"},{\"SortOrder\":1,\"Name\":\"慕尼黑\"},{\"SortOrder\":2,\"Name\":\"梅青根奥特莱斯\"},{\"SortOrder\":3,\"Name\":\"帕绍\"},{\"SortOrder\":4,\"Name\":\"亚琛\"},{\"SortOrder\":5,\"Name\":\"德累斯顿\"},{\"SortOrder\":6,\"Name\":\"波恩\"},{\"SortOrder\":7,\"Name\":\"法兰克福\"},{\"SortOrder\":8,\"Name\":\"柏林\"}]},{\"SortOrder\":8,\"Name\":\"Norway\",\"NameCN\":\"挪威\",\"TimeZone\":\"Europe/Lisbon\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"卑尔根\"}]},{\"SortOrder\":9,\"Name\":\"Czech Republic\",\"NameCN\":\"捷克\",\"TimeZone\":\"Europe/Lisbon\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0.03,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"布拉格\"},{\"SortOrder\":1,\"Name\":\"克鲁姆洛夫及周边\"},{\"SortOrder\":2,\"Name\":\"布尔诺\"}]},{\"SortOrder\":10,\"Name\":\"Serbia\",\"NameCN\":\"塞尔维亚\",\"TimeZone\":\"Europe/Paris\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"诺维萨德\"},{\"SortOrder\":1,\"Name\":\"佩拉斯特\"},{\"SortOrder\":2,\"Name\":\"贝尔格莱德\"},{\"SortOrder\":3,\"Name\":\"哥鲁拜克\"},{\"SortOrder\":4,\"Name\":\"兹拉蒂博尔\"}]},{\"SortOrder\":11,\"Name\":\"Luxembourg\",\"NameCN\":\"卢森堡\",\"TimeZone\":\"Europe/Luxembourg\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"卢森堡\"}]},{\"SortOrder\":12,\"Name\":\"Austria\",\"NameCN\":\"奥地利\",\"TimeZone\":\"Europe/Vienna\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"格拉茨\"},{\"SortOrder\":1,\"Name\":\"萨尔兹堡\"},{\"SortOrder\":2,\"Name\":\"哈尔施塔特\"},{\"SortOrder\":3,\"Name\":\"梅尔克\"},{\"SortOrder\":4,\"Name\":\"巴德伊舍\"},{\"SortOrder\":5,\"Name\":\"因斯布鲁克\"},{\"SortOrder\":6,\"Name\":\"维也纳\"}]},{\"SortOrder\":13,\"Name\":\"Bulgaria\",\"NameCN\":\"保加利亚\",\"TimeZone\":\"Europe/Sofia\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"索菲亚\"},{\"SortOrder\":1,\"Name\":\"大特尔诺沃\"}]},{\"SortOrder\":14,\"Name\":\"Croatia\",\"NameCN\":\"克罗地亚\",\"TimeZone\":\"Europe/Zagreb\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"斯普利特\"},{\"SortOrder\":1,\"Name\":\"杜布罗夫尼克\"},{\"SortOrder\":2,\"Name\":\"萨格勒布\"}]},{\"SortOrder\":15,\"Name\":\"Malta\",\"NameCN\":\"马耳他\",\"TimeZone\":\"Europe/Valletta\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"马耳他\"}]},{\"SortOrder\":16,\"Name\":\"Hungary\",\"NameCN\":\"匈牙利\",\"TimeZone\":\"Europe/Budapest\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"布达佩斯\"},{\"SortOrder\":1,\"Name\":\"塞格德\"}]},{\"SortOrder\":17,\"Name\":\"Romania\",\"NameCN\":\"罗马尼亚\",\"TimeZone\":\"Europe/Bucharest\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"布拉勒斯特\"},{\"SortOrder\":1,\"Name\":\"锡纳亚\"}]},{\"SortOrder\":18,\"Name\":\"Montenegro\",\"NameCN\":\"黑山/波黑\",\"TimeZone\":\"Europe/Podgorica\",\"Currency\":\"EU\",\"ExchangeRate\":1,\"ExchangeRateExtra\":0,\"CurrencySymbol\":\"€\",\"Cities\":[{\"SortOrder\":0,\"Name\":\"佩拉斯特\"},{\"SortOrder\":1,\"Name\":\"科托尔海湾\"},{\"SortOrder\":2,\"Name\":\"萨拉热窝\"},{\"SortOrder\":3,\"Name\":\"波德戈里察\"},{\"SortOrder\":4,\"Name\":\"布德瓦\"},{\"SortOrder\":5,\"Name\":\"莫斯塔尔\"},{\"SortOrder\":6,\"Name\":\"特雷比涅\"},{\"SortOrder\":7,\"Name\":\"塔拉河峡谷\"}]}],\"RateUpdateTime\":\"0001-01-01T00:00:00\",\"id\":\"4E283F7E-E397-4632-9405-6C6261ABB75F\",\"ShopId\":11,\"Created\":null,\"Updated\":null,\"Updater\":null,\"SortOrder\":null,\"IsActive\":true,\"IsDeleted\":false,\"_rid\":\"XHMIAJZ0VlEBAAAAAAAAAA==\",\"_self\":\"dbs/XHMIAA==/colls/XHMIAJZ0VlE=/docs/XHMIAJZ0VlEBAAAAAAAAAA==/\",\"_etag\":\"\\\"9c00ac47-0000-0c00-0000-672bb1700000\\\"\",\"_attachments\":\"attachments/\",\"_ts\":1730916720}";
-            citySource citySource = JsonConvert.DeserializeObject<citySource>(jsonStr);
-            var couns = await _countryHandler.GetCountries(11);
-            foreach (var city in citySource.Countries)
-            {
-                DbCountry dbCountry = couns.FirstOrDefault(a => a.Code == city.Name);
-                if (dbCountry == null)
-                {
-                    dbCountry = new DbCountry()
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        Name = city.NameCN,
-                        Code = city.Name,
-                        Currency = city.Currency,
-                        CurrencySymbol = city.CurrencySymbol,
-                        ExchangeRate = city.ExchangeRate,
-                        ExchangeRateExtra = city.ExchangeRateExtra,
-                        VAT = 0.125,
-                        IsActive = false,
-                        SortOrder = city.SortOrder,
-                        ShopId = 11,
-                        Cities = new List<City>()
-                    };
-                }
-                else
-                {
-                    dbCountry.Name = city.NameCN;
-                    dbCountry.Currency = city.Currency;
-                    dbCountry.CurrencySymbol = city.CurrencySymbol;
-                    dbCountry.ExchangeRate = city.ExchangeRate;
-                    dbCountry.ExchangeRateExtra = city.ExchangeRateExtra;
-                    dbCountry.VAT = 0.125;
-                    dbCountry.IsActive = false;
-                    dbCountry.SortOrder = city.SortOrder;
-                    dbCountry.ShopId = 11;
-                    dbCountry.Cities = new List<City>();
-                }
-                foreach (var item in city.Cities)
-                {
-                    City _city = new City()
-                    {
-                        Name = item.Name,
-                        SortOrder = item.SortOrder,
-                        TimeZone = city.TimeZone
-                    };
-                    dbCountry.Cities.Add(_city);
-                }
-                _countryHandler.UpsertCountry(dbCountry);
 
-            }
-
-        }
+        #endregion
     }
-
-
-    //如果好用，请收藏地址，帮忙分享。
-    public class CitiesItem
-    {
-        /// <summary>
-        /// 
-        /// </summary>
-        public int SortOrder { get; set; }
-        /// <summary>
-        /// London 伦敦
-        /// </summary>
-        public string Name { get; set; }
-    }
-
-    public class CountriesItem
-    {
-        /// <summary>
-        /// 
-        /// </summary>
-        public int SortOrder { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public string Name { get; set; }
-        /// <summary>
-        /// 英国
-        /// </summary>
-        public string NameCN { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public string TimeZone { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public string Currency { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public double ExchangeRate { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public double ExchangeRateExtra { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public string CurrencySymbol { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public List<CitiesItem> Cities { get; set; }
-    }
-
-    public class citySource
-    {
-        /// <summary>
-        /// 
-        /// </summary>
-        public List<CountriesItem> Countries { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public string RateUpdateTime { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public string id { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public int ShopId { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public string Created { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public string Updated { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public string Updater { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public string SortOrder { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public string IsActive { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public string IsDeleted { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public string _rid { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public string _self { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public string _etag { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public string _attachments { get; set; }
-        /// <summary>
-        /// 
-        /// </summary>
-        public int _ts { get; set; }
-
-
-
-    }
-
-
 
 }
