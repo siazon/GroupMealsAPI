@@ -35,7 +35,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task EmailVerifyCode(string email, string code, DbShop shopInfo, string tempName, string wwwPath, string subject, string title, string titleCN);
         Task<bool> EmailEach(List<DbBooking> bookings, DbShop shopInfo, EmailSenderParams senderParams);
         Task<bool> EmailGroup(List<DbBooking> bookings, DbShop shopInfo, EmailSenderParams senderParams, DbCustomer user);
-        Task EmailSystemMessage(string message, DbShop shopInfo, string toEmail, string tempName,  string subject);
+        Task EmailSystemMessage(string message,   string toEmail, string tempName,  string subject);
         Task<bool> SendModifiedEmail(DbBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject);
         Task SendCancelEmail(DbShop shopInfo, DbBooking detail, string webPath, string tempName, string subject, params string[] ccEmail);
     }
@@ -54,9 +54,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         IMsgPusherServiceHandler _msgPusherServiceHandler;
         private readonly ICountryServiceHandler _countryHandler;
         private readonly IDbCommonRepository<DbPaymentInfo> _paymentRepository;
+        IShopServiceHandler _shopServiceHandler;
 
         public SendEmailUtil(IEmailUtil emailUtil, IAmountCalculaterUtil amountCalculaterUtil, ILogManager logger, IDateTimeUtil dateTimeUtil,
-            ICountryServiceHandler coutryHandler, IWebHostEnvironment environment, GMWebSocketManager webSocketManager,
+            ICountryServiceHandler coutryHandler, IWebHostEnvironment environment, GMWebSocketManager webSocketManager, IShopServiceHandler shopServiceHandler,
      ICountryServiceHandler countryHandler, IDbCommonRepository<DbPaymentInfo> paymentRepository, IMsgPusherServiceHandler msgPusherServiceHandler, IOperationServiceHandler operationServiceHandler, IContentBuilder contentBuilder)
         {
             _emailUtil = emailUtil;
@@ -71,6 +72,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _paymentRepository = paymentRepository;
             _countryHandler = countryHandler;
             _webSocketManager=  webSocketManager;
+            _shopServiceHandler= shopServiceHandler;
         }
         public async Task EmailVerifyCode(string email, string code, DbShop shopInfo, string tempName, string wwwPath, string subject, string title, string titleCN)
         {
@@ -282,8 +284,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return true;
         }
         
-        public async Task EmailSystemMessage(string message, DbShop shopInfo,string toEmail, string tempName,  string subject)
+        public async Task EmailSystemMessage(string message,  string toEmail, string tempName,  string subject)
         {
+           var shopInfo =await _shopServiceHandler.GetBasicShopInfo(11);
             string htmlTemp = EmailTemplateUtil.ReadTemplate(this._environment.WebRootPath, tempName);
            
             var emailHtml = "";

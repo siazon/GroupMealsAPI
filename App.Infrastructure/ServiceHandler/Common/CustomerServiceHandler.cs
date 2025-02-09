@@ -430,8 +430,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             customer.InitPassword = newpwd;
             var updatedCustomer = await _customerRepository.UpsertAsync(customer);
             updatedCustomer.Password = newpwd;
-            var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == shopId && r.IsActive.HasValue && r.IsActive.Value);
-            await _emailUtil.EmailSystemMessage($"您的最新密码为：{newpwd}", shopInfo, email, "system_message", "密码重置");
+            await _emailUtil.EmailSystemMessage($"您账号[{email}]的最新密码为：{newpwd}",  email, "system_message", "密码重置");
             return new ResponseModel() { msg = "ok", code = 200, data = updatedCustomer };
         }
         public async Task<ResponseModel> ResetPassword(string email, string resetCode, string password, int shopId)

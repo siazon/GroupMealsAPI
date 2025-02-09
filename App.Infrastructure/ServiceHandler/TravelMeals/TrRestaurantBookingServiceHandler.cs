@@ -2297,9 +2297,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<bool> OrderCheck()
         {
-
-            BookingCharged("e81f9f89-f58d-4820-a79d-1fd406fb4c57", "61e4e59d-6e71-4ef9-9c29-5bc765ff03bc", "ch_3Qn7KUAwWylbYgqy2Sz85WhT", "https://pay.stripe.com/receipts/payment/CAcaFwoVYWNjdF8xTjNHTGlBd1d5bGJZZ3F5KL2b8LwGMgZ3LRMj0r06LBYEAteOD-uEH2mC35-bMNRt8GqQDxkUIgDysyQEBWq4jnDuDhI8mHP0nsI8");
-            return true;
             autoPayment();
             //return true;
 
