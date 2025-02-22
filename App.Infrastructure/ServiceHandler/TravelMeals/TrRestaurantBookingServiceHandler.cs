@@ -98,7 +98,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         ResponseModel GetBookingItemAmountV1(BookingCalculateVO bookingCalculateVO, PaymentTypeEnum rewardType, double reward, bool isOldCustomer, double vat);
         Task<ResponseModel> GetBookingAmountV1(bool isBookingModify, string currency, string userId, List<string> Ids);
         Task<ResponseModel> GetBookingAmount(bool isBookingModify, string currency, string userId, List<string> Ids);
-        void SetupPaymentAction(string billId, string userId);
+        Task<bool> SetupPaymentAction(string billId, string userId);
         void BookingCharged(string billId, string bookingIds, string ChargeId, string ReceiptUrl);
         void BookingChargedOld(string billId, string ChargeId, string ReceiptUrl);
         void SettleOrder();
@@ -1083,7 +1083,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 await SendEmail(cartInfos, user);
             return cartInfos;
         }
-        public async void SetupPaymentAction(string billId, string userId)
+        public async Task<bool> SetupPaymentAction(string billId, string userId)
         {
             var user = await _customerRepository.GetOneAsync(a => a.Id == userId);
             var paymentInfo = await _paymentRepository.GetOneAsync(a => a.Id == billId && !a.Paid && !a.IsDeleted);
@@ -1096,6 +1096,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var stripeKeys = await _countryHandler.GetStripes();
             var stripe = stripeKeys.FirstOrDefault(a => a.Currency == paymentInfo.Currency);
             _stripeServiceHandler.SetupPaymentAction(paymentInfo, userId, stripe.StripeKey);
+            return true;
         }
         public async void BookingChargedOld(string billId, string ChargeId, string ReceiptUrl)
         {
@@ -2172,7 +2173,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
 
 
-
+            _logger.LogInfo("OrderCheck");
             autoPayment();
             //return true;
 
@@ -2214,25 +2215,25 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async void autoPayment()
         {
-            try
+            Task.Run(async () =>
             {
-
-
-                var bookings = await _bookingRepository.GetManyAsync(a => a.IntentType == IntentTypeEnum.SetupIntent && a.Status == OrderStatusEnum.Settled && a.Charged == false);
-                foreach (var booking in bookings)
+                try
                 {
-                    var paymentInfo = await _paymentRepository.GetOneAsync(a => !a.Paid && a.Id == booking.PaymentId);
-                    if (paymentInfo == null || string.IsNullOrWhiteSpace(paymentInfo.StripePaymentMethodId))
-                        continue;
-
-                    PayAction(paymentInfo, booking);
-                    //Thread.Sleep(500000);
+                    var bookings = await _bookingRepository.GetManyAsync(a => a.IntentType == IntentTypeEnum.SetupIntent && a.Status == OrderStatusEnum.Settled && a.Charged == false);
+                    foreach (var booking in bookings)
+                    {
+                        var paymentInfo = await _paymentRepository.GetOneAsync(a => !a.Paid && a.Id == booking.PaymentId);
+                        if (paymentInfo == null || string.IsNullOrWhiteSpace(paymentInfo.StripePaymentMethodId))
+                            continue;
+                        PayAction(paymentInfo, booking);
+                        Thread.Sleep(5000);
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("autoPayment:" + ex.Message);
-            }
+                catch (Exception ex)
+                {
+                    _logger.LogError("autoPayment:" + ex.Message);
+                }
+            });
         }
         private async void PayAction(DbPaymentInfo item, DbBooking booking, bool byadmin = false)
         {
@@ -2242,7 +2243,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 var bookings = await _bookingRepository.GetManyAsync(a => a.PaymentId == item.Id);
                 bool isTimePass = true;
                 bool isAllSettle = true;
-                if (booking.SelectDateTime.Value > DateTime.UtcNow)
+                if (booking.SelectDateTime.Value.Date > DateTime.UtcNow)
                 {
                     isTimePass = false;
                 }
@@ -2250,7 +2251,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     isAllSettle = false;
                 if ((byadmin && isAllSettle) || isTimePass)
                 {
-                    SetupPaymentAction(item.Id, item.Creater);
+                    await SetupPaymentAction(item.Id, item.Creater);
                 }
             }
             //else

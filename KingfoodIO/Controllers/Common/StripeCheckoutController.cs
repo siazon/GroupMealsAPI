@@ -139,8 +139,10 @@ namespace KingfoodIO.Controllers.Common
         /// </summary>
         /// <returns></returns>
         [HttpGet]
-        public  IActionResult GetWebhook()
+        public async  Task<IActionResult> GetWebhook()
         {
+            //_stripeServiceHandler.SetupPaymentAction(new DbPaymentInfo(), "", "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");
+
             return Ok("Connected");
         }
         [HttpGet]
