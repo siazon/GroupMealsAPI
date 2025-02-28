@@ -422,6 +422,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<ResponseModel> BookingDeclined(string billId, string declineReason, string operater)
         {
+            _logger.LogDebug("BookingDeclined: " + declineReason);
             DbBooking booking = await _bookingRepository.GetOneAsync(a => a.Id == billId);
             if (booking == null || booking.IsDeleted)
                 return new ResponseModel() { code = 501, msg = "Order Deleted(无效操作，订单已删除)", };
@@ -444,6 +445,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 default:
                     break;
             }
+            booking.AcceptReason = declineReason;
             var res = await _bookingRepository.UpsertAsync(booking);
             //TODO sendMsg
             return new ResponseModel() { code = 200, msg = "ok", data = null };
