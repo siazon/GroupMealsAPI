@@ -118,12 +118,12 @@ namespace App.Infrastructure.ServiceHandler.Common
             var customers = new List<DbCustomer>();
             if (string.IsNullOrWhiteSpace(context))
             {
-                var allcust = await _customerRepository.GetManyAsync(r => r.ShopId == shopId && r.IsBoss);
+                var allcust = await _customerRepository.GetManyAsync(r => r.ShopId == shopId && !r.IsBoss);
                 customers = allcust.ToList();
             }
             else
             {
-                var customersFiltter = await _customerRepository.GetManyAsync(r => r.ShopId == shopId && r.IsBoss && (r.Email.Contains(context) || r.UserName.Contains(context)));
+                var customersFiltter = await _customerRepository.GetManyAsync(r => r.ShopId == shopId && !r.IsBoss && (r.Email.Contains(context) || r.UserName.Contains(context)));
                 customers = customersFiltter.ToList();
             }
             List<DbBooking> bookings = new List<DbBooking>();
@@ -157,12 +157,12 @@ namespace App.Infrastructure.ServiceHandler.Common
             var customers = new List<DbCustomer>();
             if (string.IsNullOrWhiteSpace(context))
             {
-                var allcust = await _customerRepository.GetManyAsync(r => r.ShopId == shopId && !r.IsBoss);
+                var allcust = await _customerRepository.GetManyAsync(r => r.ShopId == shopId && r.IsBoss);
                 customers = allcust.ToList();
             }
             else
             {
-                var customersFiltter = await _customerRepository.GetManyAsync(r => r.ShopId == shopId && !r.IsBoss && (r.Email.Contains(context) || r.UserName.Contains(context)));
+                var customersFiltter = await _customerRepository.GetManyAsync(r => r.ShopId == shopId && r.IsBoss && (r.Email.Contains(context) || r.UserName.Contains(context)));
                 customers = customersFiltter.ToList();
             }
             List<DbBooking> bookings = new List<DbBooking>();

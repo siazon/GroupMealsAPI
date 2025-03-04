@@ -1313,10 +1313,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             foreach (var item in bookings)
             {
-                string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(item.RestaurantTimeZone).ToString("yyyy-MM-dd HH:mm");
+                string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(item.RestaurantTimeZone).ToString("yyyy-MMM-dd HH:mm");
+                string Menu = item.Courses[0].MenuItemName;
                 var boss = await _customerRepository.GetOneAsync(a => a.Email == item.RestaurantEmail);
                 string token = boss.DeviceToken;
-                string body = $"{msgBody}: {item.RestaurantName} {selectDateTimeStr}";
+                string body = $"{item.Courses[0].MenuItemName}*{item.Courses[0].Qty} {selectDateTimeStr}";
                 MsgTypeEnum msgTypeEnum = MsgTypeEnum.Text;
                 switch (item.Status)
                 {
