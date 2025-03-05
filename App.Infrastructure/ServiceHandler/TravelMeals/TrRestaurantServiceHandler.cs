@@ -527,7 +527,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             Guard.NotNull(restaurant);
             var cacheKey = string.Format("motionmedia-{1}-{0}-{2}", shopId, typeof(TrDbRestaurant).Name, 50);
             KeyValuePair<string, IEnumerable<TrDbRestaurant>> cityRes = new KeyValuePair<string, IEnumerable<TrDbRestaurant>>();
+            var cacheKey1 = string.Format("motionmedia-{1}-{0}-{2}", shopId, typeof(TrDbRestaurant).Name, 30);
             _memoryCache.Set(cacheKey, cityRes);
+            _memoryCache.Set(cacheKey1, cityRes);
 
             var citycacheKey = string.Format("motionmedia-{1}-{0}", shopId, "cities");
             _memoryCache.Set<string>(citycacheKey, null);
