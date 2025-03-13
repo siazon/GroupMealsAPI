@@ -41,11 +41,15 @@ namespace KingfoodIO.Controllers.Common
         public async Task<IActionResult> ListMsgs(int shopId)
         {
             var authHeader = Request.Headers["Wauthtoken"];
+            var version= Request.Headers["Client-Version"];
+            string clinet = "";
+            if (!StringValues.IsNullOrEmpty(version))
+                clinet= version.ToString();
             DbToken user = new DbToken() { UserId=null};
             if (!StringValues.IsNullOrEmpty(authHeader))
                 user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             return await ExecuteAsync(shopId, false,
-                async () => await _msgPusherServiceHandler.ListMsgs(shopId, user));
+                async () => await _msgPusherServiceHandler.ListMsgs(shopId, user,clinet));
         }
         /// <summary>
         /// Status 0:新消息，1:已读消息

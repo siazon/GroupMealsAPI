@@ -207,7 +207,7 @@ namespace KingfoodIO.Controllers.Common
         [ProducesResponseType(typeof(string), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> CheckBossAppVersion(int shopId)
         {
-            return await ExecuteAsync(shopId, false, async () => await _utilServiceHandler.CheckAppVersion(shopId));
+            return await ExecuteAsync(shopId, false, async () => await _utilServiceHandler.CheckBossAppVersion(shopId));
         }
 
         [HttpGet]

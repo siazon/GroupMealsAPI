@@ -46,7 +46,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                 return new ResponseModel { msg = "ok",code=200, data = new { version, appUrl, minVersion,msg= appMsg } };
             }
             return new ResponseModel { msg = "error",code=501, data = null };
-        }
+        } 
         public async Task<ResponseModel> CheckBossAppVersion(int shopId)
         {
             var shop = await _shopServiceHandler.GetBasicShopInfo(shopId);
