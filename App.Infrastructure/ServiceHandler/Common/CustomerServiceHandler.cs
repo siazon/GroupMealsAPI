@@ -89,7 +89,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         IHostingEnvironment _environment;
         IMemoryCache _memoryCache;
 
-        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1, 
+        public CustomerServiceHandler(IDbCommonRepository<DbCustomer> customerRepository, IAmountCalculaterUtil amountCalculaterV1,
             IMemoryCache memoryCache, IDbCommonRepository<DbBooking> bookingRepository, IDbCommonRepository<DbDeviceToken> deviceTokenRepository,
         ITwilioUtil twilioUtil, ILogManager logger, IHostingEnvironment environment, IEncryptionHelper encryptionHelper, IDateTimeUtil dateTimeUtil, IDbCommonRepository<TrDbRestaurant> restaurantRepository,
         IDbCommonRepository<DbShop> shopRepository, IDbCommonRepository<DbShopContent> shopContentRepository, IContentBuilder contentBuilder, ISendEmailUtil emailUtil, IDbCommonRepository<DbSetting> settingRepository)
@@ -101,7 +101,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             _shopRepository = shopRepository;
             _shopContentRepository = shopContentRepository;
             _bookingRepository = bookingRepository;
-            _deviceTokenRepository=deviceTokenRepository;
+            _deviceTokenRepository = deviceTokenRepository;
             _contentBuilder = contentBuilder;
             _emailUtil = emailUtil;
             _twilioUtil = twilioUtil;
@@ -153,6 +153,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         }
         public async Task<List<DbCustomer>> ListBossUsers(int shopId, string context)
         {
+
             Guard.GreaterThanZero(shopId);
             var customers = new List<DbCustomer>();
             if (string.IsNullOrWhiteSpace(context))
@@ -169,23 +170,24 @@ namespace App.Infrastructure.ServiceHandler.Common
             string token = "";
             while (token != null)
             {
-                var temo = await _bookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None), 500, token);
+                var temo = await _bookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None), 1000, token);
                 var list = temo.Value.ToList();
                 bookings.AddRange(list);
                 token = temo.Key;
             }
 
+           
 
             List<TrDbRestaurant> restaurants = new List<TrDbRestaurant>();
             token = "";
             while (token != null)
             {
-                var temo = await _restaurantRepository.GetManyAsync(a => (1 == 1), 500, token);
+                var temo = await _restaurantRepository.GetManyAsync(a => (1 == 1), 1000, token);
                 var list = temo.Value.ToList();
                 restaurants.AddRange(list);
                 token = temo.Key;
             }
-
+        
             var cust = customers.OrderByDescending(r => r.AuthValue);
             var returnCustomers = cust.ToList();
             int aaa = 0;
@@ -196,7 +198,7 @@ namespace App.Infrastructure.ServiceHandler.Common
 
                 item.BookingQty = count;
 
-                var rests = restaurants.FindAll(a => a.Users.Contains(item.Email));
+                var rests = restaurants.FindAll(a => { if (a.Users != null) return a.Users.Contains(item.Email); else return false; });
                 if (rests != null)
                 {
                     List<string> reststrs = new List<string>();
@@ -236,8 +238,8 @@ namespace App.Infrastructure.ServiceHandler.Common
         }
         public async Task<ResponseModel> AsyncToken(string email, string token)
         {
-            _logger.LogDebug("AsyncToken: "+token);
-            DbDeviceToken deviceToken = new DbDeviceToken() { Id=Guid.NewGuid().ToString(),Token=token };
+            _logger.LogDebug("AsyncToken: " + token);
+            DbDeviceToken deviceToken = new DbDeviceToken() { Id = Guid.NewGuid().ToString(), Token = token };
             await _deviceTokenRepository.UpsertAsync(deviceToken);
             if (string.IsNullOrWhiteSpace(email))
             {
@@ -430,7 +432,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             customer.InitPassword = newpwd;
             var updatedCustomer = await _customerRepository.UpsertAsync(customer);
             updatedCustomer.Password = newpwd;
-            await _emailUtil.EmailSystemMessage($"您账号[{email}]的最新密码为：{newpwd}",  email, "system_message", "密码重置");
+            await _emailUtil.EmailSystemMessage($"您账号[{email}]的最新密码为：{newpwd}", email, "system_message", "密码重置");
             return new ResponseModel() { msg = "ok", code = 200, data = updatedCustomer };
         }
         public async Task<ResponseModel> ResetPassword(string email, string resetCode, string password, int shopId)
@@ -561,9 +563,10 @@ namespace App.Infrastructure.ServiceHandler.Common
             var savedCustomer = await _customerRepository.UpsertAsync(existingCustomer);
             return new ResponseModel() { msg = "ok", code = 200, data = savedCustomer.ClearForOutPut() };
         }
-        private void UpdateAmountInfo(DbBooking item, ItemPayInfo itemPayInfo) {
-            if (item.AmountInfos.Count > 0&& !string.IsNullOrWhiteSpace(item.AmountInfos[0].Id))
-                itemPayInfo.Id = item.AmountInfos[0].Id; 
+        private void UpdateAmountInfo(DbBooking item, ItemPayInfo itemPayInfo)
+        {
+            if (item.AmountInfos.Count > 0 && !string.IsNullOrWhiteSpace(item.AmountInfos[0].Id))
+                itemPayInfo.Id = item.AmountInfos[0].Id;
             else
                 itemPayInfo.Id = Guid.NewGuid().ToString();
             item.AmountInfos.Clear();

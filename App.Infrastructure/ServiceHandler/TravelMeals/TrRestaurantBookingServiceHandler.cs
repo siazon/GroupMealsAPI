@@ -101,7 +101,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<ResponseModel> SearchBookingsV1(int shopId, string userId, string content, int pageSize = -1, string continuationToke = null);
         Task<ResponseModel> SearchBookings(int shopId, DbToken user, string content, int pageSize = -1, string continuationToken = null);
         Task<ResponseModel> SearchBookingsByRestaurant(int shopId, string email, string content, int filterTime, DateTime stime, DateTime etime, List<int> status, int pageSize = -1, string continuationToken = null);
-        Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, int filterTime, DateTime stime, DateTime etime, int status, int pageSize = -1, string continuationToken = null);
+        Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, int filterTime, DateTime stime, DateTime etime, List<int> status, int pageSize = -1, string continuationToken = null);
         Task<List<DbBooking>> PlaceBooking(List<DbBooking> cartInfos, int shopId, DbCustomer user, IntentTypeEnum intentType);
         ResponseModel GetBookingItemAmount(List<BookingCourse> menuItems, PaymentTypeEnum paymentType, double payRate);
         ResponseModel GetBookingItemAmountV1(BookingCalculateVO bookingCalculateVO, PaymentTypeEnum rewardType, double reward, bool isOldCustomer, double vat);
@@ -1721,7 +1721,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = res };
         }
-        public async Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, int filterTime, DateTime stime, DateTime etime, int status, int pageSize = -1, string continuationToken = null)
+        public async Task<ResponseModel> SearchBookingsByAdmin(int shopId, string content, int filterTime, DateTime stime, DateTime etime, List<int> status, int pageSize = -1, string continuationToken = null)
         {
             List<DbBooking> res = new List<DbBooking>();
             string pageToken = "";
@@ -1729,7 +1729,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             bool emptyTime = stime == DateTime.MinValue || etime == DateTime.MinValue;
             if (string.IsNullOrWhiteSpace(content))
             {
-                if (status == 6)
+                if (status[0] == 6)
                 {
                     if (emptyTime)
                     {
@@ -1756,7 +1756,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     }
 
                 }
-                else if (status == -1)
+                else if (status[0] == -1)
                 {
                     if (emptyTime)
                     {
@@ -1785,7 +1785,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 {
                     if (emptyTime)
                     {
-                        Bookings = await _bookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted), pageSize, continuationToken);
+                        Bookings = await _bookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && a.Status == (OrderStatusEnum)status[0] && !a.IsDeleted), pageSize, continuationToken);
                         res = Bookings.Value.ToList();
 
                     }
@@ -1795,14 +1795,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         if (filterTime == 1)
                         {
                             Bookings = await _bookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted &&
-                            a.SelectDateTime > stime && a.SelectDateTime <= etime && a.Status == (OrderStatusEnum)status), pageSize, continuationToken);
+                            a.SelectDateTime > stime && a.SelectDateTime <= etime && a.Status == (OrderStatusEnum)status[0]), pageSize, continuationToken);
                             res = Bookings.Value.ToList();
 
                         }
                         else
                         {
                             Bookings = await _bookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None && !a.IsDeleted &&
-                            a.Created > stime && a.Created <= etime && a.Status == (OrderStatusEnum)status), pageSize, continuationToken);
+                            a.Created > stime && a.Created <= etime && a.Status == (OrderStatusEnum)status[0]), pageSize, continuationToken);
                             res = Bookings.Value.ToList();
 
                         }

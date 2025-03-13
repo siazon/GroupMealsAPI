@@ -366,11 +366,11 @@ namespace KingfoodIO.Controllers.TravelMeals
         [HttpPost]
         [ServiceFilter(typeof(AuthActionFilter))]
         [ProducesResponseType(typeof(List<DbBooking>), (int)HttpStatusCode.OK)]
-        public async Task<IActionResult> SearchBookingsByAdmin([FromBody] string pageToken, int shopId, string content, int filterTime, DateTime stime, DateTime etime, int status, int pageSize = -1, bool cache = false)
+        public async Task<IActionResult> SearchBookingsByAdmin([FromBody] BookingQueryRestaurantVO queryParams, int shopId,  bool cache = false)
         {
 
             return await ExecuteAsync(shopId, cache,
-                async () => await _restaurantBookingServiceHandler.SearchBookingsByAdmin(shopId, content, filterTime, stime, etime, status, pageSize, pageToken));
+                async () => await _restaurantBookingServiceHandler.SearchBookingsByAdmin(shopId, queryParams.content, queryParams.filterTime, queryParams.stime, queryParams.etime, queryParams.status, queryParams.pageSize, queryParams.continuationToken));
         }
 
 
