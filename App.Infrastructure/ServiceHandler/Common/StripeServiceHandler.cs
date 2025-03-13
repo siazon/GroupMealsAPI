@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Schema;
 
 namespace App.Infrastructure.ServiceHandler.Common
 {
@@ -209,8 +210,11 @@ namespace App.Infrastructure.ServiceHandler.Common
                     ReturnUrl = "https://www.groupmeals.com",
                     Metadata = meta
                 };
+
                 var service = new PaymentIntentService();
-                service.Create(options);
+
+                var payment= service.Create(options);
+                _logger.LogDebug($"SetupPaymentAction.{paymentInfo.Id}.{payment.ToString()}");
             }
             catch (StripeException e)
             {
