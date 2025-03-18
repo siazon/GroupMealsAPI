@@ -61,6 +61,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId);
         Task<ResponseModel> DeleteRestaurant(string id, string email, string pwd, int shopId);
         Task<ResponseModel> GetBossInfoInRestaurant(int shopId);
+        Task<List<TrDbRestaurant>> GetAllRestaurants(bool refreshCache = false);
 
     }
 
@@ -79,12 +80,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         ITwilioUtil _twilioUtil;
         IMemoryCache _memoryCache;
 
-        private ITrRestaurantBookingServiceHandler _trRestaurantBookingServiceHandler;
         ILogManager _logger;
 
         public TrRestaurantServiceHandler(IDbCommonRepository<TrDbRestaurant> restaurantRepository, IDateTimeUtil dateTimeUtil, ILogManager logger, ITwilioUtil twilioUtil,
            IDbCommonRepository<DbShop> shopRepository, ITrBookingDataSetBuilder bookingDataSetBuilder, IEncryptionHelper encryptionHelper, IDbCommonRepository<DbCustomer> customerRepository,
-        ITrRestaurantBookingServiceHandler trRestaurantBookingServiceHandler, IMemoryCache memoryCache,
+        IMemoryCache memoryCache,
             IContentBuilder contentBuilder, IEmailUtil emailUtil, ICountryServiceHandler countryRepository)
         {
             _restaurantRepository = restaurantRepository;
@@ -95,7 +95,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _contentBuilder = contentBuilder;
             _emailUtil = emailUtil;
             _twilioUtil = twilioUtil;
-            _trRestaurantBookingServiceHandler = trRestaurantBookingServiceHandler;
             _logger = logger;
             _memoryCache = memoryCache;
             _encryptionHelper = encryptionHelper;
@@ -174,7 +173,9 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
                     }
                     else
-                        currentPage = await _restaurantRepository.GetManyAsync(s => s.StoreName.ToLower().Contains(lowContent) || s.Address.ToLower().Contains(lowContent) || s.Description.ToLower().Contains(lowContent) || s.Tags.Any(b => b.ToLower().Contains(lowContent)) || s.Attractions.Any(b => b.ToLower().Contains(lowContent)), pageSize, continuationToke);
+                        currentPage = await _restaurantRepository.GetManyAsync(s => s.StoreName.ToLower().Contains(lowContent) ||
+                        s.Address.ToLower().Contains(lowContent) || s.Description.ToLower().Contains(lowContent) || s.Tags.Any(b => b.ToLower().Contains(lowContent)) ||
+                        s.Attractions.Any(b => b.ToLower().Contains(lowContent)), pageSize, continuationToke);
                 }
 
                 if (!IsAdmin)
@@ -191,6 +192,27 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             return new ResponseModel { msg = "ok", code = 200, token = continuationToke, data = resdata };
         }
+        public async Task<List<TrDbRestaurant>> GetAllRestaurants(bool refreshCache = false)
+        {
+            var restaurants = new List<TrDbRestaurant>();
+            var cacheKey = string.Format("motionmedia-All{0}", typeof(TrDbRestaurant).Name);
+            if (refreshCache)
+                _memoryCache.Set<List<TrDbRestaurant>>(cacheKey, null);
+            var cacheResult = _memoryCache.Get<List<TrDbRestaurant>>(cacheKey);
+            if (cacheResult != null && cacheResult.Count() > 0)
+            {
+                return restaurants;
+            }
+            string token = "";
+            while (token != null)
+            {
+                var res = await _restaurantRepository.GetManyAsync(a => (1 == 1), 1000, token);
+                restaurants.AddRange(res.Value);
+                token = res.Key;
+            }
+            return restaurants;
+
+        }
         public async Task<ResponseModel> GetRestaurants(int shopId, string country, string city, string content, DbToken userInfo,
             int pageSize = -1, string continuationToke = null)
         {
@@ -203,6 +225,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //    item.Images.Add(item.Image);
             //}
             response.data = res;
+            if (userInfo.UserEmail == "siazonchen@outlook.com")
+                response.data = resdata;
             return response;
         }
 
@@ -657,6 +681,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
 
         }
-      
+
     }
 }

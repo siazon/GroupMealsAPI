@@ -155,6 +155,8 @@ namespace KingfoodIO.Controllers.Common
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<object> CloseAccount(int shopId,string email, string pwd)
         {
+            string rawRequestBody = await Request.GetRawBodyAsync();
+            _logger.LogDebug("Customer.CloseAccount: " + rawRequestBody);
             var authHeader = Request.Headers["Wauthtoken"];
             var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             var passwordEncode = _encryptionHelper.EncryptString(pwd);
@@ -330,6 +332,8 @@ namespace KingfoodIO.Controllers.Common
         [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
         public async Task<IActionResult> Delete([FromBody] DbCustomer item, string pwd, int shopId)
         {
+            string rawRequestBody = await Request.GetRawBodyAsync();
+            _logger.LogDebug("Customer.Delete: " + rawRequestBody);
             var authHeader = Request.Headers["Wauthtoken"];
             var userInfo = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
             string email = userInfo.UserEmail;

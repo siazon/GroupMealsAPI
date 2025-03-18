@@ -109,6 +109,7 @@ namespace App.Domain.TravelMeals
         public string RestaurantAddress { get; set; }
         public string RestaurantPhone { get; set; }
         public string EmergencyPhone { get; set; }
+        public string PrivatePhone { get; set; }
         public string RestaurantWechat { get; set; }
         public string RestaurantEmail { get; set; }
         public string RestaurantCountry { get; set; }

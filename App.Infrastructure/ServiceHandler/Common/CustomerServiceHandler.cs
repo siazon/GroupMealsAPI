@@ -57,7 +57,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         Task<ResponseModel> ResetPassword(string email, string resetCode, string password, int shopId);
         Task<ResponseModel> ResetPasswordRestaurant(string email, int shopId);
         Task<ResponseModel> UpdatePassword(string email, string oldPassword, string password, int shopId);
-
+        Task<List<DbCustomer>> GetAllUsers(bool refreshCache = false);
         Task<DbCustomer> UpdateAccount(DbCustomer customer, int shopId);
         Task<DbCustomer> RefreshCartInfo(DbCustomer customer);
 
@@ -126,30 +126,10 @@ namespace App.Infrastructure.ServiceHandler.Common
                 var customersFiltter = await _customerRepository.GetManyAsync(r => r.ShopId == shopId && !r.IsBoss && (r.Email.Contains(context) || r.UserName.Contains(context)));
                 customers = customersFiltter.ToList();
             }
-            List<DbBooking> bookings = new List<DbBooking>();
-            string token = "";
-            while (token != null)
-            {
-                var temo = await _bookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None), 500, token);
-                var list = temo.Value.ToList();
-                bookings.AddRange(list);
-                token = temo.Key;
-            }
-            var cust = customers.OrderByDescending(r => r.AuthValue);
-            var returnCustomers = cust.ToList();
-            int aaa = 0;
-            foreach (var item in returnCustomers)
-            {
-                int count = 0;
-
-                count = bookings.ToList().FindAll(a => a.Creater == item.Id).Count;
-
-                item.BookingQty = count;
-                aaa += count;
-            }
+           
 
 
-            return returnCustomers.ClearForOutPut();
+            return customers.ClearForOutPut();
         }
         public async Task<List<DbCustomer>> ListBossUsers(int shopId, string context)
         {
@@ -166,56 +146,30 @@ namespace App.Infrastructure.ServiceHandler.Common
                 var customersFiltter = await _customerRepository.GetManyAsync(r => r.ShopId == shopId && r.IsBoss && (r.Email.Contains(context) || r.UserName.Contains(context)));
                 customers = customersFiltter.ToList();
             }
-            List<DbBooking> bookings = new List<DbBooking>();
+          
+            return customers.ClearForOutPut();
+        }
+        public async Task<List<DbCustomer>> GetAllUsers(bool refreshCache = false)
+        {
+            var users = new List<DbCustomer>();
+            var cacheKey = string.Format("motionmedia-All{0}", typeof(DbCustomer).Name);
+            if (refreshCache)
+                _memoryCache.Set<List<DbCustomer>>(cacheKey, null);
+            var cacheResult = _memoryCache.Get<List<DbCustomer>>(cacheKey);
+            if (cacheResult != null && cacheResult.Count() > 0)
+            {
+                return users;
+            }
             string token = "";
             while (token != null)
             {
-                var temo = await _bookingRepository.GetManyAsync(a => (a.Status != OrderStatusEnum.None), 1000, token);
-                var list = temo.Value.ToList();
-                bookings.AddRange(list);
-                token = temo.Key;
+                var res = await _customerRepository.GetManyAsync(a => (1 == 1), 1000, token);
+                users.AddRange(res.Value);
+                token = res.Key;
             }
+            return users;
 
-           
-
-            List<TrDbRestaurant> restaurants = new List<TrDbRestaurant>();
-            token = "";
-            while (token != null)
-            {
-                var temo = await _restaurantRepository.GetManyAsync(a => (1 == 1), 1000, token);
-                var list = temo.Value.ToList();
-                restaurants.AddRange(list);
-                token = temo.Key;
-            }
-        
-            var cust = customers.OrderByDescending(r => r.AuthValue);
-            var returnCustomers = cust.ToList();
-            int aaa = 0;
-            foreach (var item in returnCustomers)
-            {
-                int count = 0;
-                count = bookings.ToList().FindAll(a => a.RestaurantEmail.ToLower().Trim() == item.Email.ToLower().Trim()).Count;
-
-                item.BookingQty = count;
-
-                var rests = restaurants.FindAll(a => { if (a.Users != null) return a.Users.Contains(item.Email); else return false; });
-                if (rests != null)
-                {
-                    List<string> reststrs = new List<string>();
-                    foreach (var rest in rests)
-                    {
-                        if (!reststrs.Contains(rest.StoreName))
-                            reststrs.Add(rest.StoreName);
-                    }
-                    item.Restaurants = string.Join(",\r\n", reststrs);
-                }
-
-                aaa += count;
-            }
-
-            return returnCustomers.ClearForOutPut();
         }
-
         public async Task<DbCustomer> GetCustomer(string userId, int shopId)
         {
             Guard.GreaterThanZero(shopId);
@@ -313,7 +267,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                 {
                     existingCustomer.AuthValue = existingCustomer.AuthValue.SetBit(1);
                 }
-                return new ResponseModel() { msg = "用户已注册，请使用密码登录", code = 501 };
+                return new ResponseModel() { msg = "用户已注册，请点击修改绑定目标邮件地址", code = 501 };
             }
             else
             {
@@ -388,7 +342,7 @@ namespace App.Infrastructure.ServiceHandler.Common
             _emailUtil.EmailVerifyCode(email, code, shopInfo, emailParams.TemplateName, _environment.WebRootPath, emailParams.Subject, "Verity Code", "注册验证码");
             Task.Run(() =>
             {
-                Thread.Sleep(60 * 5000);
+                Thread.Sleep(3*60 * 1000);
                 resetCode(cacheKey);
             });
             return new ResponseModel() { msg = "ok", code = 200 };

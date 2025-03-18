@@ -110,6 +110,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         void SetupPaymentAction(string billId, string userId);
         void BookingCharged(string billId, string bookingIds, string ChargeId, string ReceiptUrl);
         void BookingChargedOld(string billId, string ChargeId, string ReceiptUrl);
+        Task<List<DbBooking>> GetAllBookings(bool refreshCache = false);
         void SettleOrder();
     }
     public class TrRestaurantBookingServiceHandler : ITrRestaurantBookingServiceHandler
@@ -126,6 +127,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private readonly ICountryServiceHandler _countryHandler;
         private readonly IShopServiceHandler _shopServiceHandler;
         private readonly IContentBuilder _contentBuilder;
+        ITrRestaurantServiceHandler _trRestaurantServiceHandler;
         ISendEmailUtil _sendEmailUtil;
         ILogManager _logger;
         ITwilioUtil _twilioUtil;
@@ -141,8 +143,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         IMsgPusherServiceHandler _msgPusherServiceHandler;
 
         public TrRestaurantBookingServiceHandler(ITwilioUtil twilioUtil, IDbCommonRepository<TrDbRestaurant> restaurantRepository,
-            IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository,
-            IDbCommonRepository<DbCustomer> customerRepository, GMWebSocketManager webSocketManager, IMsgPusherServiceHandler msgPusherServiceHandler,
+            IDbCommonRepository<TrDbRestaurantBooking> restaurantBookingRepository, ITrRestaurantServiceHandler trRestaurantServiceHandler,
+        IDbCommonRepository<DbCustomer> customerRepository, GMWebSocketManager webSocketManager, IMsgPusherServiceHandler msgPusherServiceHandler,
             IDbCommonRepository<DbShop> shopRepository, ICustomerServiceHandler customerServiceHandler, IStripeUtil stripeUtil, IMemoryCache memoryCache,
             IShopServiceHandler shopServiceHandler, IStripeServiceHandler stripeServiceHandler, ICountryServiceHandler countryHandler,
             IDbCommonRepository<StripeCheckoutSeesion> stripeCheckoutSeesionRepository, IDateTimeUtil dateTimeUtil, IAmountCalculaterUtil amountCalculaterV1,
@@ -152,6 +154,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         {
             _restaurantRepository = restaurantRepository;
             _restaurantBookingRepository = restaurantBookingRepository;
+            _trRestaurantServiceHandler = trRestaurantServiceHandler;
             _stripeCheckoutSeesionRepository = stripeCheckoutSeesionRepository;
             _bookingRepository = bookingRepository;
             _paymentRepository = paymentRepository;
@@ -1338,7 +1341,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     Title = title,
                     Body = body,
                     ReferenceId = item.GroupRef,
-                    OrderStatus=item.Status,
+                    OrderStatus = item.Status,
                     MsgType = msgTypeEnum,
                     DeviceToken = token
                 };
@@ -1353,7 +1356,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     Title = title,
                     Message = body,
                     MessageReference = item.BookingRef,
-                    OrderStauts=item.Status,
+                    OrderStauts = item.Status,
                     Receiver = item.RestaurantEmail,
                     Sender = "GroupMeals",
                     ShopId = item.ShopId
@@ -1384,7 +1387,6 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private async void ModifybookingNotification(DbBooking booking)
         {
             PushFCMMessage(new List<DbBooking>() { booking }, "Booking Modified", "You got a modified booking");
-            return;
             var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
             if (shopInfo == null)
             {
@@ -1825,9 +1827,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             }
 
-
+            var rests = await _trRestaurantServiceHandler.GetAllRestaurants();
             pageToken = Bookings.Key;
-            //res.ForEach(r => { r.Details.OrderByDescending(d => d.SelectDateTime); });
+            res.ForEach(r =>
+            {
+                var resRest = rests.FirstOrDefault(a => a.Id == r.RestaurantId);
+                if (resRest != null)
+                    r.PrivatePhone = resRest.PrivatePhone;
+            });
             //var list = res.OrderByDescending(a => a.Created).ToList();
 
             return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = res };
@@ -2300,7 +2307,12 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         public async Task<bool> OrderCheck()
         {
-            autoPayment();
+            Task.Run(() => { autoPayment(); }); 
+            
+            Task.Run(() => { RefereshBookinginfoToUser(); });
+          
+
+        
             //return true;
 
             ////updateRest();
@@ -2389,6 +2401,75 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //        SetupPaymentAction(item.Id, item.Creater);
             //    }
             //}
+        }
+        public async Task<List<DbBooking>> GetAllBookings(bool refreshCache = false)
+        {
+            var restaurants = new List<DbBooking>();
+            var cacheKey = string.Format("motionmedia-All{0}", typeof(DbBooking).Name);
+            if (refreshCache)
+                _memoryCache.Set<List<DbBooking>>(cacheKey, null);
+            var cacheResult = _memoryCache.Get<List<DbBooking>>(cacheKey);
+            if (cacheResult != null && cacheResult.Count() > 0)
+            {
+                return restaurants;
+            }
+            string token = "";
+            while (token != null)
+            {
+                var res = await _bookingRepository.GetManyAsync(a => (1 == 1), 1000, token);
+                restaurants.AddRange(res.Value);
+                token = res.Key;
+            }
+            return restaurants;
+
+        }
+        private async void RefereshBookinginfoToUser()
+        {
+
+            var customers = await _customerServiceHandler.GetAllUsers(true);
+            List<DbBooking> bookings = await GetAllBookings(true);
+            List<TrDbRestaurant> restaurants = await _trRestaurantServiceHandler.GetAllRestaurants(true);//  new List<TrDbRestaurant>();
+           
+            foreach (var item in customers)
+            {
+                int change = 0;
+                int count = 0;
+                count = bookings.ToList().FindAll(a => a.RestaurantEmail.ToLower().Trim() == item.Email.ToLower().Trim()).Count;
+
+                if (item.IsBoss)
+                {
+                    if (item.BookingQty != count)
+                        change++;
+                    item.BookingQty = count;
+                }
+                else
+                {
+                    count = bookings.ToList().FindAll(a => a.Creater == item.Id).Count;
+                    if (item.BookingQty != count)
+                        change++;
+                    item.BookingQty = count;
+                }
+
+                var rests = restaurants.FindAll(a => { if (a.Users != null) return a.Users.Contains(item.Email); else return false; });
+                if (rests != null)
+                {
+                    List<string> reststrs = new List<string>();
+                    foreach (var rest in rests)
+                    {
+                        if (!reststrs.Contains(rest.StoreName))
+                            reststrs.Add(rest.StoreName);
+                    }
+                    string rts = string.Join(",\r\n", reststrs);
+                    if (item.Restaurants != rts)
+                        change++;
+                    item.Restaurants = rts;
+                }
+                if (change == 0)
+                    continue;
+                await _customerRepository.UpsertAsync(item);
+                Thread.Sleep(50);
+            }
+
         }
         public async void asyncBooking()
         {

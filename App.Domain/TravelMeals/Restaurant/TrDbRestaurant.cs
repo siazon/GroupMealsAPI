@@ -25,7 +25,7 @@ namespace App.Domain.TravelMeals.Restaurant
         public string DescriptionHtmlCn { get; set; }
         public string PhoneNumber { get; set; }
         public string ContactPhone { get; set; }
-        public string PravitePhone {  get; set; }
+        public string PrivatePhone { get; set; }
         public string Wechat { get; set; }
         public int Rating { get; set; }
         public RestaurantCategoryEnum FoodCategory { get; set; }
