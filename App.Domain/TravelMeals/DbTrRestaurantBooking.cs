@@ -41,7 +41,14 @@ namespace App.Domain.TravelMeals
     }
     public class DbPaymentInfo : PaymentInfo
     {
+        public override string ToString()
+        {
+            if(BookingDtls!=null&& BookingDtls.Count>0)
+            return $"Id:{Id},BookingId:{BookingDtls[0].BookingId},Currency:{Currency},Amount:{Amount}";
+            else
+                return $"Id:{Id},BookingId:BookingDtls is null,Currency:{Currency},Amount:{Amount}";
 
+        }
     }
     public class DbOpearationInfo : OperationInfo
     {
@@ -63,30 +70,8 @@ namespace App.Domain.TravelMeals
         public string oldValue { get; set; }
         public string newValue { get; set; }
     }
-    public class AmountInfo
-    {
-        public string Id { get; set; }
-        //public string PaymentId { get; set; }
-        public decimal Amount { get; set; }
-        public decimal PaidAmount { get; set; }
-        public decimal Reward { get; set; }
-        private decimal _unpaid;
 
-        public decimal Unpaid
-        {
-            get
-            {
-                _unpaid = Amount - PaidAmount - Reward;
-                return _unpaid;
-            }
-            set { _unpaid = value; }
-        }
-
-    }
-    public enum PaymentStatusEnum
-    {
-        NoPayment, Unpaid, Paid
-    }
+  
     public class PaymentInfo : StripeBase
     {
         public int? PaymentType { get; set; }//0：订单结束扣款，1：24小时扣款
@@ -98,6 +83,7 @@ namespace App.Domain.TravelMeals
         public DateTime CheckoutTime { get; set; }
         public List<PaymentBookingDtl> BookingDtls { get; set; } = new List<PaymentBookingDtl>();
         public List<PaymentBookingDtl> RefundBookingDtls { get; set; } = new List<PaymentBookingDtl>();
+     
     }
     public class PaymentBookingDtl {
         public string BookingId { get; set; }

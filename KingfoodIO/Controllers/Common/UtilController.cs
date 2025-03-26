@@ -40,7 +40,8 @@ namespace KingfoodIO.Controllers.Common
         private readonly AzureStorageConfig storageConfig;
         IUtilServiceHandler _utilServiceHandler;
         ILogManager logger;
-        public UtilController(IOptions<CacheSettingConfig> cachesettingConfig, IMemoryCache memoryCache, IRedisCache redisCache, GMWebSocketManager webSocketManager,
+        IFCMUtil _FCMUtil;
+        public UtilController(IOptions<CacheSettingConfig> cachesettingConfig, IMemoryCache memoryCache, IRedisCache redisCache, GMWebSocketManager webSocketManager, IFCMUtil FCMUtil,
         IUtilServiceHandler utilServiceHandler, IOptions<AzureStorageConfig> _storageConfig, ILogManager logger) : base(cachesettingConfig, memoryCache, redisCache, logger)
         {
             this.logger = logger;
@@ -48,6 +49,7 @@ namespace KingfoodIO.Controllers.Common
             storageConfig = _storageConfig.Value;
             _utilServiceHandler = utilServiceHandler;
             _webSocketManager= webSocketManager;
+            _FCMUtil= FCMUtil;
         }
 
         /// <summary>
@@ -144,7 +146,7 @@ namespace KingfoodIO.Controllers.Common
         //[ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> FCMMessageSender([FromBody] FCMMessage FCMParams, int shopId)
         {
-            var res = await FCMSender.SendMsg(FCMParams);
+            var res = await _FCMUtil.SendMsg(FCMParams);
             if (string.IsNullOrWhiteSpace(res))
             {
                 return Json(new { msg = "ok", code = 200 });

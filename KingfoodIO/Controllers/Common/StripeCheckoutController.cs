@@ -109,14 +109,11 @@ namespace KingfoodIO.Controllers.Common
             {
                 checkoutParam.Amount *= 100;
                 _logger.LogDebug("Create");
-                Console.WriteLine("Create");
                 string productId = _stripeUtil.GetProductId(checkoutParam.PayName, checkoutParam.PayDesc);
 
                 _logger.LogDebug("productId:" + productId);
-                Console.WriteLine("productId:" + productId);
                 string priceId = _stripeUtil.GetPriceId(productId, checkoutParam.Amount, checkoutParam.Payment);
                 _logger.LogDebug("priceId:" + priceId);
-                Console.WriteLine("priceId:" + priceId);
                 string sessionUrl = "";
                 var res = _trRestaurantBookingServiceHandler.UpdateBooking(checkoutParam.BillId, productId, priceId);
                 if (res.Result)
@@ -124,12 +121,11 @@ namespace KingfoodIO.Controllers.Common
                     sessionUrl = _stripeUtil.Pay(priceId, checkoutParam.Amount);
                 }
                 _logger.LogDebug("sessionUrl:" + sessionUrl);
-                Console.WriteLine("sessionUrl:" + sessionUrl);
                 return sessionUrl;
             }
             catch (Exception ex)
             {
-                _logger.LogInfo("StripeException.Error" + ex.Message);
+                _logger.LogError("StripeException.Error" + ex.Message);
                 return "";
             }
         }
@@ -188,7 +184,6 @@ namespace KingfoodIO.Controllers.Common
 
 
             _logger.LogInfo("webhook:" + json.ToString());
-            Console.WriteLine("CXS WebHook:" + json);
             string billId = "";
             string userId = "";
             string bookingIds = "";
@@ -332,8 +327,7 @@ namespace KingfoodIO.Controllers.Common
             }
             catch (StripeException e)
             {
-                _logger.LogInfo("StripeException.Error" + e.Message);
-                _logger.LogInfo("StripeException.Error" + e);
+                _logger.LogError("StripeException.Error" + e.Message);
                 return BadRequest("webhook.error"+ e.Message);
             }
         }
@@ -358,7 +352,7 @@ namespace KingfoodIO.Controllers.Common
             }
             catch (Exception ex)
             {
-                _logger.LogInfo("StripeException.Error" + ex.Message);
+                _logger.LogError("StripeException.Error" + ex.Message);
                 return BadRequest(ex.Message);
             }
         }

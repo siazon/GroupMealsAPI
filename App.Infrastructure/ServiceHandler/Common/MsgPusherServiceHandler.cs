@@ -24,7 +24,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         Task<PushMsgModel> AddMsg(PushMsgModel menu);
         Task<PushMsgModel> UpdateMsg(PushMsgModel menu);
         Task<bool> DeleteMsg(string id);
-        Task<PushMsgModel> TagMsg(string id,int status);
+        Task<PushMsgModel> TagMsg(string id, int status);
 
     }
 
@@ -46,22 +46,32 @@ namespace App.Infrastructure.ServiceHandler.Common
             _emailUtil = emailUtil;
         }
 
-        public async Task<List<PushMsgModel>> ListMsgs(int shopId, DbToken user,string client)
+        public async Task<List<PushMsgModel>> ListMsgs(int shopId, DbToken user, string client)
         {
+            List<PushMsgModel> res=new List<PushMsgModel>();
             Guard.GreaterThanZero(shopId);
-            //if(client=="") TODO
-            var customers = await _msgRepository.GetManyAsync(r => r.ShopId == shopId&&r.MsgType!= MsgTypeEnum.Order&&(r.Receiver==""||r.Receiver==user.UserId||r.Receiver==user.UserEmail));
+            if (!string.IsNullOrWhiteSpace(client) && client.ToLower().Contains("boss"))
+            {
+                var customers = await _msgRepository.GetManyAsync(r => r.ShopId == shopId && r.MsgType != MsgTypeEnum.Order &&
+              (r.Receiver == "" || r.Receiver == user.UserId || r.Receiver == user.UserEmail));
 
-            var returnCustomers = customers.OrderByDescending(r => r.SendTime).Take(100);
+                res = customers.OrderByDescending(r => r.SendTime).Take(100).ToList();
+            }
+            else
+            {
+                var customers = await _msgRepository.GetManyAsync(r => r.ShopId == shopId && r.MsgType != MsgTypeEnum.AcceptOrder && r.MsgType != MsgTypeEnum.UnAcceptOrder &&
+                (r.Receiver == "" || r.Receiver == user.UserId || r.Receiver == user.UserEmail));
 
-            return returnCustomers.ToList();
+                res = customers.OrderByDescending(r => r.SendTime).Take(100).ToList();
+            }
+            return res;
         }
 
 
         public async Task<PushMsgModel> AddMsg(PushMsgModel msg)
         {
             Guard.NotNull(msg);
-          
+
             var savedMenu = await _msgRepository.UpsertAsync(msg);
             return savedMenu;
         }
@@ -71,13 +81,13 @@ namespace App.Infrastructure.ServiceHandler.Common
             var savedMenu = await _msgRepository.UpsertAsync(menu);
             return savedMenu;
         }
-        public async Task<PushMsgModel> TagMsg(string id,int status)
+        public async Task<PushMsgModel> TagMsg(string id, int status)
         {
             var savedMenu = await _msgRepository.GetOneAsync(a => a.Id == id);
             if (savedMenu != null)
             {
                 savedMenu.MsgStatus = (MSGEnum)status;
-                 savedMenu = await _msgRepository.UpsertAsync(savedMenu);
+                savedMenu = await _msgRepository.UpsertAsync(savedMenu);
             }
             return savedMenu;
         }

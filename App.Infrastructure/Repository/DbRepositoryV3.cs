@@ -23,6 +23,7 @@ namespace App.Infrastructure.Repository
     {
         Task<IEnumerable<T>> GetManyAsync(Expression<Func<T, bool>> predicate);
         Task<KeyValuePair<string, IEnumerable<T>>> GetManyAsync(Expression<Func<T, bool>> predicate, int pageSize = -1, string continueToken = null);
+        Task<KeyValuePair<string, IEnumerable<T>>> GetManyOrderbyAsync(Expression<Func<T, bool>> predicate,  Func<IQueryable<T>, IOrderedQueryable<T>> orderBy, int pageSize = -1, string continueToken = null);
         Task<KeyValuePair<string, IEnumerable<T>>> GetManyBySqlAsync(string sql, int pageSize = -1, string continueToken = null);
 
         Task<T> GetOneAsync(Expression<Func<T, bool>> predicate);
@@ -119,7 +120,40 @@ namespace App.Infrastructure.Repository
                 throw new DataRepositoryException(e);
             }
         }
+        public async Task<KeyValuePair<string, IEnumerable<T>>> GetManyOrderbyAsync(Expression<Func<T, bool>> predicate, 
+            Func<IQueryable<T>, IOrderedQueryable<T>> orderBy ,int pageSize = -1, string continueToken = null)
+        {
+            try
+            {
+                string continuationToken = null;
+                if (!string.IsNullOrWhiteSpace(continueToken))
+                    continuationToken = continueToken;
 
+                //await Where(predicate, pageSize, continueToken, null);
+
+
+                var queryRequestOptions = new QueryRequestOptions { MaxItemCount = pageSize, EnableScanInQuery = true, };
+
+                IOrderedQueryable<T> linqQueryable = container.GetItemLinqQueryable<T>(true, continuationToken, queryRequestOptions);
+
+                linqQueryable = orderBy(linqQueryable);
+                FeedIterator<T> feed;
+                    feed = linqQueryable.Where(predicate).ToFeedIterator();
+
+            
+
+                List<T> results = new List<T>();
+                FeedResponse<T> response = await feed.ReadNextAsync();
+                results.AddRange(response);
+                continuationToken = response.ContinuationToken;
+
+                return new KeyValuePair<string, IEnumerable<T>>(continuationToken, results);
+            }
+            catch (Exception e)
+            {
+                throw new DataRepositoryException(e);
+            }
+        }
         public async Task<(IEnumerable<T> Results, string ContinuationToken)> Where<T>(Expression<Func<T, bool>> pred, int maxRecords = 0, string partitionKey = "", string continuationToken = "")
         {
 

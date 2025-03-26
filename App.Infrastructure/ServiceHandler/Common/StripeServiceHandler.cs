@@ -69,7 +69,8 @@ namespace App.Infrastructure.ServiceHandler.Common
                 try
                 {
                     paymentIntent = paymentIntentService.Get(dbPaymentInfo.StripeIntentId);
-                    if (paymentIntent.Status == "succeeded") {
+                    if (paymentIntent.Status == "succeeded")
+                    {
                         paymentIntent = null;
                     }
                     else
@@ -83,12 +84,12 @@ namespace App.Infrastructure.ServiceHandler.Common
                         paymentIntent = paymentIntentService.Update(paymentIntent.Id, options);
                         return paymentIntent;
                     }
-                    
+
 
                 }
                 catch (Exception ex)
                 { }
-             
+
             }
             if (paymentIntent == null || paymentIntent.Status == "succeeded" || string.IsNullOrWhiteSpace(paymentIntent?.CustomerId))
             {
@@ -186,6 +187,11 @@ namespace App.Infrastructure.ServiceHandler.Common
         }
         public void SetupPaymentAction(DbPaymentInfo paymentInfo, string userId, string stripeKey)
         {
+            if (paymentInfo.Amount < 1)
+            {
+                _logger.LogInfo($"{paymentInfo.Id}: 金额小于1");
+                return;
+            }
             StripeConfiguration.ApiKey = stripeKey;
             try
             {
@@ -213,12 +219,12 @@ namespace App.Infrastructure.ServiceHandler.Common
 
                 var service = new PaymentIntentService();
 
-                var payment= service.Create(options);
+                var payment = service.Create(options);
                 _logger.LogDebug($"SetupPaymentAction.{paymentInfo.Id}.{payment.ToString()}");
             }
             catch (StripeException e)
             {
-                _logger.LogError("Error code: " + e.Message);
+                _logger.LogError($"Error code: {e.Message},{paymentInfo.ToString()},{userId}");
                 switch (e.StripeError.Type)
                 {
                     case "card_error":
@@ -259,7 +265,8 @@ namespace App.Infrastructure.ServiceHandler.Common
                 return new ResponseModel { code = 501, msg = ex.Message };// BadRequest(ex.Message);
             }
         }
-        public string GetCurrenciesDB() {
+        public string GetCurrenciesDB()
+        {
             string currecyJson = EmailTemplateUtil.ReadJson(this._environment.WebRootPath, "currencydb");
             return currecyJson;
 

@@ -53,7 +53,7 @@ namespace App.Infrastructure.ServiceHandler.Common
         Task<ResponseModel> VerityEmail(string email, string id, int shopId);
         Task<ResponseModel> AsyncToken(string email, string token);
         Task<ResponseModel> SendRegistrationVerityCode(string email, int shopId);
-
+        Task<DbCustomer> GetUserInfo(int shopId, string userId);
         Task<ResponseModel> ResetPassword(string email, string resetCode, string password, int shopId);
         Task<ResponseModel> ResetPasswordRestaurant(string email, int shopId);
         Task<ResponseModel> UpdatePassword(string email, string oldPassword, string password, int shopId);
@@ -130,6 +130,11 @@ namespace App.Infrastructure.ServiceHandler.Common
 
 
             return customers.ClearForOutPut();
+        }
+        public async Task<DbCustomer> GetUserInfo(int shopId,string userId) {
+            var res = await _customerRepository.GetOneAsync(r => r.ShopId == shopId && r.Id==userId);
+            res.ClearForOutPut();
+            return res;
         }
         public async Task<List<DbCustomer>> ListBossUsers(int shopId, string context)
         {
@@ -278,7 +283,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                 customer.IsActive = true;
                 customer.IsVerity = true;
                 customer.AuthValue = 2;
-                customer.InitPassword = GuidHashUtil.Get6DigitNumber();
+                customer.InitPassword = "123456";// GuidHashUtil.Get6DigitNumber();
                 var passwordEncode = _encryptionHelper.EncryptString(customer.InitPassword.CreateMD5().ToLower());
                 customer.Password = passwordEncode;
                 customer.ResetCode = null;
@@ -575,6 +580,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                     DateTime.TryParse(item.MealTime, out dateTime);
                     item.SelectDateTime = dateTime.GetTimeZoneByIANACode(item.RestaurantTimeZone);
                 }
+                item.MealTime = null;
             }
             return customer;
         }

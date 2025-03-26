@@ -69,36 +69,5 @@ namespace App.Infrastructure.Utility.Common
 #endif
             return res;
         }
-    }
-    public static class FCMSender
-    {
-        public static async Task<string> SendMsg(FCMMessage FCMParams)
-        {
-            var registrationToken = FCMParams.DeviceToken;
-
-            // See documentation on defining a message payload.
-            var message = new Message()
-            {
-                Notification = new Notification
-                {
-                    Title = FCMParams.Title,
-                    Body = FCMParams.Body
-                },
-                Token = registrationToken,
-            };
-            try
-            {
-                // Send a message to the device corresponding to the provided
-                // registration token.
-                string response = await FirebaseMessaging.DefaultInstance.SendAsync(message);
-                // Response is a message ID string.
-                Console.WriteLine("Successfully sent message: " + response);
-                return "";
-            }
-            catch (Exception ex)
-            {
-                return ex.Message;
-            }
-        }
-    }
+    } 
 }

@@ -35,7 +35,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task EmailVerifyCode(string email, string code, DbShop shopInfo, string tempName, string wwwPath, string subject, string title, string titleCN);
         Task<bool> EmailEach(List<DbBooking> bookings, DbShop shopInfo, EmailSenderParams senderParams);
         Task<bool> EmailGroup(List<DbBooking> bookings, DbShop shopInfo, EmailSenderParams senderParams, DbCustomer user);
-        Task EmailSystemMessage(string message,   string toEmail, string tempName,  string subject);
+        Task EmailSystemMessage(string message, string toEmail, string tempName, string subject);
         Task<bool> SendModifiedEmail(DbBooking booking, DbShop shopInfo, string tempName, string wwwPath, string subject);
         Task SendCancelEmail(DbShop shopInfo, DbBooking detail, string webPath, string tempName, string subject, params string[] ccEmail);
     }
@@ -71,8 +71,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _msgPusherServiceHandler = msgPusherServiceHandler;
             _paymentRepository = paymentRepository;
             _countryHandler = countryHandler;
-            _webSocketManager=  webSocketManager;
-            _shopServiceHandler= shopServiceHandler;
+            _webSocketManager = webSocketManager;
+            _shopServiceHandler = shopServiceHandler;
         }
         public async Task EmailVerifyCode(string email, string code, DbShop shopInfo, string tempName, string wwwPath, string subject, string title, string titleCN)
         {
@@ -81,7 +81,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             var emailHtml = await _contentBuilder.BuildRazorContent(new { code, title, titleCN }, htmlTemp);
             try
             {
-               await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, email, subject, emailHtml);
+                await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, email, subject, emailHtml);
             }
             catch (Exception ex)
             {
@@ -125,7 +125,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 //_twilioUtil.sendSMS(item.RestaurantPhone, "You got a new order. Please see details in groupmeals.com");
                 Detail += $"<br> Amount(金额)：<b>{itemCurrencyStr}{item.AmountInfos.Sum(x => x.Amount)}</b>, <br>";
                 if (item.ShowPaid)
-                    Detail += $" Paid(已付/预付)：<b>{itemCurrencyStr}{paidAmount+reward}</b>,<br>";
+                    Detail += $" Paid(已付/预付)：<b>{itemCurrencyStr}{paidAmount + reward}</b>,<br>";
                 if (amount - paidAmount > 0)
                     Detail += $"<b style=\"color: red;\"> Unpaid(到店待支付)：{itemCurrencyStr}{amount - reward - paidAmount}</b>";
                 senderParams.BookingRef = item.BookingRef;
@@ -145,7 +145,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     senderParams.PaidAmount = itemCurrencyStr + ": " + Math.Round(paidAmount, 2);
                 if (!item.ShowPaid)
                     senderParams.PaidAmount = "";
-                    senderParams.UnpaidAmount = itemCurrencyStr + ": " + Math.Round((amount - reward - paidAmount), 2);
+                senderParams.UnPaidAmount = itemCurrencyStr + ": " + Math.Round((amount - reward - paidAmount), 2);
                 senderParams.Amount = itemCurrencyStr + ": " + Math.Round(amount, 2);
                 senderParams.MealTime = selectDateTimeStr;
                 senderParams.Memo = item.Memo;
@@ -153,13 +153,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 senderParams.CustomerInfo = customerInfo;
                 senderParams.Details = Detail;
                 senderParams.ShopSettings = shopInfo.ShopSettings;
-                await Send(senderParams,item.RestaurantEmail);
+                senderParams.Subject += item.BookingRef;
+                await Send(senderParams, item.RestaurantEmail);
 
                 await _webSocketManager.SendMessageAsync(item.RestaurantEmail, "{\"MsgType\":\"NewBooking\"}");
             }
             return true;
         }
-        private async Task<bool> Send(EmailSenderParams senderParams,string receiverEmail)
+        private async Task<bool> Send(EmailSenderParams senderParams, string receiverEmail)
         {
             //Task.Run(async () =>
             //{
@@ -167,7 +168,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             string emailHtml = "";
             try
             {
-                senderParams.PaidAmount= new HtmlString(senderParams.PaidAmount?.ToString());
+                senderParams.PaidAmount = new HtmlString(senderParams.PaidAmount?.ToString());
                 senderParams.Details = new HtmlString(senderParams.Details?.ToString());
                 senderParams.RestaurantInfo = new HtmlString(senderParams.RestaurantInfo?.ToString());
                 senderParams.CustomerInfo = new HtmlString(senderParams.CustomerInfo?.ToString());
@@ -252,13 +253,15 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     $"{Math.Round(paidAmount, 2)} ";
                 if (reward > 0)
                     Detail += $"（立减{itemCurrencyStr}{Math.Round(reward, 2)}）,";
-               Detail += "<br>";
+                Detail += "<br>";
                 if (amount - paidAmount > 0)
                 {
                     decimal unpaid = Math.Round((amount - reward - paidAmount), 2);
                     Detail += $"Unpaid(待支付)：<b style ='color: red;'>{itemCurrencyStr}{unpaid}</b> <br>";
                 }
                 Detail += "<br>";
+                senderParams.Subject += item.BookingRef;
+
             }
             var AmountInfo = _amountCalculaterUtil.GetOrderPaidInfo(bookings, bookings[0].PayCurrency, bookings[0].ShopId ?? 11, user, country, dbstripes);
             string PaidAmountStr = "0.00";
@@ -273,26 +276,25 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             string UnpaidAmountStr = AmountInfo.UnPaidAmountText;
             string AmountStr = AmountInfo.AmountText;
-
             senderParams.PaidAmount = PaidAmountStr;
-            senderParams.UnpaidAmount = UnpaidAmountStr;
+            senderParams.UnPaidAmount = UnpaidAmountStr;
             senderParams.Amount = AmountStr;
             senderParams.Details = Detail;
             senderParams.ShopSettings = shopInfo.ShopSettings;
-            await Send(senderParams,user.Email);
+            await Send(senderParams, user.Email);
             //SendToTalCustomer(shopInfo, user, senderParams.Subject, wwwPath, senderParams.TemplateName, AmountStr, PaidAmountStr, UnpaidAmountStr, detailstr);
             return true;
         }
-        
-        public async Task EmailSystemMessage(string message,  string toEmail, string tempName,  string subject)
+
+        public async Task EmailSystemMessage(string message, string toEmail, string tempName, string subject)
         {
-           var shopInfo =await _shopServiceHandler.GetBasicShopInfo(11);
+            var shopInfo = await _shopServiceHandler.GetBasicShopInfo(11);
             string htmlTemp = EmailTemplateUtil.ReadTemplate(this._environment.WebRootPath, tempName);
-           
+
             var emailHtml = "";
             try
             {
-                emailHtml = await _contentBuilder.BuildRazorContent(new {  Title=subject,Message=message}, htmlTemp);
+                emailHtml = await _contentBuilder.BuildRazorContent(new { Title = subject, Message = message }, htmlTemp);
             }
             catch (Exception ex)
             {
@@ -304,7 +306,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             try
             {
-              await  _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, toEmail, subject, emailHtml);
+                await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, toEmail, subject, emailHtml);
 
             }
             catch (Exception ex)
@@ -452,8 +454,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             try
             {
-              await  _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.RestaurantEmail, subject, emailHtml, ccEmail);
-               await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.ContactEmail, subject, emailHtml, ccEmail);
+                await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.RestaurantEmail, subject, emailHtml, ccEmail);
+                await _emailUtil.SendEmail(shopInfo.ShopSettings, shopInfo.Email, booking.ContactEmail, subject, emailHtml, ccEmail);
             }
             catch (Exception ex)
             {

@@ -130,6 +130,7 @@ namespace App.Domain.Common.Customer
             item.ResetCode = "";
             item.PinCode = "";
             item.DeviceToken = "";
+            item.CartInfos.Clear();
             //source.InitPassword = "";
             return item;
         }
@@ -138,11 +139,7 @@ namespace App.Domain.Common.Customer
         {
             foreach (var item in source)
             {
-                item.Password = "";
-                item.ResetCode = "";
-                item.PinCode = "";
-                item.DeviceToken = "";
-                //item.InitPassword = "";
+                item.ClearForOutPut();
             }
             return source;
         }

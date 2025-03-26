@@ -53,6 +53,19 @@ namespace KingfoodIO.Controllers.Common
             _encryptionHelper = encryptionHelper;
         }
 
+        [HttpGet]
+        [ProducesResponseType(typeof(DbCustomer), (int)HttpStatusCode.OK)]
+        [ServiceFilter(typeof(AuthActionFilter))]
+        public async Task<IActionResult> GetUserInfo(int shopId )
+        {
+            var authHeader = Request.Headers["Wauthtoken"];
+            string userId = "";
+            if (!string.IsNullOrWhiteSpace(authHeader))
+                userId = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader).UserId;
+            return await ExecuteAsync(shopId, false,
+                async () => await _customerServiceHandler.GetUserInfo(shopId, userId));
+        }
+
         /// <summary>
         /// 
         /// </summary>
@@ -66,6 +79,8 @@ namespace KingfoodIO.Controllers.Common
             return await ExecuteAsync(shopId, false,
                 async () => await _customerServiceHandler.List(shopId,context));
         }
+
+
         [HttpGet]
         [ProducesResponseType(typeof(List<DbCustomer>), (int)HttpStatusCode.OK)]
         //[ServiceFilter(typeof(AuthActionFilter))]
