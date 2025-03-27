@@ -859,8 +859,14 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                         ModifyInfo modifyInfo = new ModifyInfo();
                         modifyInfo.ModifyField = fieldName;
                         modifyInfo.ModifyLocation = $"{item.Id}";
-                        modifyInfo.oldValue = oldValue?.ToString();
-                        modifyInfo.newValue = newValue?.ToString();
+                        if (oldValue.GetType() == typeof(DateTime))
+                            modifyInfo.oldValue = ((DateTime?)oldValue)?.ToString("o");
+                        else
+                            modifyInfo.oldValue = oldValue?.ToString();
+                        if (newValue.GetType() == typeof(DateTime))
+                            modifyInfo.newValue = ((DateTime?)newValue)?.ToString("o");
+                        else
+                            modifyInfo.newValue = newValue?.ToString();
                         operationInfo.ModifyInfos.Add(modifyInfo);
                     }
                     item.GetType().GetProperty(fieldName).SetValue(item, newValue);
