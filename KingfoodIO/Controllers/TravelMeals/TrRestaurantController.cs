@@ -204,8 +204,12 @@ namespace KingfoodIO.Controllers.TravelMeals
         [ServiceFilter(typeof(AuthActionFilter))]
         public async Task<IActionResult> AddRestaurant([FromBody] TrDbRestaurant restaurant, int shopId)
         {
+            var authHeader = Request.Headers["Wauthtoken"];
+            var user = new TokenEncryptorHelper().Decrypt<DbToken>(authHeader);
+            string rawRequestBody = await Request.GetRawBodyAsync();
+            _logger.LogDebug($"AddRestaurant:{user.UserEmail}_{rawRequestBody} ");
             return await ExecuteAsync(shopId, false,
-                async () => await _restaurantServiceHandler.AddRestaurant(restaurant, shopId));
+                async () => await _restaurantServiceHandler.AddRestaurant(restaurant, shopId, user));
         }
 
         /// <summary>
@@ -224,7 +228,7 @@ namespace KingfoodIO.Controllers.TravelMeals
             string rawRequestBody = await Request.GetRawBodyAsync();
             _logger.LogDebug($"UpdateRestaurant:{user.UserEmail}_{rawRequestBody} ");
             return await ExecuteAsync(shopId, false,
-                async () => await _restaurantServiceHandler.UpdateRestaurant(restaurant, shopId));
+                async () => await _restaurantServiceHandler.UpdateRestaurant(restaurant, shopId, user));
         }
 
         [ServiceFilter(typeof(AdminAuthFilter))]

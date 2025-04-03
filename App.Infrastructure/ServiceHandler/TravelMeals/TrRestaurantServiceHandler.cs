@@ -55,10 +55,10 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         Task<ResponseModel> GetCitys(int shopId);
         Task<ResponseModel> GetCities(int shopId);
         Task<ResponseModel> GetCitiesV1(int shopId);
-        Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId);
+        Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId, DbToken user);
         Task<ResponseModel> UpsetCities(DbCountry countries, int shopId);
         Task<ResponseModel> ExportRestaurants();
-        Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId);
+        Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId, DbToken user);
         Task<ResponseModel> DeleteRestaurant(string id, string email, string pwd, int shopId);
         Task<ResponseModel> GetBossInfoInRestaurant(int shopId);
         Task<List<TrDbRestaurant>> GetAllRestaurants(bool refreshCache = false);
@@ -77,6 +77,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         private readonly IContentBuilder _contentBuilder;
         private readonly IEmailUtil _emailUtil;
         private readonly IEncryptionHelper _encryptionHelper;
+        private readonly ICustomerServiceHandler _customerServiceHandler;
         ITwilioUtil _twilioUtil;
         IMemoryCache _memoryCache;
 
@@ -84,7 +85,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         public TrRestaurantServiceHandler(IDbCommonRepository<TrDbRestaurant> restaurantRepository, IDateTimeUtil dateTimeUtil, ILogManager logger, ITwilioUtil twilioUtil,
            IDbCommonRepository<DbShop> shopRepository, ITrBookingDataSetBuilder bookingDataSetBuilder, IEncryptionHelper encryptionHelper, IDbCommonRepository<DbCustomer> customerRepository,
-        IMemoryCache memoryCache,
+        IMemoryCache memoryCache, ICustomerServiceHandler customerServiceHandler,
             IContentBuilder contentBuilder, IEmailUtil emailUtil, ICountryServiceHandler countryRepository)
         {
             _restaurantRepository = restaurantRepository;
@@ -99,6 +100,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _memoryCache = memoryCache;
             _encryptionHelper = encryptionHelper;
             _countryRepository = countryRepository;
+            _customerServiceHandler= customerServiceHandler;
         }
 
         public static Expression<Func<TrDbRestaurant, bool>> CreateContainsExpression(string propertyName, string value)
@@ -369,7 +371,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<ResponseModel> GetRestaurant(string Id)
         {
             var existingRestaurant =
-               await _restaurantRepository.GetOneAsync(r => r.Id == Id && r.IsActive == true);
+               await _restaurantRepository.GetOneAsync(r => r.Id == Id );
 
             //existingRestaurant.Images.Add(existingRestaurant.Image);
             if (existingRestaurant != null)
@@ -524,7 +526,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
         }
 
-        public async Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId)
+        public async Task<TrDbRestaurant> AddRestaurant(TrDbRestaurant restaurant, int shopId, DbToken user)
         {
             Guard.NotNull(restaurant);
             var cacheKey = string.Format("motionmedia-{1}-{0}-{2}", shopId, typeof(TrDbRestaurant).Name, 50);
@@ -534,7 +536,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                await _restaurantRepository.GetOneAsync(r => r.ShopId == shopId && r.StoreName == restaurant.StoreName && r.Address == restaurant.Address);
             if (existingRestaurant != null)
             {
-                return await UpdateRestaurant(restaurant, shopId);
+                return await UpdateRestaurant(restaurant, shopId,user);
             }
 
             restaurant.Id = Guid.NewGuid().ToString();
@@ -556,7 +558,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             _memoryCache.Set(cacheKey, nullRest);
             return savedRestaurant;
         }
-        public async Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId)
+        public async Task<TrDbRestaurant> UpdateRestaurant(TrDbRestaurant restaurant, int shopId, DbToken user)
         {
             Guard.NotNull(restaurant);
             var cacheKey = string.Format("motionmedia-{1}-{0}-{2}", shopId, typeof(TrDbRestaurant).Name, 50);
@@ -583,6 +585,20 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
 
             restaurant.Updated = DateTime.UtcNow;
+            restaurant.Updater = user.UserId;
+            if(restaurant.Users==null|| restaurant.Users.Count()==0)
+                throw new ServiceException("restaurant.Users is empty");
+            restaurant.Email = restaurant.Users[0];
+
+            var allusers = await _customerServiceHandler.GetAllUsers();
+            foreach (var item in restaurant.Users)
+            {
+                var boss = allusers.FirstOrDefault(a => a.Email == item&&a.IsBoss);
+                if (boss == null)
+                {
+                    await _customerServiceHandler.CreateAccount(new DbCustomer() { Email=item,UserName=restaurant.StoreName}, shopId);
+                }
+            }
 
             var savedRestaurant = await _restaurantRepository.UpsertAsync(restaurant);
 

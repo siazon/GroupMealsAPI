@@ -68,6 +68,9 @@ using Twilio.TwiML.Messaging;
 using FirebaseAdmin.Auth;
 using System.Linq.Expressions;
 using FastDeepCloner;
+using Newtonsoft.Json.Linq;
+using System.Collections.Specialized;
+using Quartz.Core;
 
 namespace App.Infrastructure.ServiceHandler.TravelMeals
 {
@@ -550,19 +553,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 return new ResponseModel() { code = 501, msg = "Cannot find shop info" };
             }
             string mealTime = booking.SelectDateTime.Value.GetLocaTimeByIANACode(booking.RestaurantTimeZone).ToString("yyyy-MM-dd HH:mm");
-            //await _msgPusherServiceHandler.AddMsg(new Domain.Common.PushMsgModel()
-            //{
-            //    Id = Guid.NewGuid().ToString(),
-            //    MsgType = MsgTypeEnum.AcceptOrder,
-            //    SendTime = DateTime.UtcNow,
-            //    Created = DateTime.UtcNow,
-            //    Title = "Booking Accepted",
-            //    Message = $"{booking.RestaurantName} {mealTime}",
-            //    MessageReference = booking.BookingRef,
-            //    Receiver = booking.RestaurantEmail,
-            //    Sender = "GroupMeals",
-            //    ShopId = booking.ShopId
-            //});
+
             SendEamilByUpdateAccept(acceptType, booking, shopInfo);
             return new ResponseModel() { code = 200, msg = "ok", data = booking };
         }
@@ -1325,7 +1316,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
             catch (Exception ex)
             {
-                _logger.LogError("sendSMS"+ex.Message);
+                _logger.LogError("sendSMS" + ex.Message);
             }
             var emailParams = EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealCustomer];
             emailParams.isShortInfo = 0;
@@ -1337,6 +1328,34 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             //EmailUtils.EmailSupport(booking, shopInfo, "new_meals_support", this._environment.WebRootPath, "New Booking", _twilioUtil, _contentBuilder,  _logger);
             return true;
         }
+        private async void SendFCM(DbBooking item, string title, string body, MsgTypeEnum msgTypeEnum, string token, string email)
+        {
+            FCMMessage FCMParams = new FCMMessage()
+            {
+                Title = title,
+                Body = body,
+                ReferenceId = item.GroupRef,
+                OrderStatus = item.Status,
+                MsgType = msgTypeEnum,
+                DeviceToken = token
+            };
+            await _FCMUtil.SendMsg(FCMParams);
+            //保存到消息列表
+            await _msgPusherServiceHandler.AddMsg(new Domain.Common.PushMsgModel()
+            {
+                Id = Guid.NewGuid().ToString(),
+                MsgType = msgTypeEnum,
+                SendTime = DateTime.UtcNow,
+                Created = DateTime.UtcNow,
+                Title = title,
+                Message = body,
+                MessageReference = item.BookingRef,
+                OrderStauts = item.Status,
+                Receiver = email,
+                Sender = "GroupMeals",
+                ShopId = item.ShopId
+            });
+        }
         private async void PushFCMMessage(List<DbBooking> bookings, string title, string msgBody)
         {
             try
@@ -1344,10 +1363,11 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 foreach (var item in bookings)
                 {
                     string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(item.RestaurantTimeZone).ToString("yyyy-MMM-dd HH:mm");
-                    string Menu = item.Courses[0].MenuItemName;
+                    string Menu = item.Courses == null || item.Courses.Count == 0 ? "" : item.Courses[0].MenuItemName;
                     var boss = await _customerRepository.GetOneAsync(a => a.Email == item.RestaurantEmail);
                     string token = boss.DeviceToken;
-                    string body = $"{item.Courses[0].MenuItemName}*{item.Courses[0].Qty} {selectDateTimeStr}";
+                    var qty = item.Courses == null || item.Courses.Count == 0 ? 0 : item.Courses[0].Qty;
+                    string body = $"{Menu}*{qty} {selectDateTimeStr}";
                     MsgTypeEnum msgTypeEnum = MsgTypeEnum.Text;
                     switch (item.Status)
                     {
@@ -1363,37 +1383,42 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                             msgTypeEnum = MsgTypeEnum.AcceptOrder;
                             break;
                     }
-                    FCMMessage FCMParams = new FCMMessage()
+                    Dictionary<string, string> dicReceivers =await getReceivers(item.RestaurantId);
+                    foreach (var receiver in dicReceivers)
                     {
-                        Title = title,
-                        Body = body,
-                        ReferenceId = item.GroupRef,
-                        OrderStatus = item.Status,
-                        MsgType = msgTypeEnum,
-                        DeviceToken = token
-                    };
-                    await _FCMUtil.SendMsg(FCMParams);
-                    //保存到消息列表
-                    await _msgPusherServiceHandler.AddMsg(new Domain.Common.PushMsgModel()
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        MsgType = msgTypeEnum,
-                        SendTime = DateTime.UtcNow,
-                        Created = DateTime.UtcNow,
-                        Title = title,
-                        Message = body,
-                        MessageReference = item.BookingRef,
-                        OrderStauts = item.Status,
-                        Receiver = item.RestaurantEmail,
-                        Sender = "GroupMeals",
-                        ShopId = item.ShopId
-                    });
+                        SendFCM(item, title, body, msgTypeEnum, receiver.Key, receiver.Value);
+                    }
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError("PushFCMMessage: " + ex.Message);
             }
+        }
+        private async Task<Dictionary<string, string> > getReceivers(string restaurantId)
+        {
+            Dictionary<string, string> dicReceivers = new Dictionary<string, string>();
+            var allRests = await _trRestaurantServiceHandler.GetAllRestaurants();
+            var allUsers = await _customerServiceHandler.GetAllUsers();
+            var rest = allRests.FirstOrDefault(a => a.Id == restaurantId);
+            if (rest != null)
+            {
+                foreach (var item in rest.Users)
+                {
+                    var boss = await _customerRepository.GetOneAsync(a => a.Email==item);
+                    if (boss!=null)
+                    {
+                        dicReceivers[boss.DeviceToken]= item;
+                    }
+                    
+                }
+            }
+            string adminEmail = "sales.ie@groupmeals.com";
+            var admin = allUsers.FirstOrDefault(a=>a.Email==adminEmail);
+            if(admin!=null)
+                dicReceivers[admin.DeviceToken]=adminEmail;
+            return dicReceivers;
+
         }
         private void SaveMsgPush(List<DbBooking> bookings)
         {
@@ -1424,6 +1449,8 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         private async void ModifybookingNotification(DbBooking booking)
         {
+            
+
             PushFCMMessage(new List<DbBooking>() { booking }, "Booking Modified", "You got a modified booking");
             var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
             if (shopInfo == null)
@@ -1700,11 +1727,18 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             }
         }
         #region SearchBooking
-        public async Task<ResponseModel> SearchBookingsByRestaurant(int shopId, string email, string content, int filterTime, DateTime stime, DateTime etime, List<int> status, int pageSize = -1, string continuationToken = null)
+        public async Task<ResponseModel> SearchBookingsByRestaurant(int shopId, string email, string content, int filterTime, DateTime stime, DateTime etime, List<int> status,
+            int pageSize = -1, string continuationToken = null)
         {
+            List<DbBooking> res = new List<DbBooking>();
+            var Allrests = await _trRestaurantServiceHandler.GetAllRestaurants();
+            var rest = Allrests.FirstOrDefault(a => a.Users.Contains(email));
+            if (rest == null)//找不到邮箱地址
+                return new ResponseModel { msg = "ok", code = 200, token = "", data = res };
+
             Expression<Func<DbBooking, bool>> expression = null;
             Func<IQueryable<DbBooking>, IOrderedQueryable<DbBooking>> orderBy = a => a.OrderBy(b => b.SelectDateTime);
-            List<DbBooking> res = new List<DbBooking>();
+
             string pageToken = "";
             KeyValuePair<string, IEnumerable<DbBooking>> Bookings = new KeyValuePair<string, IEnumerable<DbBooking>>();
             bool emptyTime = stime == DateTime.MinValue || etime == DateTime.MinValue;
@@ -1713,19 +1747,19 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 if (emptyTime)
                 {
-                    expression = a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.RestaurantEmail == email && status.Contains((int)a.Status));
+                    expression = a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.RestaurantId == rest.Id && status.Contains((int)a.Status));
                 }
                 else
                 {
                     etime = etime.AddDays(1);
                     if (filterTime == 1)
                     {
-                        expression = a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.RestaurantEmail == email &&
+                        expression = a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.RestaurantId == rest.Id &&
                          a.SelectDateTime > stime && a.SelectDateTime <= etime && status.Contains((int)a.Status));
                     }
                     else
                     {
-                        expression = a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.RestaurantEmail == email &&
+                        expression = a => (a.Status != OrderStatusEnum.None && !a.IsDeleted && a.RestaurantId == rest.Id &&
                         a.Created > stime && a.Created <= etime && status.Contains((int)a.Status));
                     }
                 }
@@ -1733,7 +1767,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             else
             {
                 content = content.ToLower().Trim();
-                expression = a => ((a.Status != OrderStatusEnum.None) && !a.IsDeleted && a.RestaurantEmail == email && status.Contains((int)a.Status) &&
+                expression = a => ((a.Status != OrderStatusEnum.None) && !a.IsDeleted && a.RestaurantId == rest.Id && status.Contains((int)a.Status) &&
                 (a.BookingRef.ToLower().Contains(content) || a.RestaurantName.ToLower().Contains(content) || a.RestaurantAddress.ToLower().Contains(content) ||
                 a.ContactName.ToLower().Contains(content) || a.GroupRef.ToLower().Contains(content)));
             }

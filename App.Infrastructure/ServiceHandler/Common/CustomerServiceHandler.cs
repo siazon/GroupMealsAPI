@@ -272,7 +272,6 @@ namespace App.Infrastructure.ServiceHandler.Common
                 {
                     existingCustomer.AuthValue = existingCustomer.AuthValue.SetBit(1);
                 }
-                return new ResponseModel() { msg = "用户已注册，请点击修改绑定目标邮件地址", code = 501 };
             }
             else
             {
@@ -283,6 +282,7 @@ namespace App.Infrastructure.ServiceHandler.Common
                 customer.IsActive = true;
                 customer.IsVerity = true;
                 customer.AuthValue = 2;
+                customer.IsBoss = true;
                 customer.InitPassword = "123456";// GuidHashUtil.Get6DigitNumber();
                 var passwordEncode = _encryptionHelper.EncryptString(customer.InitPassword.CreateMD5().ToLower());
                 customer.Password = passwordEncode;
