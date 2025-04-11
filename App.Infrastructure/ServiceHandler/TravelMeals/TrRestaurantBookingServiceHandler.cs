@@ -698,6 +698,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
 
             if (newBooking != null)
             {
+                newBooking.ContactName = newBooking.ContactName.Replace(_GMLable, "");
                 //if (detail.SelectDateTime != item.SelectDateTime)
                 //{
                 //item.Modified = true;
@@ -1383,7 +1384,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                             msgTypeEnum = MsgTypeEnum.AcceptOrder;
                             break;
                     }
-                    Dictionary<string, string> dicReceivers =await getReceivers(item.RestaurantId);
+                    Dictionary<string, string> dicReceivers = await getReceivers(item.RestaurantId);
                     foreach (var receiver in dicReceivers)
                     {
                         SendFCM(item, title, body, msgTypeEnum, receiver.Key, receiver.Value);
@@ -1395,7 +1396,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 _logger.LogError("PushFCMMessage: " + ex.Message);
             }
         }
-        private async Task<Dictionary<string, string> > getReceivers(string restaurantId)
+        private async Task<Dictionary<string, string>> getReceivers(string restaurantId)
         {
             Dictionary<string, string> dicReceivers = new Dictionary<string, string>();
             var allRests = await _trRestaurantServiceHandler.GetAllRestaurants();
@@ -1405,18 +1406,18 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             {
                 foreach (var item in rest.Users)
                 {
-                    var boss = await _customerRepository.GetOneAsync(a => a.Email==item);
-                    if (boss!=null)
+                    var boss = await _customerRepository.GetOneAsync(a => a.Email == item);
+                    if (boss != null)
                     {
-                        dicReceivers[boss.DeviceToken]= item;
+                        dicReceivers[boss.DeviceToken] = item;
                     }
-                    
+
                 }
             }
             string adminEmail = "sales.ie@groupmeals.com";
-            var admin = allUsers.FirstOrDefault(a=>a.Email==adminEmail);
-            if(admin!=null)
-                dicReceivers[admin.DeviceToken]=adminEmail;
+            var admin = allUsers.FirstOrDefault(a => a.Email == adminEmail);
+            if (admin != null)
+                dicReceivers[admin.DeviceToken] = adminEmail;
             return dicReceivers;
 
         }
@@ -1449,7 +1450,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         }
         private async void ModifybookingNotification(DbBooking booking)
         {
-            
+
 
             PushFCMMessage(new List<DbBooking>() { booking }, "Booking Modified", "You got a modified booking");
             var shopInfo = await _shopRepository.GetOneAsync(r => r.ShopId == booking.ShopId && r.IsActive.HasValue && r.IsActive.Value);
@@ -1669,7 +1670,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
             return new ResponseModel { msg = "ok", code = 200, token = pageToken, data = res };
 
         }
-
+        string _GMLable = "GroupMeals_";
 
         private DbBooking UpdateForOutput(DbBooking dbBooking, List<DbPaymentInfo> paymentInfos)
         {
@@ -1689,7 +1690,7 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                     dbBooking.IntentType = paymentInfo.SetupPay ? IntentTypeEnum.SetupIntent : IntentTypeEnum.PaymentIntent;
                 }
             }
-            dbBooking.ContactName = "GroupMeals_" + dbBooking.ContactName;
+            dbBooking.ContactName = _GMLable + dbBooking.ContactName;
             return dbBooking;
         }
         public async void SettleOrder()
@@ -1730,9 +1731,13 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
         public async Task<ResponseModel> SearchBookingsByRestaurant(int shopId, string email, string content, int filterTime, DateTime stime, DateTime etime, List<int> status,
             int pageSize = -1, string continuationToken = null)
         {
+            if (email.ToLower().Trim() == "sales.ie@groupmeals.com")
+            {
+                return await SearchBookingsByAdmin(shopId, content, filterTime, stime, etime, status, pageSize, continuationToken);
+            }
             List<DbBooking> res = new List<DbBooking>();
             var Allrests = await _trRestaurantServiceHandler.GetAllRestaurants();
-            var rest = Allrests.FirstOrDefault(a => a.Users.Contains(email));
+            var rest = Allrests.FirstOrDefault(a => a.Users!=null&& a.Users.Contains(email));
             if (rest == null)//找不到邮箱地址
                 return new ResponseModel { msg = "ok", code = 200, token = "", data = res };
 

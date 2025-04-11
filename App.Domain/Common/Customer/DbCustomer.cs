@@ -130,7 +130,7 @@ namespace App.Domain.Common.Customer
             item.ResetCode = "";
             item.PinCode = "";
             item.DeviceToken = "";
-            item.CartInfos.Clear();
+            //item.CartInfos.Clear();
             //source.InitPassword = "";
             return item;
         }

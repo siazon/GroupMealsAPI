@@ -105,10 +105,24 @@ namespace App.Infrastructure.ServiceHandler.TravelMeals
                 string restaurantInfo = await AppendRestaurantInfo(item, senderParams.isShortInfo);
                 string customerInfo = await AppendCustomerInfo(item, senderParams.isShortInfo);
                 string selectDateTimeStr = item.SelectDateTime.Value.GetLocaTimeByIANACode(item.RestaurantTimeZone).ToString("yyyy-MM-dd HH:mm");
+
+                string oldtime = await ModifyOldValue(item, "SelectDateTime");
+                string oldDateTime = "";
+                if (!string.IsNullOrWhiteSpace(oldtime))
+                {
+                    var now = DateTime.UtcNow;
+                    DateTime selectTime = now;
+                    DateTime.TryParse(oldtime, out selectTime);
+                    if (selectTime != now)
+                    {
+                        oldDateTime = selectTime.GetLocaTimeByIANACode(item.RestaurantTimeZone).ToString("yyyy-MM-dd HH:mm");
+                    }
+                }
+
                 if (senderParams.TemplateName == EmailConfigs.Instance.Emails[EmailTypeEnum.MealModified].TemplateName)
                 {
                     Detail += restaurantInfo;
-                    Detail += "<br>" + selectDateTimeStr + " <br><br> ";
+                    Detail += "<br>" +oldDateTime.ToDelFormat()+ selectDateTimeStr + " <br><br> ";
                 }
 
                 if (senderParams.TemplateName != EmailConfigs.Instance.Emails[EmailTypeEnum.NewMealRestaurant].TemplateName)
